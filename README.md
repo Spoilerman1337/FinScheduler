@@ -9,7 +9,7 @@ Ideas are infinite and limited only by my lifespan and lazyness
 
 ## 🛠️ Techs
 - **Go** — backend
-- **PostgreSQL** — хранение данных
+- **PostgreSQL** — data storage
 
 ## 🚀 TODOs
 - Price history
