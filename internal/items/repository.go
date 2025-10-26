@@ -18,7 +18,7 @@ func NewItemsRepository(db *sqlx.DB) *ItemsRepository {
 	return &ItemsRepository{db: db}
 }
 
-func (repo *ItemsRepository) Get(filter *ItemFilter) ([]Item, int64, error) {
+func (repository *ItemsRepository) Get(filter *ItemFilter) ([]Item, int64, error) {
 	// TODO: log error later
 	var items []Item
 	var count int64 = 0
@@ -93,20 +93,20 @@ func (repo *ItemsRepository) Get(filter *ItemFilter) ([]Item, int64, error) {
 	offset := page * pageSize
 
 	selectQuery := fmt.Sprintf("SELECT * %s LIMIT ? OFFSET ?", query)
-	selectQuery = repo.db.Rebind(selectQuery)
+	selectQuery = repository.db.Rebind(selectQuery)
 	selectArgs := append(make([]interface{}, 0), args...)
 	selectArgs = append(selectArgs, pageSize, offset)
 
-	err := repo.db.Select(&items, selectQuery, selectArgs...)
+	err := repository.db.Select(&items, selectQuery, selectArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s", query)
-	countQuery = repo.db.Rebind(countQuery)
+	countQuery = repository.db.Rebind(countQuery)
 	countArgs := append(make([]interface{}, 0), args...)
 
-	err = repo.db.Get(&count, countQuery, countArgs...)
+	err = repository.db.Get(&count, countQuery, countArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -114,7 +114,7 @@ func (repo *ItemsRepository) Get(filter *ItemFilter) ([]Item, int64, error) {
 	return items, count, err
 }
 
-func (repo *ItemsRepository) GetById(id uuid.UUID) (*Item, error) {
+func (repository *ItemsRepository) GetById(id uuid.UUID) (*Item, error) {
 	//TODO: log error later
 	var item Item
 
@@ -123,9 +123,9 @@ func (repo *ItemsRepository) GetById(id uuid.UUID) (*Item, error) {
 	}
 
 	query := "SELECT * FROM public.items WHERE id = ?"
-	query = repo.db.Rebind(query)
+	query = repository.db.Rebind(query)
 
-	err := repo.db.Get(&item, query, id)
+	err := repository.db.Get(&item, query, id)
 	if err != nil {
 		fmt.Print("1112")
 		return nil, err
@@ -134,7 +134,7 @@ func (repo *ItemsRepository) GetById(id uuid.UUID) (*Item, error) {
 	return &item, nil
 }
 
-func (repo *ItemsRepository) Create(create *ItemCreate) (uuid.UUID, error) {
+func (repository *ItemsRepository) Create(create *ItemCreate) (uuid.UUID, error) {
 	newID, err := uuid.NewV7()
 	now := time.Now().UTC()
 
@@ -143,8 +143,8 @@ func (repo *ItemsRepository) Create(create *ItemCreate) (uuid.UUID, error) {
 	}
 
 	query := "INSERT INTO public.items (id, name, price, description, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-	query = repo.db.Rebind(query)
-	_, err = repo.db.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now)
+	query = repository.db.Rebind(query)
+	_, err = repository.db.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -152,8 +152,8 @@ func (repo *ItemsRepository) Create(create *ItemCreate) (uuid.UUID, error) {
 	return newID, err
 }
 
-func (repo *ItemsRepository) Update(itemID uuid.UUID, update *ItemUpdate) (bool, error) {
-	transaction, err := repo.db.Beginx()
+func (repository *ItemsRepository) Update(itemID uuid.UUID, update *ItemUpdate) (bool, error) {
+	transaction, err := repository.db.Beginx()
 	defer func() {
 		if err != nil {
 			rbErr := transaction.Rollback()
@@ -171,7 +171,7 @@ func (repo *ItemsRepository) Update(itemID uuid.UUID, update *ItemUpdate) (bool,
 
 	var updatedItem Item
 	getQuery := "SELECT * FROM public.items WHERE id = ?"
-	getQuery = repo.db.Rebind(getQuery)
+	getQuery = repository.db.Rebind(getQuery)
 	err = transaction.Get(&updatedItem, getQuery, itemID)
 	if err != nil {
 		return false, err
@@ -184,7 +184,7 @@ func (repo *ItemsRepository) Update(itemID uuid.UUID, update *ItemUpdate) (bool,
 	updatedItem.UpdatedAt = sql.NullTime{now, true}
 
 	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?, updated_at = ? WHERE id = ?"
-	query = repo.db.Rebind(query)
+	query = repository.db.Rebind(query)
 	result, err := transaction.Exec(query, updatedItem.Name, updatedItem.Price, updatedItem.Description, updatedItem.IsActive,
 		updatedItem.UpdatedAt, updatedItem.Id)
 	if err != nil {
@@ -197,9 +197,9 @@ func (repo *ItemsRepository) Update(itemID uuid.UUID, update *ItemUpdate) (bool,
 	return rowsAffected > 0, err
 }
 
-func (repo *ItemsRepository) Delete(itemID uuid.UUID) (bool, error) {
+func (repository *ItemsRepository) Delete(itemID uuid.UUID) (bool, error) {
 	ctx := context.Background()
-	transaction, err := repo.db.BeginTxx(ctx, &sql.TxOptions{Isolation: 4})
+	transaction, err := repository.db.BeginTxx(ctx, &sql.TxOptions{Isolation: 4})
 	defer func() {
 		if err != nil {
 			rbErr := transaction.Rollback()
@@ -210,7 +210,7 @@ func (repo *ItemsRepository) Delete(itemID uuid.UUID) (bool, error) {
 	}()
 
 	query := "DELETE FROM public.items WHERE id = ?"
-	query = repo.db.Rebind(query)
+	query = repository.db.Rebind(query)
 	result, err := transaction.Exec(query, itemID)
 
 	err = transaction.Commit()

@@ -6,11 +6,11 @@ import (
 )
 
 type ItemsService struct {
-	repo *ItemsRepository
+	repository *ItemsRepository
 }
 
-func NewItemsService(repo *ItemsRepository) *ItemsService {
-	return &ItemsService{repo: repo}
+func NewItemsService(repository *ItemsRepository) *ItemsService {
+	return &ItemsService{repository: repository}
 }
 
 func (service *ItemsService) Get(filter *ItemFilter) ([]ItemDto, int64, error) {
@@ -18,7 +18,7 @@ func (service *ItemsService) Get(filter *ItemFilter) ([]ItemDto, int64, error) {
 		return nil, 0, fmt.Errorf("filter is nil")
 	}
 
-	rawItems, count, err := service.repo.Get(filter)
+	rawItems, count, err := service.repository.Get(filter)
 
 	items := make([]ItemDto, 0)
 	if rawItems != nil && len(rawItems) > 0 {
@@ -35,7 +35,7 @@ func (service *ItemsService) GetById(id uuid.UUID) (*ItemDto, error) {
 		return nil, fmt.Errorf(`id is nil`)
 	}
 
-	rawItem, err := service.repo.GetById(id)
+	rawItem, err := service.repository.GetById(id)
 
 	return NewItemDto(rawItem), err
 }
@@ -45,7 +45,7 @@ func (service *ItemsService) Create(create *ItemCreate) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf(`item is nil`)
 	}
 
-	return service.repo.Create(create)
+	return service.repository.Create(create)
 }
 
 func (service *ItemsService) Update(itemID uuid.UUID, update *ItemUpdate) (bool, error) {
@@ -56,7 +56,7 @@ func (service *ItemsService) Update(itemID uuid.UUID, update *ItemUpdate) (bool,
 		return false, fmt.Errorf(`update is nil`)
 	}
 
-	return service.repo.Update(itemID, update)
+	return service.repository.Update(itemID, update)
 }
 
 func (service *ItemsService) Delete(itemID uuid.UUID) (bool, error) {
@@ -64,5 +64,5 @@ func (service *ItemsService) Delete(itemID uuid.UUID) (bool, error) {
 		return false, fmt.Errorf(`itemID is nil`)
 	}
 
-	return service.repo.Delete(itemID)
+	return service.repository.Delete(itemID)
 }

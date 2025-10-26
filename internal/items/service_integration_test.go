@@ -13,63 +13,76 @@ import (
 
 func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
-	repo := NewItemsRepository(testDB)
-	svc := NewItemsService(repo)
+	repository := NewItemsRepository(testDB)
+	svc := NewItemsService(repository)
+
+	create := &ItemCreate{
+		Name:  "Item",
+		Price: decimal.NewFromFloat(15.50),
+	}
 
 	// Act
-	id, err := svc.Create(&ItemCreate{Name: "Apple", Price: decimal.NewFromFloat(3.2)})
+	id, err := svc.Create(create)
 	require.NoError(t, err)
 
-	got, err := svc.GetById(id)
+	item, err := svc.GetById(id)
 	require.NoError(t, err)
 
 	// Assert
-	assert.Equal(t, "Apple", *got.Name)
+	assert.Equal(t, "Item", *item.Name)
+	assert.Equal(t, 15.50, *item.Price)
 }
 
 func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
 	svc := NewItemsService(NewItemsRepository(testDB))
 
+	create := &ItemCreate{
+		Name:  "Ice",
+		Price: decimal.NewFromFloat(10.00),
+	}
+
+	update := &ItemUpdate{
+		Name:  "Water",
+		Price: decimal.NewFromFloat(15.50),
+	}
+
 	// Act
-	id, err := svc.Create(&ItemCreate{
-		Name:  "Book",
-		Price: decimal.NewFromFloat(10),
-	})
+	id, err := svc.Create(create)
 	require.NoError(t, err)
 
-	ok, err := svc.Update(id, &ItemUpdate{
-		Name:  "Notebook",
-		Price: decimal.NewFromFloat(15.5),
-	})
+	ok, err := svc.Update(id, update)
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	got, err := svc.GetById(id)
+	item, err := svc.GetById(id)
 	require.NoError(t, err)
 
 	// Assert
-	assert.Equal(t, "Notebook", *got.Name)
+	assert.Equal(t, "Water", *item.Name)
+	assert.Equal(t, 15.50, *item.Price)
 }
 
 func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 	// Arrange
 	svc := NewItemsService(NewItemsRepository(testDB))
 
+	create := &ItemCreate{
+		Name:  "Orange",
+		Price: decimal.NewFromFloat(15.50),
+	}
+
 	// Act
-	id, err := svc.Create(&ItemCreate{
-		Name:  "Book",
-		Price: decimal.NewFromFloat(10.0),
-	})
+	id, err := svc.Create(create)
 	require.NoError(t, err)
 
 	ok, err := svc.Delete(id)
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	got, err := svc.GetById(id)
+	item, err := svc.GetById(id)
 
 	// Assert
-	assert.Nil(t, got)
+	assert.Nil(t, item)
 	assert.Error(t, err)
 }
