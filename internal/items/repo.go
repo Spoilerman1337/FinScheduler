@@ -1,23 +1,25 @@
 package items
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"log"
+	"time"
 )
 
-type ItemsRepo struct {
+type ItemsRepository struct {
 	db *sqlx.DB
 }
 
-func NewItemsRepo(db *sqlx.DB) *ItemsRepo {
-	return &ItemsRepo{db: db}
+func NewItemsRepository(db *sqlx.DB) *ItemsRepository {
+	return &ItemsRepository{db: db}
 }
 
-func (repo *ItemsRepo) Get(filter *ItemFilter) ([]Item, int64, error) {
-	//TODO: log error later
+func (repo *ItemsRepository) Get(filter *ItemFilter) ([]Item, int64, error) {
+	// TODO: log error later
 	var items []Item
 	var count int64 = 0
 
@@ -25,7 +27,7 @@ func (repo *ItemsRepo) Get(filter *ItemFilter) ([]Item, int64, error) {
 	args := make([]interface{}, 0)
 
 	if filter.Ids != nil && len(filter.Ids) > 0 {
-		inQuery, inArgs, err := sqlx.In(" AND Id IN (?)", filter.Ids)
+		inQuery, inArgs, err := sqlx.In(" AND id IN (?)", filter.Ids)
 
 		if err != nil {
 			return nil, 0, err
@@ -56,8 +58,28 @@ func (repo *ItemsRepo) Get(filter *ItemFilter) ([]Item, int64, error) {
 	}
 
 	if filter.IsActive != nil {
-		query += " AND isActive = ?"
+		query += " AND is_active = ?"
 		args = append(args, *filter.IsActive)
+	}
+
+	if filter.CreatedFrom != nil {
+		query += " AND created_at >= ?"
+		args = append(args, *filter.CreatedFrom)
+	}
+
+	if filter.CreatedTo != nil {
+		query += " AND created_at <= ?"
+		args = append(args, *filter.CreatedTo)
+	}
+
+	if filter.UpdatedFrom != nil {
+		query += " AND updated_at >= ?"
+		args = append(args, *filter.UpdatedFrom)
+	}
+
+	if filter.UpdatedTo != nil {
+		query += " AND updated_at <= ?"
+		args = append(args, *filter.UpdatedTo)
 	}
 
 	var pageSize int32 = 20
@@ -92,7 +114,7 @@ func (repo *ItemsRepo) Get(filter *ItemFilter) ([]Item, int64, error) {
 	return items, count, err
 }
 
-func (repo *ItemsRepo) GetById(id uuid.UUID) (*Item, error) {
+func (repo *ItemsRepository) GetById(id uuid.UUID) (*Item, error) {
 	//TODO: log error later
 	var item Item
 
@@ -105,21 +127,24 @@ func (repo *ItemsRepo) GetById(id uuid.UUID) (*Item, error) {
 
 	err := repo.db.Get(&item, query, id)
 	if err != nil {
+		fmt.Print("1112")
 		return nil, err
 	}
 
 	return &item, nil
 }
 
-func (repo *ItemsRepo) Create(create *ItemCreate) (uuid.UUID, error) {
+func (repo *ItemsRepository) Create(create *ItemCreate) (uuid.UUID, error) {
 	newID, err := uuid.NewV7()
+	now := time.Now().UTC()
 
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	query := "INSERT INTO public.items (id, name, price, description, is_active) VALUES (?, ?, ?, ?, ?)"
-	_, err = repo.db.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive)
+	query := "INSERT INTO public.items (id, name, price, description, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+	query = repo.db.Rebind(query)
+	_, err = repo.db.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -127,7 +152,7 @@ func (repo *ItemsRepo) Create(create *ItemCreate) (uuid.UUID, error) {
 	return newID, err
 }
 
-func (repo *ItemsRepo) Update(itemID uuid.UUID, update *ItemUpdate) (bool, error) {
+func (repo *ItemsRepository) Update(itemID uuid.UUID, update *ItemUpdate) (bool, error) {
 	transaction, err := repo.db.Beginx()
 	defer func() {
 		if err != nil {
@@ -138,26 +163,30 @@ func (repo *ItemsRepo) Update(itemID uuid.UUID, update *ItemUpdate) (bool, error
 		}
 	}()
 
+	now := time.Now().UTC()
+
 	if err != nil {
 		return false, err
 	}
 
-	var updatedItem *Item
-	err = repo.db.Get(&updatedItem, "SELECT * FROM public.items WHERE id = ?", itemID)
+	var updatedItem Item
+	getQuery := "SELECT * FROM public.items WHERE id = ?"
+	getQuery = repo.db.Rebind(getQuery)
+	err = transaction.Get(&updatedItem, getQuery, itemID)
 	if err != nil {
 		return false, err
-	}
-	if updatedItem == nil {
-		return false, nil
 	}
 
 	updatedItem.Name = update.Name
 	updatedItem.Price = update.Price
 	updatedItem.Description = update.Description
 	updatedItem.IsActive = update.IsActive
+	updatedItem.UpdatedAt = sql.NullTime{now, true}
 
-	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?) WHERE id = ?"
-	result, err := repo.db.Exec(query, updatedItem.Name, updatedItem.Price, updatedItem.Description, updatedItem.IsActive, updatedItem.Id)
+	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?, updated_at = ? WHERE id = ?"
+	query = repo.db.Rebind(query)
+	result, err := transaction.Exec(query, updatedItem.Name, updatedItem.Price, updatedItem.Description, updatedItem.IsActive,
+		updatedItem.UpdatedAt, updatedItem.Id)
 	if err != nil {
 		return false, err
 	}
@@ -168,8 +197,9 @@ func (repo *ItemsRepo) Update(itemID uuid.UUID, update *ItemUpdate) (bool, error
 	return rowsAffected > 0, err
 }
 
-func (repo *ItemsRepo) Delete(itemID uuid.UUID) (bool, error) {
-	transaction, err := repo.db.BeginTxx(nil, &sql.TxOptions{Isolation: 4})
+func (repo *ItemsRepository) Delete(itemID uuid.UUID) (bool, error) {
+	ctx := context.Background()
+	transaction, err := repo.db.BeginTxx(ctx, &sql.TxOptions{Isolation: 4})
 	defer func() {
 		if err != nil {
 			rbErr := transaction.Rollback()
@@ -180,7 +210,8 @@ func (repo *ItemsRepo) Delete(itemID uuid.UUID) (bool, error) {
 	}()
 
 	query := "DELETE FROM public.items WHERE id = ?"
-	result, err := repo.db.Exec(query, itemID)
+	query = repo.db.Rebind(query)
+	result, err := transaction.Exec(query, itemID)
 
 	err = transaction.Commit()
 	rowsAffected, err := result.RowsAffected()

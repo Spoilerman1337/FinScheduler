@@ -6,27 +6,38 @@ import (
 )
 
 type ItemsService struct {
-	repo *ItemsRepo
+	repo *ItemsRepository
 }
 
-func NewItemsService(repo *ItemsRepo) *ItemsService {
+func NewItemsService(repo *ItemsRepository) *ItemsService {
 	return &ItemsService{repo: repo}
 }
 
-func (service *ItemsService) Get(filter *ItemFilter) ([]Item, int64, error) {
+func (service *ItemsService) Get(filter *ItemFilter) ([]ItemDto, int64, error) {
 	if filter == nil {
 		return nil, 0, fmt.Errorf("filter is nil")
 	}
 
-	return service.repo.Get(filter)
+	rawItems, count, err := service.repo.Get(filter)
+
+	items := make([]ItemDto, 0)
+	if rawItems != nil && len(rawItems) > 0 {
+		for _, item := range rawItems {
+			items = append(items, *NewItemDto(&item))
+		}
+	}
+
+	return items, count, err
 }
 
-func (service *ItemsService) GetById(id uuid.UUID) (*Item, error) {
+func (service *ItemsService) GetById(id uuid.UUID) (*ItemDto, error) {
 	if id == uuid.Nil {
 		return nil, fmt.Errorf(`id is nil`)
 	}
 
-	return service.repo.GetById(id)
+	rawItem, err := service.repo.GetById(id)
+
+	return NewItemDto(rawItem), err
 }
 
 func (service *ItemsService) Create(create *ItemCreate) (uuid.UUID, error) {
