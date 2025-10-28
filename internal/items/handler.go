@@ -32,6 +32,11 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	filter := NewItemFilter(r)
 
+	if err := filter.Validate(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	items, count, err := handler.service.Get(&filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -63,10 +68,15 @@ func (handler *ItemsHandler) GetById(w http.ResponseWriter, r *http.Request) {
 
 func (handler *ItemsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	var create ItemCreate
 	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := create.Validate(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -93,7 +103,12 @@ func (handler *ItemsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var update ItemUpdate
-	if err = json.NewDecoder(r.Body).Decode(&update); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := update.Validate(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

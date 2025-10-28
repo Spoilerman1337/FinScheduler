@@ -2,10 +2,11 @@ package items
 
 import (
 	"database/sql"
+	qh "finscheduler/pkg"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -48,56 +49,45 @@ type ItemCreate struct {
 	Name        string          `json:"name"`
 	Price       decimal.Decimal `json:"price"`
 	Description string          `json:"description"`
-	IsActive    bool            `json:"is_active"`
+	IsActive    bool            `json:"isActive"`
 }
 
 type ItemUpdate struct {
 	Name        string          `json:"name"`
 	Price       decimal.Decimal `json:"price"`
 	Description string          `json:"description"`
-	IsActive    bool            `json:"is_active"`
+	IsActive    bool            `json:"isActive"`
 }
 
 func NewItemFilter(r *http.Request) ItemFilter {
 	queryParams := r.URL.Query()
 
-	var ids []*uuid.UUID
-	idsParams := queryParams["ids"]
-	for _, idParam := range idsParams {
-		id, err := uuid.Parse(idParam)
-		if err == nil {
-			ids = append(ids, &id)
-		}
-	}
-
-	name := queryParams.Get("name")
-	priceFrom, _ := decimal.NewFromString(queryParams.Get("priceFrom"))
-	priceTo, _ := decimal.NewFromString(queryParams.Get("priceTo"))
-	description := queryParams.Get("description")
-	isActive, _ := strconv.ParseBool(queryParams.Get("isActive"))
-	page, _ := strconv.ParseInt(queryParams.Get("page"), 10, 32)
-	pageSize, _ := strconv.ParseInt(queryParams.Get("pageSize"), 10, 32)
-	createdFrom, _ := time.Parse(time.RFC3339, queryParams.Get("createdFrom"))
-	createdTo, _ := time.Parse(time.RFC3339, queryParams.Get("createdTo"))
-	updatedFrom, _ := time.Parse(time.RFC3339, queryParams.Get("updatedFrom"))
-	updatedTo, _ := time.Parse(time.RFC3339, queryParams.Get("updatedTo"))
-
-	page32 := int32(page)
-	pageSize32 := int32(pageSize)
+	ids := qh.ParseUUIDs(queryParams, "ids")
+	name := qh.ParseString(queryParams, "name")
+	priceFrom := qh.ParseDecimal(queryParams, "priceFrom")
+	priceTo := qh.ParseDecimal(queryParams, "priceTo")
+	description := qh.ParseString(queryParams, "description")
+	isActive := qh.ParseBool(queryParams, "isActive")
+	page := qh.ParseInt32(queryParams, "page")
+	pageSize := qh.ParseInt32(queryParams, "pageSize")
+	createdFrom := qh.ParseTime(queryParams, "createdFrom")
+	createdTo := qh.ParseTime(queryParams, "createdTo")
+	updatedFrom := qh.ParseTime(queryParams, "updatedFrom")
+	updatedTo := qh.ParseTime(queryParams, "updatedTo")
 
 	return ItemFilter{
 		Ids:         ids,
-		Name:        &name,
-		PriceFrom:   &priceFrom,
-		PriceTo:     &priceTo,
-		Description: &description,
-		IsActive:    &isActive,
-		CreatedFrom: &createdFrom,
-		CreatedTo:   &createdTo,
-		UpdatedFrom: &updatedFrom,
-		UpdatedTo:   &updatedTo,
-		Page:        &page32,
-		PageSize:    &pageSize32,
+		Name:        name,
+		PriceFrom:   priceFrom,
+		PriceTo:     priceTo,
+		Description: description,
+		IsActive:    isActive,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
+		UpdatedFrom: updatedFrom,
+		UpdatedTo:   updatedTo,
+		Page:        page,
+		PageSize:    pageSize,
 	}
 }
 
@@ -124,4 +114,46 @@ func NewItemDto(item *Item) *ItemDto {
 		Price:       &price,
 		UpdatedAt:   updatedAt,
 	}
+}
+
+func (item *ItemCreate) Validate() error {
+	if len(item.Name) < 3 {
+		return fmt.Errorf("name too short")
+	}
+	if item.Price.IsNegative() {
+		return fmt.Errorf("price is negative")
+	}
+
+	return nil
+}
+
+func (item *ItemUpdate) Validate() error {
+	if len(item.Name) < 3 {
+		return fmt.Errorf("name too short")
+	}
+	if item.Price.IsNegative() {
+		return fmt.Errorf("price is negative")
+	}
+
+	return nil
+}
+
+func (item *ItemFilter) Validate() error {
+	if item.Page == nil || *item.Page < 0 {
+		return fmt.Errorf("page is negative")
+	}
+	if item.PageSize == nil || *item.PageSize < 0 {
+		return fmt.Errorf("pageSize is negative")
+	}
+	if item.PriceFrom != nil && item.PriceTo != nil && (*item.PriceTo).LessThan(*item.PriceFrom) {
+		return fmt.Errorf("priceTo cannot be lesser than priceFrom")
+	}
+	if item.CreatedFrom != nil && item.CreatedTo != nil && (*item.CreatedTo).Before(*item.CreatedFrom) {
+		return fmt.Errorf("createTo cannot be earlier than createFrom")
+	}
+	if item.UpdatedFrom != nil && item.UpdatedTo != nil && (*item.UpdatedTo).Before(*item.UpdatedFrom) {
+		return fmt.Errorf("updateTo cannot be earlier than updateFrom")
+	}
+
+	return nil
 }
