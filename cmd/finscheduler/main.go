@@ -9,7 +9,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -28,9 +30,12 @@ func main() {
 
 	database.RunMigrations(connectionString)
 
-	repository := items.NewItemsRepository(db)
-	service := items.NewItemsService(repository)
-	handler := items.NewItemsHandler(service)
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	logger := slog.New(stdoutHandler)
+
+	repository := items.NewItemsRepository(db, logger)
+	service := items.NewItemsService(repository, logger)
+	handler := items.NewItemsHandler(service, logger)
 
 	r := chi.NewRouter()
 	r.Mount("/api/items", handler.RegisterEndpoints())
