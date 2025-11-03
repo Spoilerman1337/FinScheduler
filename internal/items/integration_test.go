@@ -26,7 +26,6 @@ func TestMain(m *testing.M) {
 	}
 
 	testDB = db
-	//terminateContainer = terminate
 
 	schema := `
         CREATE TABLE items (

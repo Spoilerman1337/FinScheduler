@@ -7,10 +7,10 @@ import (
 	"log"
 )
 
-func RunMigrations(dsn string) {
+func RunMigrations(databaseUrl string) {
 	m, err := migrate.New(
 		"file://database/postgres",
-		dsn,
+		databaseUrl,
 	)
 	if err != nil {
 		log.Fatalf("migrate init error: %v", err)
@@ -18,7 +18,9 @@ func RunMigrations(dsn string) {
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		log.Fatalf("migrate up error: %v", err)
+	} else if err == migrate.ErrNoChange {
+		log.Printf("no changes to migrate")
+	} else {
+		log.Println("migrations applied successfully")
 	}
-
-	log.Println("migrations applied successfully")
 }
