@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"finscheduler/database"
 	"finscheduler/internal/infra"
 	"finscheduler/internal/items"
+	"finscheduler/internal/metrics"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -15,12 +17,22 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	cfg, err := infra.LoadConfig()
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
 	connectionString := cfg.ConnectionString
+
+	shutdown := metrics.InitMetrics(ctx, cfg)
+	defer func() {
+		err = shutdown(ctx)
+		if err != nil {
+			log.Fatalf("failed to shutdown meter: %v", err)
+		}
+	}()
+	metrics.InitInstruments()
 
 	db, err := sqlx.Open("pgx", connectionString)
 	if err != nil {

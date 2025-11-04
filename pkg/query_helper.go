@@ -25,6 +25,18 @@ func ParseUUIDs(queryParams url.Values, key string) []*uuid.UUID {
 	return res
 }
 
+func ParseUUID(queryParams url.Values, key string) *uuid.UUID {
+	param := queryParams.Get(key)
+	if param == "" {
+		return nil
+	}
+	res, err := uuid.Parse(param)
+	if err != nil {
+		return nil
+	}
+	return &res
+}
+
 func ParseString(queryParams url.Values, key string) *string {
 	param := queryParams.Get(key)
 	if param == "" {

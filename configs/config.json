@@ -1,5 +1,6 @@
 {
   "env": "Local",
   "serverPort": 8080,
-  "connectionString": "postgres://postgres:postgres@localhost:5432/fin_scheduler?sslmode=disable"
+  "connectionString": "postgres://postgres:postgres@localhost:5432/fin_scheduler?sslmode=disable",
+  "serviceName": "fin-scheduler-api"
 }

@@ -10,6 +10,7 @@ type Config struct {
 	Env              string
 	ServerPort       int
 	ConnectionString string
+	ServiceName      string
 }
 
 func LoadConfig() (*Config, error) {

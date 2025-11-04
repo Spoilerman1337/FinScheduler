@@ -13,7 +13,10 @@ type ItemsService struct {
 }
 
 func NewItemsService(repository *ItemsRepository, logger *slog.Logger) *ItemsService {
-	return &ItemsService{repository: repository, logger: logger}
+	return &ItemsService{
+		repository: repository,
+		logger:     logger,
+	}
 }
 
 func (service *ItemsService) Get(ctx context.Context, filter *ItemFilter) ([]ItemDto, int64, error) {
@@ -23,6 +26,10 @@ func (service *ItemsService) Get(ctx context.Context, filter *ItemFilter) ([]Ite
 	}
 
 	rawItems, count, err := service.repository.Get(ctx, filter)
+	if err != nil {
+		service.logger.ErrorContext(ctx, "Get items failed", "error", err)
+		return nil, 0, err
+	}
 
 	items := make([]ItemDto, 0)
 	if rawItems != nil && len(rawItems) > 0 {
@@ -41,6 +48,10 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*ItemDt
 	}
 
 	rawItem, err := service.repository.GetById(ctx, id)
+	if err != nil {
+		service.logger.ErrorContext(ctx, "Get items failed", "error", err)
+		return nil, err
+	}
 
 	return NewItemDto(rawItem), err
 }
@@ -51,7 +62,13 @@ func (service *ItemsService) Create(ctx context.Context, create *ItemCreate) (uu
 		return uuid.Nil, fmt.Errorf(`create is nil`)
 	}
 
-	return service.repository.Create(ctx, create)
+	newId, err := service.repository.Create(ctx, create)
+
+	if err != nil || newId == uuid.Nil {
+		service.logger.ErrorContext(ctx, "error creating an item", "error", err)
+	}
+
+	return newId, err
 }
 
 func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, update *ItemUpdate) (bool, error) {
@@ -64,7 +81,13 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		return false, fmt.Errorf(`update is nil`)
 	}
 
-	return service.repository.Update(ctx, itemID, update)
+	success, err := service.repository.Update(ctx, itemID, update)
+
+	if err != nil || !success {
+		service.logger.ErrorContext(ctx, "error updating an item", "error", err)
+	}
+
+	return success, err
 }
 
 func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool, error) {
@@ -73,5 +96,11 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 		return false, fmt.Errorf(`itemID is nil`)
 	}
 
-	return service.repository.Delete(ctx, itemID)
+	success, err := service.repository.Delete(ctx, itemID)
+
+	if err != nil || !success {
+		service.logger.ErrorContext(ctx, "error deleting an item", "error", err)
+	}
+
+	return success, err
 }
