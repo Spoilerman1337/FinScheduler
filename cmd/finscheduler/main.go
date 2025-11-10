@@ -6,6 +6,7 @@ import (
 	"finscheduler/internal/infra"
 	"finscheduler/internal/items"
 	"finscheduler/internal/metrics"
+	"finscheduler/internal/profiles"
 	"finscheduler/internal/traces"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -46,6 +47,17 @@ func main() {
 		err = tp.Shutdown(ctx)
 		if err != nil {
 			log.Fatalf("failed to shutdown meter: %v", err)
+		}
+	}()
+
+	prof, err := profiles.InitProfiler()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		err = prof.Stop()
+		if err != nil {
+			log.Fatalf("failed to shutdown profiler: %v", err)
 		}
 	}()
 
