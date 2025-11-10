@@ -68,5 +68,6 @@ func EnrichSuccessRepositorySpanRead(span trace.Span, retrieved int64) {
 }
 
 func EnrichSuccessRepositorySpanWrite(span trace.Span, affected int64) {
-	span.SetAttributes(attribute.Int("http.status_code", statusCode))
+	span.SetAttributes(attribute.Int64("database.rows_affected", affected))
+	span.SetStatus(codes.Ok, "")
 }
