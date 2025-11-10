@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"finscheduler/database"
+	"finscheduler/internal/health"
 	"finscheduler/internal/infra"
 	"finscheduler/internal/items"
 	"finscheduler/internal/metrics"
@@ -71,6 +72,8 @@ func main() {
 
 	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	logger := slog.New(stdoutHandler)
+
+	health.SetupHealthChecks(db)
 
 	repository := items.NewItemsRepository(db, logger)
 	service := items.NewItemsService(repository, logger)
