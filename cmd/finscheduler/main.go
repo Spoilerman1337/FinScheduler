@@ -6,6 +6,7 @@ import (
 	"finscheduler/internal/infra"
 	"finscheduler/internal/items"
 	"finscheduler/internal/metrics"
+	"finscheduler/internal/traces"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -25,14 +26,28 @@ func main() {
 
 	connectionString := cfg.ConnectionString
 
-	shutdown := metrics.InitMetrics(ctx, cfg)
+	mp, err := metrics.InitMetrics(ctx, cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer func() {
-		err = shutdown(ctx)
+		err = mp.Shutdown(ctx)
 		if err != nil {
 			log.Fatalf("failed to shutdown meter: %v", err)
 		}
 	}()
 	metrics.InitInstruments()
+
+	tp, err := traces.InitTracer(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		err = tp.Shutdown(ctx)
+		if err != nil {
+			log.Fatalf("failed to shutdown meter: %v", err)
+		}
+	}()
 
 	db, err := sqlx.Open("pgx", connectionString)
 	if err != nil {

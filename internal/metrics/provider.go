@@ -14,7 +14,7 @@ import (
 
 var meter = otel.Meter("fin-scheduler-api")
 
-func InitMetrics(ctx context.Context, cfg *infra.Config) func(context.Context) error {
+func InitMetrics(ctx context.Context, cfg *infra.Config) (*sdkmetric.MeterProvider, error) {
 	exporter, err := stdoutmetric.New(
 		stdoutmetric.WithPrettyPrint(),
 	)
@@ -40,5 +40,5 @@ func InitMetrics(ctx context.Context, cfg *infra.Config) func(context.Context) e
 	otel.SetMeterProvider(mp)
 	meter = mp.Meter(cfg.ServiceName)
 
-	return mp.Shutdown
+	return mp, err
 }
