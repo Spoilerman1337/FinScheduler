@@ -18,6 +18,7 @@ type Item struct {
 	IsActive    bool            `db:"is_active"`
 	CreatedAt   time.Time       `db:"created_at"`
 	UpdatedAt   sql.NullTime    `db:"updated_at"`
+	Cashback    int32           `db:"cashback"`
 }
 
 type ItemDto struct {
@@ -28,21 +29,24 @@ type ItemDto struct {
 	IsActive    *bool
 	CreatedAt   *time.Time
 	UpdatedAt   *time.Time
+	Cashback    *int32
 }
 
 type ItemFilter struct {
-	Ids         []*uuid.UUID
-	Name        *string
-	PriceFrom   *decimal.Decimal
-	PriceTo     *decimal.Decimal
-	Description *string
-	IsActive    *bool
-	CreatedFrom *time.Time
-	CreatedTo   *time.Time
-	UpdatedFrom *time.Time
-	UpdatedTo   *time.Time
-	Page        *int32
-	PageSize    *int32
+	Ids          []*uuid.UUID
+	Name         *string
+	PriceFrom    *decimal.Decimal
+	PriceTo      *decimal.Decimal
+	Description  *string
+	IsActive     *bool
+	CreatedFrom  *time.Time
+	CreatedTo    *time.Time
+	UpdatedFrom  *time.Time
+	UpdatedTo    *time.Time
+	CashbackFrom *int32
+	CashbackTo   *int32
+	Page         *int32
+	PageSize     *int32
 }
 
 type ItemCreate struct {
@@ -50,6 +54,7 @@ type ItemCreate struct {
 	Price       decimal.Decimal `json:"price"`
 	Description string          `json:"description"`
 	IsActive    bool            `json:"isActive"`
+	Cashback    int32           `json:"cashback"`
 }
 
 type ItemUpdate struct {
@@ -57,6 +62,7 @@ type ItemUpdate struct {
 	Price       decimal.Decimal `json:"price"`
 	Description string          `json:"description"`
 	IsActive    bool            `json:"isActive"`
+	Cashback    int32           `json:"cashback"`
 }
 
 func NewItemFilter(r *http.Request) ItemFilter {
@@ -74,20 +80,24 @@ func NewItemFilter(r *http.Request) ItemFilter {
 	createdTo := qh.ParseTime(queryParams, "createdTo")
 	updatedFrom := qh.ParseTime(queryParams, "updatedFrom")
 	updatedTo := qh.ParseTime(queryParams, "updatedTo")
+	cashbackFrom := qh.ParseInt32(queryParams, "cashbackFrom")
+	cashbackTo := qh.ParseInt32(queryParams, "cashbackTo")
 
 	return ItemFilter{
-		Ids:         ids,
-		Name:        name,
-		PriceFrom:   priceFrom,
-		PriceTo:     priceTo,
-		Description: description,
-		IsActive:    isActive,
-		CreatedFrom: createdFrom,
-		CreatedTo:   createdTo,
-		UpdatedFrom: updatedFrom,
-		UpdatedTo:   updatedTo,
-		Page:        page,
-		PageSize:    pageSize,
+		Ids:          ids,
+		Name:         name,
+		PriceFrom:    priceFrom,
+		PriceTo:      priceTo,
+		Description:  description,
+		IsActive:     isActive,
+		CreatedFrom:  createdFrom,
+		CreatedTo:    createdTo,
+		UpdatedFrom:  updatedFrom,
+		UpdatedTo:    updatedTo,
+		CashbackFrom: cashbackFrom,
+		CashbackTo:   cashbackTo,
+		Page:         page,
+		PageSize:     pageSize,
 	}
 }
 
@@ -113,6 +123,7 @@ func NewItemDto(item *Item) *ItemDto {
 		CreatedAt:   &item.CreatedAt,
 		Price:       &price,
 		UpdatedAt:   updatedAt,
+		Cashback:    &item.Cashback,
 	}
 }
 
@@ -122,6 +133,9 @@ func (item *ItemCreate) Validate() error {
 	}
 	if item.Price.IsNegative() {
 		return fmt.Errorf("price is negative")
+	}
+	if item.Cashback < 0 {
+		return fmt.Errorf("cashback is negative")
 	}
 
 	return nil
@@ -133,6 +147,9 @@ func (item *ItemUpdate) Validate() error {
 	}
 	if item.Price.IsNegative() {
 		return fmt.Errorf("price is negative")
+	}
+	if item.Cashback < 0 {
+		return fmt.Errorf("cashback is negative")
 	}
 
 	return nil
@@ -153,6 +170,9 @@ func (item *ItemFilter) Validate() error {
 	}
 	if item.UpdatedFrom != nil && item.UpdatedTo != nil && (*item.UpdatedTo).Before(*item.UpdatedFrom) {
 		return fmt.Errorf("updateTo cannot be earlier than updateFrom")
+	}
+	if item.CashbackFrom != nil && item.CashbackTo != nil && *item.CashbackTo < *item.CashbackFrom {
+		return fmt.Errorf("cashbackFrom cannot be lesser than cashbackTO")
 	}
 
 	return nil

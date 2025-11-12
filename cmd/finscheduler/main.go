@@ -73,13 +73,12 @@ func main() {
 	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	logger := slog.New(stdoutHandler)
 
-	health.SetupHealthChecks(db)
-
 	repository := items.NewItemsRepository(db, logger)
 	service := items.NewItemsService(repository, logger)
 	handler := items.NewItemsHandler(service, logger)
 
 	r := chi.NewRouter()
+	health.SetupHealthChecks(r, db)
 	r.Mount("/api/items", handler.RegisterEndpoints())
 
 	log.Println("Listening on :8080")

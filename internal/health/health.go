@@ -5,8 +5,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func SetupHealthChecks(db *sqlx.DB) {
-	router := chi.NewRouter()
+func SetupHealthChecks(router *chi.Mux, db *sqlx.DB) {
 	router.Handle("/livez", LiveHandler())
 	router.Handle("/readyz", ReadyHandler(db))
 }

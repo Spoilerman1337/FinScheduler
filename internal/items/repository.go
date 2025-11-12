@@ -96,6 +96,16 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 		args = append(args, *filter.UpdatedTo)
 	}
 
+	if filter.CashbackFrom != nil {
+		query += " AND cashback >= ?"
+		args = append(args, *filter.CashbackFrom)
+	}
+
+	if filter.CashbackTo != nil {
+		query += " AND cashback <= ?"
+		args = append(args, *filter.CashbackTo)
+	}
+
 	var pageSize int32 = 20
 	if filter.PageSize != nil {
 		pageSize = *filter.PageSize
@@ -251,19 +261,19 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 		return false, err
 	}
 
-	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?, updated_at = ? WHERE id = ?"
+	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?, updated_at = ?, cashback = ? WHERE id = ?"
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "updating an item:", "id",
 		itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
-		update.IsActive, "updatedAt", now)
+		update.IsActive, "updatedAt", now, "cashback", update.Cashback)
 	updateStart := time.Now()
 	result, err := transaction.Exec(query, update.Name, update.Price, update.Description, update.IsActive,
-		sql.NullTime{Time: now, Valid: true}, itemID)
+		sql.NullTime{Time: now, Valid: true}, update.Cashback, itemID)
 	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on UPDATE operation", "error", err, "id",
 			itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
-			update.IsActive, "updatedAt", now)
+			update.IsActive, "updatedAt", now, "cashback", update.Cashback)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationUpdate)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
