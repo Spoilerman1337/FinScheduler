@@ -1,343 +1,96 @@
 import Layout from "../main/subcomponents/Layout.tsx";
 import DataTable, {type TableColumn} from "../dataTable/DataTable.tsx";
-import {Badge, Box, Button, Flex, Input, Text} from "@chakra-ui/react";
+import {Badge, Box, Button, Flex, Input, Text, Spinner} from "@chakra-ui/react";
 import {SearchIcon} from "lucide-react";
-import {useState} from "react";
+import {useState, useEffect, useCallback} from "react";
+import {itemsApi} from "../../../api/items.ts";
+import type {ItemDto} from "../../../api/types.ts";
 
 export default function Items() {
-    interface CryptoData {
-        id: number;
-        asset: string;
-        symbol: string;
-        price: number;
-        change24h: number;
-        status: "Active" | "Inactive" | "Trending";
-        colorToken: 'btc' | 'eth' | 'ltc' | 'neon.purple' | 'neon.pink';
-    }
+    const [items, setItems] = useState<ItemDto[]>([]);
+    const [total, setTotal] = useState<number>(0);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+    const [page, setPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(10);
 
-    const mockData: CryptoData[] = [
+    const itemColumns: TableColumn<ItemDto>[] = [
         {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-        {
-            id: 1,
-            asset: "Bitcoin",
-            symbol: "BTC",
-            price: 65123.45,
-            change24h: 3.45,
-            status: "Trending",
-            colorToken: 'btc'
-        },
-        {
-            id: 2,
-            asset: "Ethereum",
-            symbol: "ETH",
-            price: 3456.78,
-            change24h: -1.89,
-            status: "Active",
-            colorToken: 'eth'
-        },
-        {id: 3, asset: "Litecoin", symbol: "LTC", price: 120.50, change24h: 5.01, status: "Active", colorToken: 'ltc'},
-    ];
-
-    const cryptoColumns: TableColumn<CryptoData>[] = [
-        {
-            header: '#',
+            header: 'ID',
             key: 'id',
-            render: (row) => (<Text color="neon.blue">{row.id}</Text>),
-            cellProps: {flexBasis: '50px', minWidth: '50px'} // Фиксированная ширина для ID
+            render: (row) => (
+                <Text color="neon.blue" fontSize="sm">
+                    {row.id ? row.id.substring(0, 8) + '...' : '-'}
+                </Text>
+            ),
+            cellProps: {flexBasis: '120px', minWidth: '120px'}
         },
         {
-            header: 'Актив',
-            key: 'asset',
+            header: 'Название',
+            key: 'name',
             render: (row) => (
-                <Flex flexDirection="column">
-                    <Text fontWeight="semibold" color="neon.blue">{row.asset}</Text>
-                    <Text fontSize="sm" color="textMuted">{row.symbol}</Text>
-                </Flex>
+                <Text fontWeight="semibold" color="neon.blue">
+                    {row.name || '-'}
+                </Text>
             ),
             headerProps: {textAlign: 'left'}
         },
         {
-            header: 'Цена (USD)',
+            header: 'Описание',
+            key: 'description',
+            render: (row) => (
+                <Text color="textMuted" fontSize="sm" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" maxW="200px">
+                    {row.description || '-'}
+                </Text>
+            ),
+            headerProps: {textAlign: 'left'}
+        },
+        {
+            header: 'Цена',
             key: 'price',
             render: (row) => (
                 <Text color="neon.blue" fontWeight="medium">
-                    ${row.price.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    {row.price !== undefined ? `₽${row.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                 </Text>
             ),
             headerProps: {textAlign: 'right'},
             cellProps: {justifyContent: 'flex-end'}
         },
         {
-            header: 'Изменение 24ч (%)',
-            key: 'change24h',
-            render: (row) => {
-                const color = row.change24h > 0 ? "neon.green" : row.change24h < 0 ? "neon.pink" : "textMuted";
-                const sign = row.change24h > 0 ? '+' : '';
-                return <Text color={color} fontWeight="bold">{sign}{row.change24h.toFixed(2)}%</Text>;
-            },
+            header: 'Кэшбэк (%)',
+            key: 'cashback',
+            render: (row) => (
+                <Text color="neon.green" fontWeight="bold">
+                    {row.cashback !== undefined ? `${row.cashback}%` : '-'}
+                </Text>
+            ),
             headerProps: {textAlign: 'right'},
             cellProps: {justifyContent: 'flex-end'}
         },
         {
             header: 'Статус',
-            key: 'status',
+            key: 'isActive',
             render: (row) => (
                 <Badge
                     fontSize="sm"
                     px={3}
                     py={1}
                     borderRadius="full"
-                    bg={row.status === "Trending" ? "neon.purple" : row.status === "Active" ? "neon.green" : "textMuted"}
+                    bg={row.isActive ? "neon.green" : "textMuted"}
                     color="bg.base"
                 >
-                    {row.status}
+                    {row.isActive ? "Активен" : "Неактивен"}
                 </Badge>
+            ),
+            headerProps: {textAlign: 'left'}
+        },
+        {
+            header: 'Создан',
+            key: 'createdAt',
+            render: (row) => (
+                <Text color="textMuted" fontSize="sm">
+                    {row.createdAt ? new Date(row.createdAt).toLocaleDateString('ru-RU') : '-'}
+                </Text>
             ),
             headerProps: {textAlign: 'left'}
         },
@@ -345,36 +98,64 @@ export default function Items() {
 
     // **Состояния для фильтров**
     const [searchTerm, setSearchTerm] = useState('');
-    // Используем строку для статуса
-    const [statusFilter, setStatusFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+    const [priceFrom, setPriceFrom] = useState<string>('');
+    const [priceTo, setPriceTo] = useState<string>('');
 
-    // // **Логика фильтрации**
-    // const filteredData = useMemo(() => {
-    //     let currentData = mockData;
-    //
-    //     // Фильтрация по поисковому запросу
-    //     if (searchTerm) {
-    //         const lowerCaseSearch = searchTerm.toLowerCase();
-    //         currentData = currentData.filter(item =>
-    //             item.asset.toLowerCase().includes(lowerCaseSearch) ||
-    //             item.symbol.toLowerCase().includes(lowerCaseSearch)
-    //         );
-    //     }
-    //
-    //     // Фильтрация по статусу
-    //     if (statusFilter !== 'All') {
-    //         // TypeScript будет жаловаться, если статус не соответствует CryptoData["status"],
-    //         // но для простоты примера мы используем приведение типов.
-    //         currentData = currentData.filter(item => item.status === statusFilter as CryptoData["status"]);
-    //     }
-    //
-    //     return currentData;
-    // }, [searchTerm, statusFilter, mockData]);
+    // **Загрузка данных**
+    const loadItems = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const filter: any = {
+                page: page - 1, // API использует 0-based индексацию
+                pageSize: pageSize,
+            };
+
+            if (searchTerm) {
+                filter.name = searchTerm;
+            }
+
+            if (statusFilter !== 'All') {
+                filter.isActive = statusFilter === 'Active';
+            }
+
+            if (priceFrom) {
+                const price = parseFloat(priceFrom);
+                if (!isNaN(price)) {
+                    filter.priceFrom = price;
+                }
+            }
+
+            if (priceTo) {
+                const price = parseFloat(priceTo);
+                if (!isNaN(price)) {
+                    filter.priceTo = price;
+                }
+            }
+
+            const result = await itemsApi.getItems(filter);
+            setItems(result.data);
+            setTotal(result.count);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
+            console.error('Failed to load items:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [page, pageSize, searchTerm, statusFilter, priceFrom, priceTo]);
+
+    useEffect(() => {
+        loadItems();
+    }, [loadItems]);
 
     // **Функция сброса**
     const handleReset = () => {
         setSearchTerm('');
         setStatusFilter('All');
+        setPriceFrom('');
+        setPriceTo('');
+        setPage(1);
     }
 
     // *** ОБЩАЯ НАСТРОЙКА ШИРИНЫ ***
@@ -383,7 +164,7 @@ export default function Items() {
         w: { base: '100%', md: 'calc(50% - var(--chakra-space-2))', xl: 'calc(20% - var(--chakra-space-3))' },
     };
 
-    const statusOptions = ['All', 'Active', 'Trending', 'Inactive'];
+    const statusOptions: Array<'All' | 'Active' | 'Inactive'> = ['All', 'Active', 'Inactive'];
 
     return (<Layout headerName={"Виды расходов"}>
         <Flex direction="column" width="100%">
@@ -409,69 +190,15 @@ export default function Items() {
                         <SearchIcon size={18} color="rgba(255,255,255,0.6)" />
                     </Box>
                     <Input
-                        placeholder="Поиск по активу или символу..."
+                        placeholder="Поиск по названию..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        pl="10"
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="textPrimary"
-                    />
-                </Box>
-                {/* 1. Фильтр поиска (Input) */}
-                <Box {...filterWidthProps} position="relative">
-                    <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1" pointerEvents="none">
-                        <SearchIcon size={18} color="rgba(255,255,255,0.6)" />
-                    </Box>
-                    <Input
-                        placeholder="Поиск по активу или символу..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        pl="10"
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="textPrimary"
-                    />
-                </Box>
-                {/* 1. Фильтр поиска (Input) */}
-                <Box {...filterWidthProps} position="relative">
-                    <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1" pointerEvents="none">
-                        <SearchIcon size={18} color="rgba(255,255,255,0.6)" />
-                    </Box>
-                    <Input
-                        placeholder="Поиск по активу или символу..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        pl="10"
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="textPrimary"
-                    />
-                </Box>
-                {/* 1. Фильтр поиска (Input) */}
-                <Box {...filterWidthProps} position="relative">
-                    <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1" pointerEvents="none">
-                        <SearchIcon size={18} color="rgba(255,255,255,0.6)" />
-                    </Box>
-                    <Input
-                        placeholder="Поиск по активу или символу..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        pl="10"
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="textPrimary"
-                    />
-                </Box>
-                {/* 1. Фильтр поиска (Input) */}
-                <Box {...filterWidthProps} position="relative">
-                    <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1" pointerEvents="none">
-                        <SearchIcon size={18} color="rgba(255,255,255,0.6)" />
-                    </Box>
-                    <Input
-                        placeholder="Поиск по активу или символу..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                setPage(1);
+                                loadItems();
+                            }
+                        }}
                         pl="10"
                         bg="bg.layer1"
                         borderColor="glass.border"
@@ -487,27 +214,57 @@ export default function Items() {
                                 key={status}
                                 size="sm"
                                 flex={1}
-                                onClick={() => setStatusFilter(status)}
-                                // Подсветка активной кнопки
+                                onClick={() => {
+                                    setStatusFilter(status);
+                                    setPage(1);
+                                }}
                                 bg={statusFilter === status ? 'neon.blue' : 'transparent'}
                                 color={statusFilter === status ? 'bg.base' : 'textPrimary'}
                                 _hover={{ bg: statusFilter === status ? 'neon.blue' : 'bg.layer2' }}
                                 _active={{ bg: 'neon.blue' }}
                             >
-                                {status === 'All' ? 'Все' : status}
+                                {status === 'All' ? 'Все' : status === 'Active' ? 'Активные' : 'Неактивные'}
                             </Button>
                         ))}
                     </Flex>
                 </Box>
 
-                {/* 3. Произвольный фильтр 1 (Категория - Input) */}
+                {/* 3. Фильтр цены от */}
                 <Box {...filterWidthProps}>
-                    <Input placeholder="Категория" bg="bg.layer1" borderColor="glass.border" color="textPrimary" />
+                    <Input 
+                        placeholder="Цена от" 
+                        type="number"
+                        value={priceFrom}
+                        onChange={(e) => setPriceFrom(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                setPage(1);
+                                loadItems();
+                            }
+                        }}
+                        bg="bg.layer1" 
+                        borderColor="glass.border" 
+                        color="textPrimary" 
+                    />
                 </Box>
 
-                {/* 4. Произвольный фильтр 2 (Диапазон цен - Input) */}
+                {/* 4. Фильтр цены до */}
                 <Box {...filterWidthProps}>
-                    <Input placeholder="Диапазон цен" bg="bg.layer1" borderColor="glass.border" color="textPrimary" />
+                    <Input 
+                        placeholder="Цена до" 
+                        type="number"
+                        value={priceTo}
+                        onChange={(e) => setPriceTo(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                setPage(1);
+                                loadItems();
+                            }
+                        }}
+                        bg="bg.layer1" 
+                        borderColor="glass.border" 
+                        color="textPrimary" 
+                    />
                 </Box>
 
                 {/* 5. Кнопка сброса */}
@@ -526,11 +283,28 @@ export default function Items() {
             </Flex>
             {/* END: Секция фильтров */}
 
-            <DataTable
-                data={mockData}
-                columns={cryptoColumns}
-                total={0}
-            />
+            {loading ? (
+                <Flex justify="center" align="center" minH="400px">
+                    <Spinner size="xl" color="neon.blue" />
+                </Flex>
+            ) : error ? (
+                <Flex justify="center" align="center" minH="400px">
+                    <Text color="neon.pink" fontSize="lg">{error}</Text>
+                </Flex>
+            ) : (
+                <DataTable
+                    data={items}
+                    columns={itemColumns}
+                    total={total}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(newSize) => {
+                        setPageSize(newSize);
+                        setPage(1);
+                    }}
+                />
+            )}
         </Flex>
     </Layout>)
 }

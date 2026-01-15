@@ -3,6 +3,10 @@ import {CheckIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, EllipsisI
 
 export interface PaginatorProps  {
     total: number;
+    page: number;
+    pageSize: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
 }
 
 export default function Paginator(props: PaginatorProps) {
@@ -15,12 +19,19 @@ export default function Paginator(props: PaginatorProps) {
         ],
     })
 
+    const totalPages = Math.ceil(props.total / props.pageSize);
+
     return (
         <Flex justify="space-between" align="center" mt={2} py={5}>
             <Select.Root
                 collection={items}
                 width="60px"
                 size="lg"
+                value={[props.pageSize.toString()]}
+                onValueChange={(e) => {
+                    const newPageSize = parseInt(e.value[0] || '10');
+                    props.onPageSizeChange(newPageSize);
+                }}
             >
                 <Select.HiddenSelect />
                 <Select.Label
@@ -137,7 +148,13 @@ export default function Paginator(props: PaginatorProps) {
 
             <Text fontSize="lg" color="white" fontFamily="body">Элементов всего: {props.total}</Text>
 
-            <Pagination.Root count={20} pageSize={2} defaultPage={1} key={20}>
+            <Pagination.Root 
+                count={totalPages} 
+                pageSize={1} 
+                page={props.page} 
+                onPageChange={(e) => props.onPageChange(e.page)}
+                key={totalPages}
+            >
                 <ButtonGroup variant="ghost" size="lg" my={-5}>
                     <Pagination.PrevTrigger asChild>
                         <IconButton color={"neon.blue"}

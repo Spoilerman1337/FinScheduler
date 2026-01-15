@@ -18,6 +18,10 @@ interface DataTableProps<T> {
     columns: TableColumn<T>[];
     rowKey?: keyof T;
     total: number;
+    page?: number;
+    pageSize?: number;
+    onPageChange?: (page: number) => void;
+    onPageSizeChange?: (pageSize: number) => void;
 }
 
 export default function DataTable<T extends object>(props: DataTableProps<T>) {
@@ -168,7 +172,13 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
                         </Flex>
                     </Flex>
                 </Flex>
-                <Paginator total={props.total} />
+                <Paginator 
+                    total={props.total} 
+                    page={props.page || 1}
+                    pageSize={props.pageSize || 10}
+                    onPageChange={props.onPageChange || (() => {})}
+                    onPageSizeChange={props.onPageSizeChange || (() => {})}
+                />
             </Flex>
         </>
     );
