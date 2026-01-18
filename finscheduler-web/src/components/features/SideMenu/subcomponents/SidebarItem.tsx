@@ -1,8 +1,8 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Box, Text } from '@chakra-ui/react';
+import type {ReactNode} from 'react';
+import {motion, AnimatePresence} from 'framer-motion';
+import {Box, Text} from '@chakra-ui/react';
 import 'focus-visible/dist/focus-visible'
 import {Link, useLocation} from "react-router-dom";
 
@@ -59,22 +59,22 @@ export default function SidebarItem(props: SidebarItemProps) {
                 transition="all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
                 onClick={handleClick}
             >
-                {/* Иконка всегда на месте */}
-                <Box flexShrink={0} w={6} h={6} display="flex" alignItems="center" justifyContent="center" color={isActive ? "neon.blue" : "text.primary"}>
+                <Box flexShrink={0} w={6} h={6} display="flex" alignItems="center" justifyContent="center"
+                     color={isActive ? "neon.blue" : "text.primary"}>
                     {props.icon}
                 </Box>
 
-                {/* Текст плавно появляется/исчезает */}
                 <AnimatePresence>
                     {!props.isCollapsed && (
                         <motion.div
-                            initial={{ opacity: 0, width: 0 }}
-                            animate={{ opacity: 1, width: 'auto' }}
-                            exit={{ opacity: 0, width: 0 }}
-                            transition={{ duration: 0.2, ease: 'easeInOut' }}
-                            style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}
+                            initial={{opacity: 0, width: 0}}
+                            animate={{opacity: 1, width: 'auto'}}
+                            exit={{opacity: 0, width: 0}}
+                            transition={{duration: 0.2, ease: 'easeInOut'}}
+                            style={{overflow: 'hidden', whiteSpace: 'nowrap'}}
                         >
-                            <Text fontSize="sm" fontWeight={isActive ? "semibold" : "medium"} fontFamily={"Montserrat"} color={isActive ? "neon.blue" : "text.primary"}>
+                            <Text fontSize="sm" fontWeight={isActive ? "semibold" : "medium"} fontFamily={"Montserrat"}
+                                  color={isActive ? "neon.blue" : "text.primary"}>
                                 {props.label}
                             </Text>
                         </motion.div>

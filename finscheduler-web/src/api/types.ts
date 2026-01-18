@@ -7,6 +7,7 @@ export interface ItemDto {
     createdAt?: string;
     updatedAt?: string | null;
     cashback?: number;
+    category?: string;
 }
 
 export interface PaginatedList<T> {
@@ -27,6 +28,7 @@ export interface ItemFilter {
     updatedTo?: string;
     cashbackFrom?: number;
     cashbackTo?: number;
+    categories?: string[];
     page?: number;
     pageSize?: number;
 }

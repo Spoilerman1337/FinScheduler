@@ -29,7 +29,7 @@ export default function Sidebar() {
                 {/* Логотип / Заголовок */}
                 <Box p={3} pb={6}>
                     <Flex align="center" gap={3}>
-                        <SvgLogoIcon />
+                        <SvgLogoIcon/>
                         <AnimatePresence>
                             {!isCollapsed && (
                                 <motion.div
@@ -38,7 +38,7 @@ export default function Sidebar() {
                                     exit={{opacity: 0}}
                                     transition={{duration: 0.2}}
                                 >
-                                <Text fontSize="lg" fontWeight="bold">
+                                    <Text fontSize="lg" fontWeight="bold">
                                         FinScheduler
                                     </Text>
                                 </motion.div>

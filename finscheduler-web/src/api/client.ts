@@ -91,6 +91,7 @@ class ApiClient {
                 description: item.description,
                 isActive: item.isActive,
                 cashback: item.cashback,
+                category: item.category,
             }),
         });
 
