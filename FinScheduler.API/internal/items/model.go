@@ -19,17 +19,19 @@ type Item struct {
 	CreatedAt   time.Time       `db:"created_at"`
 	UpdatedAt   sql.NullTime    `db:"updated_at"`
 	Cashback    int32           `db:"cashback"`
+	Category    ItemCategory    `db:"category"`
 }
 
 type ItemDto struct {
-	Id          *uuid.UUID
-	Name        *string
-	Price       *float64
-	Description *string
-	IsActive    *bool
-	CreatedAt   *time.Time
-	UpdatedAt   *time.Time
-	Cashback    *int32
+	Id          *uuid.UUID    `json:"id"`
+	Name        *string       `json:"name"`
+	Price       *float64      `json:"price"`
+	Description *string       `json:"description"`
+	IsActive    *bool         `json:"isActive"`
+	CreatedAt   *time.Time    `json:"createdAt"`
+	UpdatedAt   *time.Time    `json:"updatedAt"`
+	Cashback    *int32        `json:"cashback"`
+	Category    *ItemCategory `json:"category"`
 }
 
 type ItemFilter struct {
@@ -45,6 +47,7 @@ type ItemFilter struct {
 	UpdatedTo    *time.Time
 	CashbackFrom *int32
 	CashbackTo   *int32
+	Categories   []*ItemCategory
 	Page         *int32
 	PageSize     *int32
 }
@@ -55,6 +58,7 @@ type ItemCreate struct {
 	Description string          `json:"description"`
 	IsActive    bool            `json:"isActive"`
 	Cashback    int32           `json:"cashback"`
+	Category    string          `json:"category"`
 }
 
 type ItemUpdate struct {
@@ -63,6 +67,7 @@ type ItemUpdate struct {
 	Description string          `json:"description"`
 	IsActive    bool            `json:"isActive"`
 	Cashback    int32           `json:"cashback"`
+	Category    string          `json:"category"`
 }
 
 func NewItemFilter(r *http.Request) ItemFilter {
@@ -82,6 +87,7 @@ func NewItemFilter(r *http.Request) ItemFilter {
 	updatedTo := qh.ParseTime(queryParams, "updatedTo")
 	cashbackFrom := qh.ParseInt32(queryParams, "cashbackFrom")
 	cashbackTo := qh.ParseInt32(queryParams, "cashbackTo")
+	categories := qh.ParseEnums[ItemCategory](queryParams, "categories")
 
 	return ItemFilter{
 		Ids:          ids,
@@ -96,6 +102,7 @@ func NewItemFilter(r *http.Request) ItemFilter {
 		UpdatedTo:    updatedTo,
 		CashbackFrom: cashbackFrom,
 		CashbackTo:   cashbackTo,
+		Categories:   categories,
 		Page:         page,
 		PageSize:     pageSize,
 	}
@@ -124,6 +131,7 @@ func NewItemDto(item *Item) *ItemDto {
 		Price:       &price,
 		UpdatedAt:   updatedAt,
 		Cashback:    &item.Cashback,
+		Category:    &item.Category,
 	}
 }
 
@@ -176,4 +184,30 @@ func (item *ItemFilter) Validate() error {
 	}
 
 	return nil
+}
+
+type ItemCategory string
+
+const (
+	FoodDrinks     ItemCategory = "FoodDrinks"
+	Subscriptions  ItemCategory = "Subscriptions"
+	Health         ItemCategory = "Health"
+	Beauty         ItemCategory = "Beauty"
+	Gifts          ItemCategory = "Gifts"
+	Transport      ItemCategory = "Transport"
+	Entertainments ItemCategory = "Entertainments"
+	Meds           ItemCategory = "Meds"
+	Travel         ItemCategory = "Travel"
+	Sports         ItemCategory = "Sports"
+	Telecom        ItemCategory = "Telecom"
+	Education      ItemCategory = "Education"
+)
+
+func (itemCategory ItemCategory) IsValid() bool {
+	switch itemCategory {
+	case FoodDrinks, Subscriptions, Health, Beauty, Gifts, Transport, Entertainments, Meds, Travel, Sports, Telecom, Education:
+		return true
+	default:
+		return false
+	}
 }

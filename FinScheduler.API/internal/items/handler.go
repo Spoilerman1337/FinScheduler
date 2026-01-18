@@ -26,8 +26,7 @@ func NewItemsHandler(service *ItemsService, logger *slog.Logger) *ItemsHandler {
 	}
 }
 
-func (handler *ItemsHandler) RegisterEndpoints() chi.Router {
-	router := chi.NewRouter()
+func (handler *ItemsHandler) RegisterEndpoints(router *chi.Mux) chi.Router {
 	router.Get("/", handler.Get)
 	router.Get("/{id}", handler.GetById)
 	router.Post("/", handler.Create)

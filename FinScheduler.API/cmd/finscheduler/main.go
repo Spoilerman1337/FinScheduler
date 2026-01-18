@@ -11,6 +11,7 @@ import (
 	"finscheduler/internal/traces"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"log"
@@ -78,10 +79,16 @@ func main() {
 	handler := items.NewItemsHandler(service, logger)
 
 	r := chi.NewRouter()
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: false,
+	}))
 	health.SetupHealthChecks(r, db)
-	r.Mount("/api/items", handler.RegisterEndpoints())
+	r.Mount("/api/items", handler.RegisterEndpoints(r))
 
-	log.Println("Listening on :8080")
+	log.Printf("Listening on :%d", cfg.ServerPort)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.ServerPort), r)
 	if err != nil {
 		log.Fatal(err)

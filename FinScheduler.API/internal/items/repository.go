@@ -106,6 +106,20 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 		args = append(args, *filter.CashbackTo)
 	}
 
+	if filter.Categories != nil && len(filter.Categories) > 0 {
+		inQuery, inArgs, err := sqlx.In(" AND category IN (?)", filter.Categories)
+
+		if err != nil {
+			repository.logger.ErrorContext(ctx, "error binding \"Categories\" array to IN filter", "error", err)
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationNone)
+			traces.EnrichFailedRepositorySpanRead(span, err, count)
+			return nil, 0, err
+		}
+
+		query += inQuery
+		args = append(args, inArgs...)
+	}
+
 	var pageSize int32 = 20
 	if filter.PageSize != nil {
 		pageSize = *filter.PageSize
@@ -209,17 +223,17 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *ItemCreat
 		return uuid.Nil, err
 	}
 
-	query := "INSERT INTO public.items (id, name, price, description, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+	query := "INSERT INTO public.items (id, name, price, description, is_active, created_at, cashback, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
-	res, err := repository.db.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now)
+	res, err := repository.db.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tableName, err != nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err, "newID",
 			newID, "name", create.Name, "price", create.Price, "description", create.Description, "isActive",
-			create.IsActive, "createdAt", now)
+			create.IsActive, "createdAt", now, "cashback", create.Cashback, "category", create.Category)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationInsert)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return uuid.Nil, err
@@ -261,19 +275,19 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 		return false, err
 	}
 
-	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?, updated_at = ?, cashback = ? WHERE id = ?"
+	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?, updated_at = ?, cashback = ?, category = ? WHERE id = ?"
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "updating an item:", "id",
 		itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
-		update.IsActive, "updatedAt", now, "cashback", update.Cashback)
+		update.IsActive, "updatedAt", now, "cashback", update.Cashback, "category", update.Category)
 	updateStart := time.Now()
 	result, err := transaction.Exec(query, update.Name, update.Price, update.Description, update.IsActive,
-		sql.NullTime{Time: now, Valid: true}, update.Cashback, itemID)
+		sql.NullTime{Time: now, Valid: true}, update.Cashback, update.Category, itemID)
 	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on UPDATE operation", "error", err, "id",
 			itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
-			update.IsActive, "updatedAt", now, "cashback", update.Cashback)
+			update.IsActive, "updatedAt", now, "cashback", update.Cashback, "category", update.Category)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationUpdate)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
