@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+type Enum[T any] interface {
+	~string
+	IsValid() bool
+}
+
 func ParseUUIDs(queryParams url.Values, key string) []*uuid.UUID {
 	params := queryParams[key]
 	if len(params) == 0 {
@@ -16,9 +21,9 @@ func ParseUUIDs(queryParams url.Values, key string) []*uuid.UUID {
 
 	var res []*uuid.UUID
 	for _, p := range params {
-		if id, err := uuid.Parse(p); err == nil {
-			idCopy := id
-			res = append(res, &idCopy)
+		if uuidParsed, err := uuid.Parse(p); err == nil {
+			uuidCopy := uuidParsed
+			res = append(res, &uuidCopy)
 		}
 	}
 
@@ -102,4 +107,21 @@ func ParseTime(queryParams url.Values, key string) *time.Time {
 	}
 
 	return &res
+}
+
+func ParseEnums[T Enum[T]](queryParams url.Values, key string) []*T {
+	params := queryParams[key]
+	if len(params) == 0 {
+		return nil
+	}
+
+	var res []*T
+	for _, p := range params {
+		categoryCopy := T(p)
+		if categoryCopy.IsValid() {
+			res = append(res, &categoryCopy)
+		}
+	}
+
+	return res
 }
