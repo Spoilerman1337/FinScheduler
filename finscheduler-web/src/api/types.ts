@@ -8,11 +8,23 @@ export interface ItemDto {
     updatedAt?: string | null;
     cashback?: number;
     category?: string;
+    tags?: Lookup[];
+}
+
+export interface TagDto {
+    id?: string;
+    name?: string;
+    isActive?: boolean;
 }
 
 export interface PaginatedList<T> {
     data: T[];
     count: number;
+}
+
+export interface Lookup {
+    value?: string;
+    label?: string;
 }
 
 export interface ItemFilter {
@@ -33,3 +45,26 @@ export interface ItemFilter {
     pageSize?: number;
 }
 
+export interface TagFilter {
+    ids?: string[];
+    name?: string;
+    isActive?: boolean;
+    page?: number;
+    pageSize?: number;
+}
+
+export interface TagLookupFilter {
+    name?: string;
+    page?: number;
+    pageSize?: number;
+}
+
+export interface ItemModification {
+    name: string
+    price: number
+    description?: string
+    isActive: boolean
+    cashback: number
+    category: string
+    tagIds: string[]
+}
