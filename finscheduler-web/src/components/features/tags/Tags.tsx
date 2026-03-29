@@ -2,16 +2,16 @@ import DataTable, {type TableColumn} from "../dataTable/DataTable.tsx";
 import {Badge, Box, Button, Flex, Input, Text, Spinner} from "@chakra-ui/react";
 import {SearchIcon} from "lucide-react";
 import {useState, useEffect, useCallback} from "react";
-import type {ItemDto, ItemFilter} from "../../../api/types.ts";
-import ItemModal from "./subcomponents/ItemModal.tsx";
+import type {TagDto, TagFilter} from "../../../api/types.ts";
 import {toaster} from "../../ui/toaster.tsx";
 import Layout from "../Main/subcomponents/Layout.tsx";
-import ItemsService from "../../../api/items.ts";
+import TagModal from "./subcomponents/TagModal.tsx";
+import TagsService from "../../../api/tags.ts";
 
-const itemsService = new ItemsService();
+const tagsService = new TagsService();
 
-export default function Items() {
-    const [items, setItems] = useState<ItemDto[]>([]);
+export default function Tags() {
+    const [tags, setTags] = useState<TagDto[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -19,18 +19,16 @@ export default function Items() {
     const [pageSize, setPageSize] = useState<number>(10);
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<ItemDto | null>(null);
+    const [editingTag, setEditingTag] = useState<TagDto | null>(null);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('Active');
-    const [priceFrom, setPriceFrom] = useState<string>('');
-    const [priceTo, setPriceTo] = useState<string>('');
 
-    const itemColumns: TableColumn<ItemDto>[] = [
+    const itemColumns: TableColumn<TagDto>[] = [
         {
             header: 'Название',
             key: 'name',
-            render: (row: ItemDto) => (
+            render: (row: TagDto) => (
                 <Text fontWeight="semibold" color="neon.blue">
                     {row.name || '-'}
                 </Text>
@@ -38,34 +36,9 @@ export default function Items() {
             headerProps: {textAlign: 'left'},
         },
         {
-            header: 'Цена',
-            key: 'price',
-            render: (row: ItemDto) => (
-                <Text color="neon.blue" fontWeight="medium">
-                    {row.price !== undefined ? `₽${row.price.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    })}` : '-'}
-                </Text>
-            ),
-            headerProps: {textAlign: 'right'},
-            cellProps: {justifyContent: 'flex-start'}
-        },
-        {
-            header: 'Кэшбэк (%)',
-            key: 'cashback',
-            render: (row: ItemDto) => (
-                <Text color={getCashbackColor(row.cashback)} fontWeight="bold">
-                    {row.cashback !== undefined ? `${row.cashback}%` : '-'}
-                </Text>
-            ),
-            headerProps: {textAlign: 'right'},
-            cellProps: {justifyContent: 'flex-start'}
-        },
-        {
             header: 'Статус',
             key: 'isActive',
-            render: (row: ItemDto) => (
+            render: (row: TagDto) => (
                 <Badge
                     fontSize="sm"
                     px={3}
@@ -79,33 +52,13 @@ export default function Items() {
             ),
             headerProps: {textAlign: 'left'}
         },
-        {
-            header: 'Создан',
-            key: 'createdAt',
-            render: (row: ItemDto) => (
-                <Text color="neon.blue" fontSize="sm">
-                    {row.createdAt ? new Date(row.createdAt).toLocaleDateString('ru-RU') : '-'}
-                </Text>
-            ),
-            headerProps: {textAlign: 'left'}
-        },
     ];
 
-    const getCashbackColor = (cashback: number | undefined) => {
-        let color = "neon.pink";
-
-        if (cashback) {
-            color = cashback > 1 ? "neon.green" : "neon.yellow";
-        }
-
-        return color
-    }
-
-    const loadItems = useCallback(async () => {
+    const loadTags = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const filter: ItemFilter = {
+            const filter: TagFilter = {
                 page: page - 1,
                 pageSize: pageSize,
             };
@@ -118,108 +71,73 @@ export default function Items() {
                 filter.isActive = statusFilter === 'Active';
             }
 
-            if (priceFrom) {
-                const price = parseFloat(priceFrom);
-                if (!isNaN(price)) {
-                    filter.priceFrom = price;
-                }
-            }
-
-            if (priceTo) {
-                const price = parseFloat(priceTo);
-                if (!isNaN(price)) {
-                    filter.priceTo = price;
-                }
-            }
-
-            const result = await itemsService.getItems(filter);
-            setItems(result.data);
+            const result = await tagsService.getTags(filter);
+            setTags(result.data);
             setTotal(result.count);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
-            console.error('Failed to load items:', err);
+            console.error('Failed to load tags:', err);
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, searchTerm, statusFilter, priceFrom, priceTo]);
+    }, [page, pageSize, searchTerm, statusFilter]);
 
     useEffect(() => {
-        loadItems();
-    }, [loadItems]);
+        loadTags();
+    }, [loadTags]);
 
     const handleReset = () => {
         setSearchTerm('');
         setStatusFilter('All');
-        setPriceFrom('');
-        setPriceTo('');
         setPage(1);
     }
 
     const handleOpenAddModal = () => {
-        setEditingItem(null);
+        setEditingTag(null);
         setModalMode('create');
         setIsModalOpen(true);
     };
 
-    const handleOpenEditModal = (item: ItemDto) => {
-        setEditingItem(item);
+    const handleOpenEditModal = (tag: TagDto) => {
+        setEditingTag(tag);
         setModalMode('edit');
         setIsModalOpen(true);
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
-        setEditingItem(null);
+        setEditingTag(null);
         setSelectedRows(new Set());
     };
 
-    const handleSaveItem = async (itemData: Omit<ItemDto, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const handleSaveItem = async (tagData: Omit<TagDto, 'id'>) => {
         try {
             if (modalMode === 'create') {
-                await itemsService.createItem(itemData);
+                await tagsService.createTag(tagData);
                 toaster.create({
                     title: 'Успешно',
                     description: 'Элемент успешно добавлен',
                     type: 'success',
                 });
-            } else if (modalMode === 'edit' && editingItem?.id) {
-                await itemsService.updateItem(editingItem.id, itemData);
+            } else if (modalMode === 'edit' && editingTag?.id) {
+                await tagsService.updateTag(editingTag.id, tagData);
                 toaster.create({
                     title: 'Успешно',
                     description: 'Элемент успешно обновлен',
                     type: 'success',
                 });
             } else {
-                console.error('Cannot save: missing id for edit mode', {modalMode, editingItem});
+                console.error('Cannot save: missing id for edit mode', {modalMode, editingItem: editingTag});
                 throw new Error('Не удалось определить режим сохранения');
             }
-            await loadItems();
+            await loadTags();
         } catch (err) {
             console.error('Error saving item:', err);
             throw err;
         }
     };
 
-    const handleDeleteItems = async (ids: string[]) => {
-        try {
-            await Promise.all(ids.map(id => itemsService.deleteItem(id)));
-            toaster.create({
-                title: 'Успешно',
-                description: `Удалено элементов: ${ids.length}`,
-                type: 'success',
-            });
-            setSelectedRows(new Set());
-            await loadItems();
-        } catch (err) {
-            toaster.create({
-                title: 'Ошибка',
-                description: err instanceof Error ? err.message : 'Не удалось удалить элементы',
-                type: 'error',
-            });
-        }
-    };
-
-    const getRowId = (row: ItemDto): string => {
+    const getRowId = (row: TagDto): string => {
         return row.id ?? '';
     };
 
@@ -229,7 +147,7 @@ export default function Items() {
 
     const statusOptions: Array<'All' | 'Active' | 'Inactive'> = ['All', 'Active', 'Inactive'];
 
-    return (<Layout headerName={"Виды расходов"}>
+    return (<Layout headerName={"Тэги"}>
         <Flex direction="column" width="100%">
 
             <Flex
@@ -261,7 +179,7 @@ export default function Items() {
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 setPage(1);
-                                loadItems();
+                                loadTags();
                             }
                         }}
                         pl="10"
@@ -315,44 +233,6 @@ export default function Items() {
                     </Flex>
                 </Box>
 
-                <Box {...filterWidthProps}>
-                    <Input
-                        placeholder="Цена от"
-                        type="number"
-                        value={priceFrom}
-                        onChange={(e) => setPriceFrom(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                setPage(1);
-                                loadItems();
-                            }
-                        }}
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="neon.blue"
-                        _placeholder={{color: 'textMuted'}}
-                    />
-                </Box>
-
-                <Box {...filterWidthProps}>
-                    <Input
-                        placeholder="Цена до"
-                        type="number"
-                        value={priceTo}
-                        onChange={(e) => setPriceTo(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                setPage(1);
-                                loadItems();
-                            }
-                        }}
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="neon.blue"
-                        _placeholder={{color: 'textMuted'}}
-                    />
-                </Box>
-
                 <Button
                     {...filterWidthProps}
                     onClick={handleReset}
@@ -378,7 +258,7 @@ export default function Items() {
             ) : (
                 <>
                     <DataTable
-                        data={items}
+                        data={tags}
                         columns={itemColumns}
                         total={total}
                         page={page}
@@ -393,15 +273,14 @@ export default function Items() {
                         onSelectionChange={setSelectedRows}
                         onAdd={handleOpenAddModal}
                         onEdit={handleOpenEditModal}
-                        onDelete={handleDeleteItems}
                         getRowId={getRowId}
                     />
-                    <ItemModal
-                        key={`${modalMode}-${editingItem?.id || 'new'}`}
+                    <TagModal
+                        key={`${modalMode}-${editingTag?.id || 'new'}`}
                         isOpen={isModalOpen}
                         onClose={handleCloseModal}
                         onSave={handleSaveItem}
-                        item={editingItem}
+                        item={editingTag}
                         mode={modalMode}
                     />
                 </>

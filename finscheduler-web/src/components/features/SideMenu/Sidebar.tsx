@@ -4,9 +4,9 @@ import {useState} from "react";
 import {
     ChevronsRight,
     LayoutDashboardIcon,
-    ShoppingCartIcon,
+    ShoppingCartIcon, TagIcon,
 } from "lucide-react";
-import SvgLogoIcon from "../svgIcon/SvgLogoIcon.tsx";
+import SvgLogoIcon from "../../svgIcon/SvgLogoIcon.tsx";
 import SidebarItem from "./subcomponents/SidebarItem.tsx";
 
 export default function Sidebar() {
@@ -26,7 +26,6 @@ export default function Sidebar() {
             }}
         >
             <Flex direction="column" h="full" color="white" bg={"bg.layer1"}>
-                {/* Логотип / Заголовок */}
                 <Box p={3} pb={6}>
                     <Flex align="center" gap={3}>
                         <SvgLogoIcon/>
@@ -61,6 +60,13 @@ export default function Sidebar() {
                         label="Виды расходов"
                         id={'items'}
                         path={"/items"}
+                    />
+                    <SidebarItem
+                        isCollapsed={isCollapsed}
+                        icon={<TagIcon/>}
+                        label="Тэги"
+                        id={'tags'}
+                        path={"/tags"}
                     />
                 </VStack>
 

@@ -3,6 +3,7 @@ import {motion} from "framer-motion";
 import {Route, Routes} from "react-router-dom";
 import Items from "../items/Items.tsx";
 import Dashboard from "../dashboard/Dashboard.tsx";
+import Tags from "../tags/Tags.tsx";
 
 const MotionFlex = motion.create(Flex)
 
@@ -23,6 +24,7 @@ export default function Main() {
             <Routes>
                 <Route path="/" element={<Dashboard/>}/>
                 <Route path="/items" element={<Items/>}/>
+                <Route path="/tags" element={<Tags/>}/>
             </Routes>
         </MotionFlex>
     )

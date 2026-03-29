@@ -2,12 +2,14 @@ package items
 
 import (
 	"database/sql"
-	qh "finscheduler/pkg"
+	"finscheduler/internal/shared"
+	"finscheduler/pkg/qh"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 type Item struct {
@@ -20,18 +22,20 @@ type Item struct {
 	UpdatedAt   sql.NullTime    `db:"updated_at"`
 	Cashback    int32           `db:"cashback"`
 	Category    ItemCategory    `db:"category"`
+	Tags        []shared.Lookup `db:"tags"`
 }
 
 type ItemDto struct {
-	Id          *uuid.UUID    `json:"id"`
-	Name        *string       `json:"name"`
-	Price       *float64      `json:"price"`
-	Description *string       `json:"description"`
-	IsActive    *bool         `json:"isActive"`
-	CreatedAt   *time.Time    `json:"createdAt"`
-	UpdatedAt   *time.Time    `json:"updatedAt"`
-	Cashback    *int32        `json:"cashback"`
-	Category    *ItemCategory `json:"category"`
+	Id          *uuid.UUID       `json:"id"`
+	Name        *string          `json:"name"`
+	Price       *float64         `json:"price"`
+	Description *string          `json:"description"`
+	IsActive    *bool            `json:"isActive"`
+	CreatedAt   *time.Time       `json:"createdAt"`
+	UpdatedAt   *time.Time       `json:"updatedAt"`
+	Cashback    *int32           `json:"cashback"`
+	Category    *ItemCategory    `json:"category"`
+	Tags        []*shared.Lookup `json:"tags"`
 }
 
 type ItemFilter struct {
@@ -48,6 +52,7 @@ type ItemFilter struct {
 	CashbackFrom *int32
 	CashbackTo   *int32
 	Categories   []*ItemCategory
+	TagIds       []*uuid.UUID
 	Page         *int32
 	PageSize     *int32
 }
@@ -59,6 +64,7 @@ type ItemCreate struct {
 	IsActive    bool            `json:"isActive"`
 	Cashback    int32           `json:"cashback"`
 	Category    string          `json:"category"`
+	TagIds      []string        `json:"tagIds"`
 }
 
 type ItemUpdate struct {
@@ -68,6 +74,12 @@ type ItemUpdate struct {
 	IsActive    bool            `json:"isActive"`
 	Cashback    int32           `json:"cashback"`
 	Category    string          `json:"category"`
+	TagIds      []string        `json:"tagIds"`
+}
+
+type TagToItem struct {
+	ItemId uuid.UUID `json:"itemId"`
+	TagId  uuid.UUID `json:"tagId"`
 }
 
 func NewItemFilter(r *http.Request) ItemFilter {
@@ -88,6 +100,7 @@ func NewItemFilter(r *http.Request) ItemFilter {
 	cashbackFrom := qh.ParseInt32(queryParams, "cashbackFrom")
 	cashbackTo := qh.ParseInt32(queryParams, "cashbackTo")
 	categories := qh.ParseEnums[ItemCategory](queryParams, "categories")
+	tagIds := qh.ParseUUIDs(queryParams, "tagIds")
 
 	return ItemFilter{
 		Ids:          ids,
@@ -103,6 +116,7 @@ func NewItemFilter(r *http.Request) ItemFilter {
 		CashbackFrom: cashbackFrom,
 		CashbackTo:   cashbackTo,
 		Categories:   categories,
+		TagIds:       tagIds,
 		Page:         page,
 		PageSize:     pageSize,
 	}
@@ -114,13 +128,18 @@ func NewItemDto(item *Item) *ItemDto {
 	}
 
 	var updatedAt *time.Time
-	if &item.UpdatedAt != nil && item.UpdatedAt.Valid {
+	if item.UpdatedAt.Valid {
 		updatedAt = &item.UpdatedAt.Time
 	} else {
 		updatedAt = nil
 	}
 
 	price, _ := item.Price.Float64()
+
+	var tagLookups []*shared.Lookup
+	for _, tag := range item.Tags {
+		tagLookups = append(tagLookups, &tag)
+	}
 
 	return &ItemDto{
 		Id:          &item.Id,
@@ -132,6 +151,7 @@ func NewItemDto(item *Item) *ItemDto {
 		UpdatedAt:   updatedAt,
 		Cashback:    &item.Cashback,
 		Category:    &item.Category,
+		Tags:        tagLookups,
 	}
 }
 
@@ -144,6 +164,9 @@ func (item *ItemCreate) Validate() error {
 	}
 	if item.Cashback < 0 {
 		return fmt.Errorf("cashback is negative")
+	}
+	if !ItemCategory(item.Category).IsValid() {
+		return fmt.Errorf("category is invalid")
 	}
 
 	return nil
@@ -158,6 +181,9 @@ func (item *ItemUpdate) Validate() error {
 	}
 	if item.Cashback < 0 {
 		return fmt.Errorf("cashback is negative")
+	}
+	if !ItemCategory(item.Category).IsValid() {
+		return fmt.Errorf("category is invalid")
 	}
 
 	return nil

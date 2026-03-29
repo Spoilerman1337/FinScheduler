@@ -1,8 +1,9 @@
 package health
 
 import (
-	"github.com/jmoiron/sqlx"
 	"net/http"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func LiveHandler() http.HandlerFunc {
@@ -15,7 +16,8 @@ func ReadyHandler(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if db == nil {
-			panic("db is nil")
+			http.Error(w, "db nil", http.StatusServiceUnavailable)
+			return
 		}
 		if err := db.PingContext(ctx); err != nil {
 			http.Error(w, "db unavailable", http.StatusServiceUnavailable)

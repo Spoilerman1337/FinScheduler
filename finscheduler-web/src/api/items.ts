@@ -1,25 +1,91 @@
-import { apiClient } from './client';
-import type { ItemDto, PaginatedList, ItemFilter } from './types';
+import type {ItemDto, PaginatedList, ItemFilter, ItemModification} from './types';
+import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
 
-export const itemsApi = {
-    getItems: async (filter?: ItemFilter): Promise<PaginatedList<ItemDto>> => {
-        return apiClient.getItems(filter);
-    },
+export default class ItemsService extends FinschedulerApiClient {
+    async getItems(filter?: ItemFilter): Promise<PaginatedList<ItemDto>> {
+        const queryString = filter ? this.buildQueryString(filter) : '';
+        const response = await fetch(`${this.baseUrl}/items/${queryString}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
 
-    getItemById: async (id: string): Promise<ItemDto> => {
-        return apiClient.getItemById(id);
-    },
+        if (!response.ok) {
+            throw new Error(`Failed to fetch items: ${response.statusText}`);
+        }
 
-    createItem: async (item: Omit<ItemDto, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-        return apiClient.createItem(item);
-    },
+        return response.json();
+    }
 
-    updateItem: async (id: string, item: Omit<ItemDto, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
-        return apiClient.updateItem(id, item);
-    },
+    async getItemById(id: string): Promise<ItemDto> {
+        const response = await fetch(`${this.baseUrl}/items/${id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
 
-    deleteItem: async (id: string): Promise<void> => {
-        return apiClient.deleteItem(id);
-    },
+        if (!response.ok) {
+            throw new Error(`Failed to fetch item: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async createItem(item: ItemModification): Promise<string> {
+        const response = await fetch(`${this.baseUrl}/items`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: item.name,
+                price: item.price,
+                description: item.description,
+                isActive: item.isActive,
+                cashback: item.cashback,
+                tagIds: item.tagIds,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create item: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async updateItem(id: string, item: ItemModification): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/items/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: item.name,
+                price: item.price,
+                description: item.description,
+                isActive: item.isActive,
+                cashback: item.cashback,
+                category: item.category,
+                tagIds: item.tagIds,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update item: ${response.statusText}`);
+        }
+    }
+
+    async deleteItem(id: string): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/items/${id}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete item: ${response.statusText}`);
+        }
+    }
 };
 

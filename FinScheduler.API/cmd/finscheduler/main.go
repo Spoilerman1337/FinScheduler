@@ -8,6 +8,7 @@ import (
 	"finscheduler/internal/items"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/profiles"
+	"finscheduler/internal/tags"
 	"finscheduler/internal/traces"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -74,9 +75,13 @@ func main() {
 	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	logger := slog.New(stdoutHandler)
 
-	repository := items.NewItemsRepository(db, logger)
-	service := items.NewItemsService(repository, logger)
-	handler := items.NewItemsHandler(service, logger)
+	itemsRepository := items.NewItemsRepository(db, logger)
+	itemsService := items.NewItemsService(itemsRepository, logger)
+	itemsHandler := items.NewItemsHandler(itemsService, logger)
+
+	tagsRepository := tags.NewTagsRepository(db, logger)
+	tagsService := tags.NewTagsService(tagsRepository, logger)
+	tagsHandler := tags.NewTagsHandler(tagsService, logger)
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
@@ -86,9 +91,14 @@ func main() {
 		AllowCredentials: false,
 	}))
 	health.SetupHealthChecks(r, db)
-	r.Mount("/api/items", handler.RegisterEndpoints(r))
+	r.Route("/api/items", func(r chi.Router) {
+		itemsHandler.RegisterEndpoints(r)
+	})
+	r.Route("/api/tags", func(r chi.Router) {
+		tagsHandler.RegisterEndpoints(r)
+	})
 
-	log.Printf("Listening on :%d", cfg.ServerPort)
+	log.Printf("Listening at :%d", cfg.ServerPort)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.ServerPort), r)
 	if err != nil {
 		log.Fatal(err)
