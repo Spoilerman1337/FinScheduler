@@ -1,17 +1,21 @@
 package items
 
 import (
+	"context"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"log/slog"
 	"testing"
 )
 
 func Test_ItemsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
-	svc := NewItemsService(nil)
+	logger := slog.Default()
+	svc := NewItemsService(nil, logger)
+	ctx := context.Background()
 
 	// Act
-	_, _, err := svc.Get(nil)
+	_, _, err := svc.Get(ctx, nil)
 
 	// Assert
 	assert.NotNilf(t, err, "expected to get an error")
@@ -19,11 +23,13 @@ func Test_ItemsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing
 
 func Test_ItemsService_GetById_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
-	svc := NewItemsService(nil)
+	logger := slog.Default()
+	svc := NewItemsService(nil, logger)
+	ctx := context.Background()
 	nilUUID := uuid.Nil
 
 	// Act
-	_, err := svc.GetById(nilUUID)
+	_, err := svc.GetById(ctx, nilUUID)
 
 	// Assert
 	assert.NotNilf(t, err, "expected to get an error")
@@ -32,10 +38,12 @@ func Test_ItemsService_GetById_ValidateInputs_ShouldReturnErrorOnNilInput(t *tes
 
 func Test_ItemsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
-	svc := NewItemsService(nil)
+	logger := slog.Default()
+	svc := NewItemsService(nil, logger)
+	ctx := context.Background()
 
 	// Act
-	_, err := svc.Create(nil)
+	_, err := svc.Create(ctx, nil)
 
 	// Assert
 	assert.NotNilf(t, err, "expected to get an error")
@@ -43,13 +51,15 @@ func Test_ItemsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *test
 
 func Test_ItemsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
-	svc := NewItemsService(nil)
+	logger := slog.Default()
+	svc := NewItemsService(nil, logger)
 	nilUUID := uuid.Nil
 	notNilUUID, _ := uuid.NewV7()
+	ctx := context.Background()
 
 	// Act
-	_, err1 := svc.Update(nilUUID, &ItemUpdate{})
-	_, err2 := svc.Update(notNilUUID, nil)
+	_, err1 := svc.Update(ctx, nilUUID, &ItemUpdate{})
+	_, err2 := svc.Update(ctx, notNilUUID, nil)
 
 	// Assert
 	assert.NotNilf(t, err1, "expected to get an error")
@@ -58,11 +68,13 @@ func Test_ItemsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *test
 
 func Test_ItemsService_Delete_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
-	svc := NewItemsService(nil)
+	logger := slog.Default()
+	svc := NewItemsService(nil, logger)
 	nilUUID := uuid.Nil
+	ctx := context.Background()
 
 	// Act
-	_, err := svc.Delete(nilUUID)
+	_, err := svc.Delete(ctx, nilUUID)
 
 	// Assert
 	assert.NotNilf(t, err, "expected to get an error")

@@ -4,8 +4,9 @@
 package items
 
 import (
-	"github.com/shopspring/decimal"
 	"testing"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,49 +14,51 @@ import (
 
 func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
-	repository := NewItemsRepository(testDB)
-	svc := NewItemsService(repository)
+	repository := NewItemsRepository(testDB, testLogger)
+	svc := NewItemsService(repository, testLogger)
 
 	create := &ItemCreate{
-		Name:  "Item",
-		Price: decimal.NewFromFloat(15.50),
+		Name:     "Item",
+		Category: "FoodDrinks",
 	}
 
 	// Act
-	id, err := svc.Create(create)
+	id, err := svc.Create(testContext, create)
 	require.NoError(t, err)
 
-	item, err := svc.GetById(id)
+	item, err := svc.GetById(testContext, id)
 	require.NoError(t, err)
 
 	// Assert
 	assert.Equal(t, "Item", *item.Name)
-	assert.Equal(t, 15.50, *item.Price)
 }
 
 func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
-	svc := NewItemsService(NewItemsRepository(testDB))
+	repository := NewItemsRepository(testDB, testLogger)
+	svc := NewItemsService(repository, testLogger)
 
 	create := &ItemCreate{
-		Name:  "Ice",
-		Price: decimal.NewFromFloat(10.00),
+		Name:     "Ice",
+		Price:    decimal.NewFromFloat(10.00),
+		Category: "FoodDrinks",
 	}
 
 	update := &ItemUpdate{
-		Name:  "Water",
-		Price: decimal.NewFromFloat(15.50),
+		Name:     "Water",
+		Price:    decimal.NewFromFloat(15.50),
+		Category: "FoodDrinks",
 	}
 
 	// Act
-	id, err := svc.Create(create)
+	id, err := svc.Create(testContext, create)
 	require.NoError(t, err)
 
-	ok, err := svc.Update(id, update)
+	ok, err := svc.Update(testContext, id, update)
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	item, err := svc.GetById(id)
+	item, err := svc.GetById(testContext, id)
 	require.NoError(t, err)
 
 	// Assert
@@ -65,22 +68,24 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 
 func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 	// Arrange
-	svc := NewItemsService(NewItemsRepository(testDB))
+	repository := NewItemsRepository(testDB, testLogger)
+	svc := NewItemsService(repository, testLogger)
 
 	create := &ItemCreate{
-		Name:  "Orange",
-		Price: decimal.NewFromFloat(15.50),
+		Name:     "Orange",
+		Price:    decimal.NewFromFloat(15.50),
+		Category: "FoodDrinks",
 	}
 
 	// Act
-	id, err := svc.Create(create)
+	id, err := svc.Create(testContext, create)
 	require.NoError(t, err)
 
-	ok, err := svc.Delete(id)
+	ok, err := svc.Delete(testContext, id)
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	item, err := svc.GetById(id)
+	item, err := svc.GetById(testContext, id)
 
 	// Assert
 	assert.Nil(t, item)

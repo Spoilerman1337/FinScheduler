@@ -4,10 +4,10 @@ import (
 	"context"
 	"finscheduler/internal/traces"
 	"fmt"
+	"log/slog"
+
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
-	"log/slog"
 )
 
 type ItemsService struct {
@@ -93,15 +93,15 @@ func (service *ItemsService) Create(ctx context.Context, create *ItemCreate) (uu
 	newId, err := service.repository.Create(ctx, create)
 
 	if err != nil || newId == uuid.Nil {
-		service.logger.ErrorContext(ctx, "error creating an item", "error", err)
-		span.SetStatus(codes.Error, "")
 		if err == nil {
-			err = fmt.Errorf("error creating an item")
+			err = fmt.Errorf("failed to create item: repository returned nil uuid")
 		}
-		span.RecordError(err)
+		service.logger.ErrorContext(ctx, "error creating an item", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
+
 	return newId, err
 }
 
@@ -127,10 +127,10 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 	success, err := service.repository.Update(ctx, itemID, update)
 
 	if err != nil || !success {
-		service.logger.ErrorContext(ctx, "error updating an item", "error", err)
 		if err == nil {
-			err = fmt.Errorf("error updating an item")
+			err = fmt.Errorf("failed to update item: repository returned nil uuid")
 		}
+		service.logger.ErrorContext(ctx, "error updating an item", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
 	}
 
@@ -154,10 +154,10 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 	success, err := service.repository.Delete(ctx, itemID)
 
 	if err != nil || !success {
-		service.logger.ErrorContext(ctx, "error deleting an item", "error", err)
 		if err == nil {
-			err = fmt.Errorf("error updating an item")
+			err = fmt.Errorf("failed to delete item: repository returned nil uuid")
 		}
+		service.logger.ErrorContext(ctx, "error deleting an item", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
 	}
 

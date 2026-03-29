@@ -4,12 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"finscheduler/internal/metrics"
+	"finscheduler/internal/shared"
+	"finscheduler/internal/tags"
 	"finscheduler/internal/traces"
+	"finscheduler/pkg/dh"
+	"finscheduler/pkg/rh"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"go.opentelemetry.io/otel"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -19,7 +24,9 @@ type ItemsRepository struct {
 }
 
 const databaseDriver string = "postgresql"
-const tableName = "items"
+const itemsTableName = "items"
+const tagsTableName = "tags"
+const tagsToItemTableName = "tag_to_item"
 
 func NewItemsRepository(db *sqlx.DB, logger *slog.Logger) *ItemsRepository {
 	return &ItemsRepository{db: db, logger: logger}
@@ -31,10 +38,13 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
 	defer span.End()
 
-	var items []Item
+	var items []*Item
 	var count int64 = 0
 
-	var query = " FROM public.items WHERE 1=1"
+	var itemsQuery = " FROM public.items i "
+
+	//TODO: bruh. В Go наверняка есть что-то вроде сишарписткого string.Join(',', []). Собрать параметры именно так, и не писать кринж типа 1 = 1
+	itemsQuery += " WHERE 1=1"
 	args := make([]interface{}, 0)
 
 	if filter.Ids != nil && len(filter.Ids) > 0 {
@@ -42,81 +52,98 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 
 		if err != nil {
 			repository.logger.ErrorContext(ctx, "error binding \"Ids\" array to IN filter", "error", err)
-			metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationNone)
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
 			traces.EnrichFailedRepositorySpanRead(span, err, count)
 			return nil, 0, err
 		}
 
-		query += inQuery
+		itemsQuery += inQuery
 		args = append(args, inArgs...)
 	}
 
 	if filter.Name != nil && len(*filter.Name) > 0 {
-		query += " AND name ILIKE ?"
+		itemsQuery += " AND i.name ILIKE ?"
 		args = append(args, fmt.Sprintf("%%%s%%", *filter.Name))
 	}
 
 	if filter.PriceFrom != nil {
-		query += " AND price >= ?"
+		itemsQuery += " AND i.price >= ?"
 		args = append(args, *filter.PriceFrom)
 	}
 
 	if filter.PriceTo != nil {
-		query += " AND price <= ?"
+		itemsQuery += " AND i.price <= ?"
 		args = append(args, *filter.PriceTo)
 	}
 
 	if filter.Description != nil && len(*filter.Description) > 0 {
-		query += " AND description ILIKE ?"
+		itemsQuery += " AND i.description ILIKE ?"
 		args = append(args, fmt.Sprintf("%%%s%%", *filter.Description))
 	}
 
 	if filter.IsActive != nil {
-		query += " AND is_active = ?"
+		itemsQuery += " AND i.is_active = ?"
 		args = append(args, *filter.IsActive)
 	}
 
 	if filter.CreatedFrom != nil {
-		query += " AND created_at >= ?"
+		itemsQuery += " AND i.created_at >= ?"
 		args = append(args, *filter.CreatedFrom)
 	}
 
 	if filter.CreatedTo != nil {
-		query += " AND created_at <= ?"
+		itemsQuery += " AND i.created_at <= ?"
 		args = append(args, *filter.CreatedTo)
 	}
 
 	if filter.UpdatedFrom != nil {
-		query += " AND updated_at >= ?"
+		itemsQuery += " AND i.updated_at >= ?"
 		args = append(args, *filter.UpdatedFrom)
 	}
 
 	if filter.UpdatedTo != nil {
-		query += " AND updated_at <= ?"
+		itemsQuery += " AND i.updated_at <= ?"
 		args = append(args, *filter.UpdatedTo)
 	}
 
 	if filter.CashbackFrom != nil {
-		query += " AND cashback >= ?"
+		itemsQuery += " AND i.cashback >= ?"
 		args = append(args, *filter.CashbackFrom)
 	}
 
 	if filter.CashbackTo != nil {
-		query += " AND cashback <= ?"
+		itemsQuery += " AND i.cashback <= ?"
 		args = append(args, *filter.CashbackTo)
 	}
 
 	if filter.Categories != nil && len(filter.Categories) > 0 {
-		inQuery, inArgs, err := sqlx.In(" AND category IN (?)", filter.Categories)
+		inQuery, inArgs, err := sqlx.In(" AND i.category IN (?)", filter.Categories)
 
 		if err != nil {
 			repository.logger.ErrorContext(ctx, "error binding \"Categories\" array to IN filter", "error", err)
-			metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationNone)
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
 			traces.EnrichFailedRepositorySpanRead(span, err, count)
 			return nil, 0, err
 		}
 
-		query += inQuery
+		itemsQuery += inQuery
+		args = append(args, inArgs...)
+	}
+
+	if filter.TagIds != nil && len(filter.TagIds) > 0 {
+		inQuery, inArgs, err := sqlx.In(` AND EXISTS (
+			SELECT 1 FROM public.tag_to_item tti 
+			WHERE tti.item_id = i.id AND tti.tag_id IN (?)
+		)`, filter.TagIds)
+
+		if err != nil {
+			repository.logger.ErrorContext(ctx, "error binding \"TagIds\" array to IN filter", "error", err)
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
+			traces.EnrichFailedRepositorySpanRead(span, err, count)
+			return nil, 0, err
+		}
+
+		itemsQuery += inQuery
 		args = append(args, inArgs...)
 	}
 
@@ -130,43 +157,50 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 	}
 	offset := page * pageSize
 
-	selectQuery := fmt.Sprintf("SELECT * %s LIMIT ? OFFSET ?", query)
-	selectQuery = repository.db.Rebind(selectQuery)
-	selectArgs := append(make([]interface{}, 0), args...)
-	selectArgs = append(selectArgs, pageSize, offset)
+	itemsSelectQuery := fmt.Sprintf("SELECT * %s LIMIT ? OFFSET ?", itemsQuery)
+	itemsSelectQuery = repository.db.Rebind(itemsSelectQuery)
+	itemsSelectArgs := append(make([]interface{}, 0), args...)
+	itemsSelectArgs = append(itemsSelectArgs, pageSize, offset)
 
-	repository.logger.InfoContext(ctx, "executing operation:", "query", selectQuery, "args", selectArgs)
-	selectStart := time.Now()
-	err := repository.db.Select(&items, selectQuery, selectArgs...)
-	metrics.RecordDatabaseDuration(ctx, selectStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationSelect)
+	repository.logger.InfoContext(ctx, "executing operation:", "itemsQuery", itemsSelectQuery, "args", itemsSelectArgs)
+	itemsSelectStart := time.Now()
+	err := repository.db.Select(&items, itemsSelectQuery, itemsSelectArgs...)
+	metrics.RecordDatabaseDuration(ctx, itemsSelectStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationSelect)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationSelect)
 		traces.EnrichFailedRepositorySpanRead(span, err, count)
 		return nil, 0, err
 	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, true, metrics.DatabaseOperationSelect)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationSelect)
 	}
 
-	countQuery := fmt.Sprintf("SELECT COUNT(*) %s", query)
-	countQuery = repository.db.Rebind(countQuery)
-	countArgs := append(make([]interface{}, 0), args...)
+	itemsCountQuery := fmt.Sprintf("SELECT COUNT(*) %s", itemsQuery)
+	itemsCountQuery = repository.db.Rebind(itemsCountQuery)
+	itemsCountArgs := append(make([]interface{}, 0), args...)
 
-	repository.logger.InfoContext(ctx, "executing operation:", "query", countQuery, "args", countArgs)
-	countStart := time.Now()
-	err = repository.db.Get(&count, countQuery, countArgs...)
-	metrics.RecordDatabaseDuration(ctx, countStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationSelect)
+	repository.logger.InfoContext(ctx, "executing operation:", "itemsQuery", itemsCountQuery, "args", itemsCountArgs)
+	itemsCountStart := time.Now()
+	err = repository.db.Get(&count, itemsCountQuery, itemsCountArgs...)
+	metrics.RecordDatabaseDuration(ctx, itemsCountStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationCount)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationCount)
 		traces.EnrichFailedRepositorySpanRead(span, err, count)
 		return nil, 0, err
 	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, true, metrics.DatabaseOperationCount)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationCount)
+	}
+
+	if len(items) > 0 {
+		err = repository.enrichItemsWithTags(ctx, items)
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	traces.EnrichSuccessRepositorySpanRead(span, int64(len(items)))
-	return items, count, err
+	return rh.DereferenceSlice(items), count, err
 }
 
 func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*Item, error) {
@@ -179,7 +213,7 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 
 	if id == uuid.Nil {
 		repository.logger.ErrorContext(ctx, "id should not be nil")
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationNone)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
 
 		err := fmt.Errorf("id should not be nil")
 		traces.EnrichFailedRepositorySpanRead(span, err, 0)
@@ -192,15 +226,22 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)
 	start := time.Now()
 	err := repository.db.Get(&item, query, id)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tableName, err != nil, metrics.DatabaseOperationSelect)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
 
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationSelect)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationSelect)
 		traces.EnrichFailedRepositorySpanRead(span, err, 0)
 		return nil, err
 	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, true, metrics.DatabaseOperationSelect)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationSelect)
+	}
+
+	if item.Id != uuid.Nil {
+		err = repository.enrichItemsWithTags(ctx, []*Item{&item})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	traces.EnrichSuccessRepositorySpanRead(span, 1)
@@ -213,12 +254,26 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *ItemCreat
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationInsert)
 	defer span.End()
 
+	transaction, err := repository.db.Beginx()
+	defer func() {
+		if p := recover(); p != nil {
+			if rbErr := transaction.Rollback(); rbErr != nil {
+				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
+			}
+			panic(p)
+		} else if err != nil {
+			if rbErr := transaction.Rollback(); rbErr != nil {
+				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
+			}
+		}
+	}()
+
 	newID, err := uuid.NewV7()
 	now := time.Now().UTC()
 
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "uuid generation error", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationNone)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return uuid.Nil, err
 	}
@@ -227,19 +282,49 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *ItemCreat
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
-	res, err := repository.db.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tableName, err != nil, metrics.DatabaseOperationInsert)
+	res, err := transaction.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err, "newID",
 			newID, "name", create.Name, "price", create.Price, "description", create.Description, "isActive",
 			create.IsActive, "createdAt", now, "cashback", create.Cashback, "category", create.Category)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationInsert)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationInsert)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return uuid.Nil, err
 	} else {
 		affected, _ = res.RowsAffected()
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, true, metrics.DatabaseOperationInsert)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationInsert)
+	}
+
+	if len(create.TagIds) > 0 {
+		insertQuery := `INSERT INTO public.tag_to_item (tag_id, item_id) VALUES `
+		insertArgs := []interface{}{}
+		for _, tagId := range create.TagIds {
+			insertQuery = insertQuery + `(?,?),`
+			insertArgs = append(insertArgs, tagId, newID)
+		}
+		insertQuery = strings.TrimSuffix(insertQuery, ",")
+		insertQuery = repository.db.Rebind(insertQuery)
+
+		_, err = transaction.Exec(insertQuery, insertArgs...)
+
+		metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationInsert)
+
+		if err != nil {
+			repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err)
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
+			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+			return uuid.Nil, err
+		}
+	}
+
+	err = transaction.Commit()
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return uuid.Nil, err
 	}
 
 	traces.EnrichSuccessRepositorySpanWrite(span, affected)
@@ -270,7 +355,7 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "transaction error", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationNone)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
 	}
@@ -283,36 +368,41 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 	updateStart := time.Now()
 	result, err := transaction.Exec(query, update.Name, update.Price, update.Description, update.IsActive,
 		sql.NullTime{Time: now, Valid: true}, update.Cashback, update.Category, itemID)
-	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationUpdate)
+	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on UPDATE operation", "error", err, "id",
 			itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
 			update.IsActive, "updatedAt", now, "cashback", update.Cashback, "category", update.Category)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationUpdate)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	err = repository.tagsToItemsReconciliation(ctx, transaction, update.TagIds, itemID.String())
+	if err != nil {
 		return false, err
 	}
 
 	err = transaction.Commit()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on commit item", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationUpdate)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationUpdate)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
 	}
 
 	success := rowsAffected > 0
 	if success {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, true, metrics.DatabaseOperationUpdate)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationUpdate)
 	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationUpdate)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 	}
 
@@ -326,7 +416,7 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationDelete)
 	defer span.End()
 
-	transaction, err := repository.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+	transaction, err := repository.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	defer func() {
 		if p := recover(); p != nil {
 			if rbErr := transaction.Rollback(); rbErr != nil {
@@ -342,7 +432,7 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "transaction error", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationNone)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
 	}
@@ -352,10 +442,10 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 	repository.logger.InfoContext(ctx, "fetching delete item:", "query", query, "id", itemID)
 	start := time.Now()
 	result, err := transaction.Exec(query, itemID)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tableName, err != nil, metrics.DatabaseOperationDelete)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "error", err, "id", itemID)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationDelete)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationDelete)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
 	}
@@ -363,26 +453,154 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 	err = transaction.Commit()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on commit item", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationDelete)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationDelete)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationDelete)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationDelete)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err
 	}
 
 	success := rowsAffected > 0
 	if success {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, true, metrics.DatabaseOperationDelete)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationDelete)
 	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tableName, false, metrics.DatabaseOperationDelete)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationDelete)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 	}
 
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err
+}
+
+// TODO: это нарушение SRP, надо будет отрефакторить.
+func (repository *ItemsRepository) enrichItemsWithTags(ctx context.Context, items []*Item) error {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-repository")
+	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
+	defer span.End()
+
+	var itemTags []tags.ItemTags
+	itemsIds := make([]uuid.UUID, len(items))
+	for i, item := range items {
+		itemsIds[i] = item.Id
+	}
+
+	query := `SELECT tti.item_id, JSONB_AGG(JSONB_BUILD_OBJECT('value', t.id, 'label', t.name)) AS tags 
+						    FROM public.tags t 
+						    LEFT JOIN public.tag_to_item tti ON tti.tag_id = t.id 
+						    WHERE tti.item_id IN (?) 
+						    GROUP BY tti.item_id`
+
+	query, selectArgs, err := sqlx.In(query, itemsIds)
+
+	query = repository.db.Rebind(query)
+
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error binding \"itemIds\" array to IN filter", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationNone)
+		traces.EnrichFailedRepositorySpanRead(span, err, 0)
+		return err
+	}
+
+	start := time.Now()
+	err = repository.db.Select(&itemTags, query, selectArgs...)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationSelect)
+		traces.EnrichFailedRepositorySpanRead(span, err, 0)
+		return err
+	}
+
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, true, metrics.DatabaseOperationSelect)
+
+	tagsMap := make(map[uuid.UUID][]shared.Lookup)
+	for _, it := range itemTags {
+		if it.ItemId != nil {
+			tagsMap[*it.ItemId] = it.Tags
+		}
+	}
+
+	for i := range items {
+		if val, ok := tagsMap[items[i].Id]; ok {
+			items[i].Tags = val
+		} else {
+			items[i].Tags = []shared.Lookup{}
+		}
+	}
+
+	return nil
+}
+
+// TODO: это нарушение SRP, надо будет отрефакторить.
+func (repository *ItemsRepository) tagsToItemsReconciliation(ctx context.Context, transaction *sqlx.Tx, tagIds []string, itemId string) error {
+	if tagIds == nil {
+		tagIds = []string{}
+	}
+
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-repository")
+	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationInsert)
+	defer span.End()
+
+	var tagToItems []string
+
+	query := `SELECT tag_id::text
+			  FROM public.tag_to_item tti 
+			  WHERE tti.item_id = ?`
+	query = transaction.Rebind(query)
+
+	start := time.Now()
+	err := transaction.Select(&tagToItems, query, itemId)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationSelect)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationSelect)
+		traces.EnrichFailedRepositorySpanRead(span, err, 0)
+		return err
+	} else {
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, true, metrics.DatabaseOperationSelect)
+	}
+
+	toDelete, toInsert := dh.Reconcile(tagIds, tagToItems)
+
+	if len(toDelete) > 0 {
+		deleteQuery := `DELETE FROM public.tag_to_item WHERE item_id = ? AND tag_id IN (?)`
+		deleteQuery, inDeleteArgs, err := sqlx.In(deleteQuery, itemId, toDelete)
+		deleteQuery = repository.db.Rebind(deleteQuery)
+		_, err = transaction.Exec(deleteQuery, inDeleteArgs...)
+		metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationDelete)
+		if err != nil {
+			repository.logger.ErrorContext(ctx, "error on DELETE operation while reconciliation was ongoing", "error", err)
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
+			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+			return err
+		}
+	}
+
+	if len(toInsert) > 0 {
+		insertQuery := `INSERT INTO public.tag_to_item (tag_id, item_id) VALUES `
+		insertArgs := []interface{}{}
+		for _, tagId := range toInsert {
+			insertQuery = insertQuery + `(?,?),`
+			insertArgs = append(insertArgs, tagId, itemId)
+		}
+		insertQuery = strings.TrimSuffix(insertQuery, ",")
+		insertQuery = repository.db.Rebind(insertQuery)
+		_, err = transaction.Exec(insertQuery, insertArgs...)
+		metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationInsert)
+		if err != nil {
+			repository.logger.ErrorContext(ctx, "error on INSERT operation while reconciliation was ongoing", "error", err)
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
+			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+			return err
+		}
+	}
+
+	return nil
 }
