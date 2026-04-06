@@ -2,7 +2,11 @@ package items
 
 import (
 	"context"
+	"finscheduler/internal/tag_to_item"
+	"finscheduler/internal/tags"
 	"finscheduler/internal/traces"
+	"finscheduler/pkg/dh"
+	"finscheduler/pkg/rh"
 	"fmt"
 	"log/slog"
 
@@ -11,14 +15,21 @@ import (
 )
 
 type ItemsService struct {
-	repository *ItemsRepository
-	logger     *slog.Logger
+	itemsRepository      *ItemsRepository
+	tagsRepository       *tags.TagsRepository
+	tagToItemsRepository *tag_to_item.TagToItemsRepository
+	logger               *slog.Logger
 }
 
-func NewItemsService(repository *ItemsRepository, logger *slog.Logger) *ItemsService {
+func NewItemsService(itemsRepository *ItemsRepository,
+	tagsRepository *tags.TagsRepository,
+	tagToItemsRepository *tag_to_item.TagToItemsRepository,
+	logger *slog.Logger) *ItemsService {
 	return &ItemsService{
-		repository: repository,
-		logger:     logger,
+		itemsRepository:      itemsRepository,
+		tagsRepository:       tagsRepository,
+		tagToItemsRepository: tagToItemsRepository,
+		logger:               logger,
 	}
 }
 
@@ -35,18 +46,60 @@ func (service *ItemsService) Get(ctx context.Context, filter *ItemFilter) ([]Ite
 		return nil, 0, err
 	}
 
-	rawItems, count, err := service.repository.Get(ctx, filter)
+	rawItems, count, err := service.itemsRepository.Get(ctx, filter)
 	if err != nil {
 		service.logger.ErrorContext(ctx, "Get items failed", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
 		return nil, 0, err
 	}
 
-	items := make([]ItemDto, 0)
-	if rawItems != nil && len(rawItems) > 0 {
+	var itemIds []uuid.UUID
+	if rawItems != nil {
 		for _, item := range rawItems {
-			items = append(items, *NewItemDto(&item))
+			itemIds = append(itemIds, item.Id)
 		}
+	}
+
+	//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
+	pageSize := ^int32(0)
+	page := int32(0)
+
+	rawTagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, itemIds)
+	if err != nil {
+		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		return nil, 0, err
+	}
+
+	tagIds := make([]*uuid.UUID, len(rawTagToItems))
+	if len(rawTagToItems) > 0 {
+		for i, tag := range rawTagToItems {
+			tagIds[i] = &tag.TagId
+		}
+	}
+
+	rawTags, _, err := service.tagsRepository.Get(ctx, &tags.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+	if err != nil {
+		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		return nil, 0, err
+	}
+
+	tagsById := make(map[uuid.UUID]tags.Tag, len(rawTags))
+	for _, tag := range rawTags {
+		tagsById[tag.Id] = tag
+	}
+
+	itemsWithTags := make(map[uuid.UUID][]tags.Tag)
+	for _, tti := range rawTagToItems {
+		if tag, exists := tagsById[tti.TagId]; exists {
+			itemsWithTags[tti.ItemId] = append(itemsWithTags[tti.ItemId], tag)
+		}
+	}
+
+	items := make([]ItemDto, 0)
+	for _, item := range rawItems {
+		items = append(items, *NewItemDto(item, itemsWithTags[item.Id]))
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
@@ -66,15 +119,40 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*ItemDt
 		return nil, err
 	}
 
-	rawItem, err := service.repository.GetById(ctx, id)
+	rawItem, err := service.itemsRepository.GetById(ctx, id)
 	if err != nil {
 		service.logger.ErrorContext(ctx, "Get items failed", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
 		return nil, err
 	}
 
+	//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
+	pageSize := ^int32(0)
+	page := int32(0)
+
+	rawTagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, []uuid.UUID{id})
+	if err != nil {
+		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		return nil, err
+	}
+
+	tagIds := make([]*uuid.UUID, len(rawTagToItems))
+	if len(rawTagToItems) > 0 {
+		for i, tag := range rawTagToItems {
+			tagIds[i] = &tag.TagId
+		}
+	}
+
+	rawTags, _, err := service.tagsRepository.Get(ctx, &tags.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+	if err != nil {
+		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		return nil, err
+	}
+
 	traces.EnrichSuccessServiceSpan(span)
-	return NewItemDto(rawItem), err
+	return NewItemDto(*rawItem, rawTags), nil
 }
 
 func (service *ItemsService) Create(ctx context.Context, create *ItemCreate) (uuid.UUID, error) {
@@ -90,7 +168,36 @@ func (service *ItemsService) Create(ctx context.Context, create *ItemCreate) (uu
 		return uuid.Nil, err
 	}
 
-	newId, err := service.repository.Create(ctx, create)
+	newId, err := service.itemsRepository.Create(ctx, create)
+
+	tagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, []uuid.UUID{newId})
+
+	var currentTagIds []uuid.UUID
+	if tagToItems != nil && len(tagToItems) > 0 {
+		for _, tagToItem := range tagToItems {
+			currentTagIds = append(currentTagIds, tagToItem.TagId)
+		}
+	}
+
+	var updateTagIds []uuid.UUID
+	if create.TagIds != nil && len(create.TagIds) > 0 {
+		for _, tagId := range create.TagIds {
+			uuidTagId, err := uuid.Parse(tagId)
+			if err == nil {
+				updateTagIds = append(updateTagIds, uuidTagId)
+			}
+		}
+	}
+
+	toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
+
+	if len(toDelete) > 0 {
+		_, err = service.tagToItemsRepository.BulkDelete(ctx, &tag_to_item.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
+	}
+
+	if len(toInsert) > 0 {
+		_, err = service.tagToItemsRepository.BulkInsert(ctx, &tag_to_item.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
+	}
 
 	if err != nil || newId == uuid.Nil {
 		if err == nil {
@@ -124,7 +231,36 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		return false, err
 	}
 
-	success, err := service.repository.Update(ctx, itemID, update)
+	success, err := service.itemsRepository.Update(ctx, itemID, update)
+
+	tagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, []uuid.UUID{itemID})
+
+	var currentTagIds []uuid.UUID
+	if tagToItems != nil && len(tagToItems) > 0 {
+		for _, tagToItem := range tagToItems {
+			currentTagIds = append(currentTagIds, tagToItem.TagId)
+		}
+	}
+
+	var updateTagIds []uuid.UUID
+	if update.TagIds != nil && len(update.TagIds) > 0 {
+		for _, tagId := range update.TagIds {
+			uuidTagId, err := uuid.Parse(tagId)
+			if err == nil {
+				updateTagIds = append(updateTagIds, uuidTagId)
+			}
+		}
+	}
+
+	toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
+
+	if len(toDelete) > 0 {
+		success, err = service.tagToItemsRepository.BulkDelete(ctx, &tag_to_item.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
+	}
+
+	if len(toInsert) > 0 {
+		success, err = service.tagToItemsRepository.BulkInsert(ctx, &tag_to_item.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
+	}
 
 	if err != nil || !success {
 		if err == nil {
@@ -151,7 +287,7 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 		return false, err
 	}
 
-	success, err := service.repository.Delete(ctx, itemID)
+	success, err := service.itemsRepository.Delete(ctx, itemID)
 
 	if err != nil || !success {
 		if err == nil {

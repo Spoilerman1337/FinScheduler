@@ -46,7 +46,7 @@ func (service *TagsService) Get(ctx context.Context, filter *TagFilter) ([]TagDt
 	tags := make([]TagDto, 0)
 	if rawTags != nil && len(rawTags) > 0 {
 		for _, tag := range rawTags {
-			tags = append(tags, *NewTagDto(&tag))
+			tags = append(tags, *NewTagDto(tag))
 		}
 	}
 
@@ -75,7 +75,7 @@ func (service *TagsService) GetById(ctx context.Context, id uuid.UUID) (*TagDto,
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
-	return NewTagDto(rawTag), err
+	return NewTagDto(*rawTag), err
 }
 
 func (service *TagsService) GetLookup(ctx context.Context, filter *TagFilter) ([]shared.Lookup, int64, error) {

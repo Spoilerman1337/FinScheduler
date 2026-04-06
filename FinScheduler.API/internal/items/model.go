@@ -3,6 +3,7 @@ package items
 import (
 	"database/sql"
 	"finscheduler/internal/shared"
+	"finscheduler/internal/tags"
 	"finscheduler/pkg/qh"
 	"fmt"
 	"net/http"
@@ -22,7 +23,6 @@ type Item struct {
 	UpdatedAt   sql.NullTime    `db:"updated_at"`
 	Cashback    int32           `db:"cashback"`
 	Category    ItemCategory    `db:"category"`
-	Tags        []shared.Lookup `db:"tags"`
 }
 
 type ItemDto struct {
@@ -77,11 +77,6 @@ type ItemUpdate struct {
 	TagIds      []string        `json:"tagIds"`
 }
 
-type TagToItem struct {
-	ItemId uuid.UUID `json:"itemId"`
-	TagId  uuid.UUID `json:"tagId"`
-}
-
 func NewItemFilter(r *http.Request) ItemFilter {
 	queryParams := r.URL.Query()
 
@@ -122,11 +117,7 @@ func NewItemFilter(r *http.Request) ItemFilter {
 	}
 }
 
-func NewItemDto(item *Item) *ItemDto {
-	if item == nil {
-		return nil
-	}
-
+func NewItemDto(item Item, tags []tags.Tag) *ItemDto {
 	var updatedAt *time.Time
 	if item.UpdatedAt.Valid {
 		updatedAt = &item.UpdatedAt.Time
@@ -137,8 +128,10 @@ func NewItemDto(item *Item) *ItemDto {
 	price, _ := item.Price.Float64()
 
 	var tagLookups []*shared.Lookup
-	for _, tag := range item.Tags {
-		tagLookups = append(tagLookups, &tag)
+	for _, tag := range tags {
+		value := tag.Id.String()
+		tagLookup := shared.Lookup{Label: &tag.Name, Value: &value}
+		tagLookups = append(tagLookups, &tagLookup)
 	}
 
 	return &ItemDto{

@@ -4,18 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"finscheduler/internal/metrics"
-	"finscheduler/internal/shared"
-	"finscheduler/internal/tags"
 	"finscheduler/internal/traces"
-	"finscheduler/pkg/dh"
 	"finscheduler/pkg/rh"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"go.opentelemetry.io/otel"
-	"log/slog"
-	"strings"
-	"time"
 )
 
 type ItemsRepository struct {
@@ -25,8 +22,6 @@ type ItemsRepository struct {
 
 const databaseDriver string = "postgresql"
 const itemsTableName = "items"
-const tagsTableName = "tags"
-const tagsToItemTableName = "tag_to_item"
 
 func NewItemsRepository(db *sqlx.DB, logger *slog.Logger) *ItemsRepository {
 	return &ItemsRepository{db: db, logger: logger}
@@ -192,13 +187,6 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationCount)
 	}
 
-	if len(items) > 0 {
-		err = repository.enrichItemsWithTags(ctx, items)
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-
 	traces.EnrichSuccessRepositorySpanRead(span, int64(len(items)))
 	return rh.DereferenceSlice(items), count, err
 }
@@ -235,13 +223,6 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 		return nil, err
 	} else {
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationSelect)
-	}
-
-	if item.Id != uuid.Nil {
-		err = repository.enrichItemsWithTags(ctx, []*Item{&item})
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	traces.EnrichSuccessRepositorySpanRead(span, 1)
@@ -297,35 +278,7 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *ItemCreat
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationInsert)
 	}
 
-	if len(create.TagIds) > 0 {
-		insertQuery := `INSERT INTO public.tag_to_item (tag_id, item_id) VALUES `
-		insertArgs := []interface{}{}
-		for _, tagId := range create.TagIds {
-			insertQuery = insertQuery + `(?,?),`
-			insertArgs = append(insertArgs, tagId, newID)
-		}
-		insertQuery = strings.TrimSuffix(insertQuery, ",")
-		insertQuery = repository.db.Rebind(insertQuery)
-
-		_, err = transaction.Exec(insertQuery, insertArgs...)
-
-		metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationInsert)
-
-		if err != nil {
-			repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err)
-			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
-			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-			return uuid.Nil, err
-		}
-	}
-
 	err = transaction.Commit()
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return uuid.Nil, err
-	}
 
 	traces.EnrichSuccessRepositorySpanWrite(span, affected)
 	return newID, err
@@ -375,11 +328,6 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 			update.IsActive, "updatedAt", now, "cashback", update.Cashback, "category", update.Category)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
-
-	err = repository.tagsToItemsReconciliation(ctx, transaction, update.TagIds, itemID.String())
-	if err != nil {
 		return false, err
 	}
 
@@ -475,132 +423,4 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err
-}
-
-// TODO: это нарушение SRP, надо будет отрефакторить.
-func (repository *ItemsRepository) enrichItemsWithTags(ctx context.Context, items []*Item) error {
-	tracer := otel.Tracer("items")
-	ctx, span := tracer.Start(ctx, "items-repository")
-	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
-	defer span.End()
-
-	var itemTags []tags.ItemTags
-	itemsIds := make([]uuid.UUID, len(items))
-	for i, item := range items {
-		itemsIds[i] = item.Id
-	}
-
-	query := `SELECT tti.item_id, JSONB_AGG(JSONB_BUILD_OBJECT('value', t.id, 'label', t.name)) AS tags 
-						    FROM public.tags t 
-						    LEFT JOIN public.tag_to_item tti ON tti.tag_id = t.id 
-						    WHERE tti.item_id IN (?) 
-						    GROUP BY tti.item_id`
-
-	query, selectArgs, err := sqlx.In(query, itemsIds)
-
-	query = repository.db.Rebind(query)
-
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error binding \"itemIds\" array to IN filter", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationNone)
-		traces.EnrichFailedRepositorySpanRead(span, err, 0)
-		return err
-	}
-
-	start := time.Now()
-	err = repository.db.Select(&itemTags, query, selectArgs...)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationSelect)
-		traces.EnrichFailedRepositorySpanRead(span, err, 0)
-		return err
-	}
-
-	metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, true, metrics.DatabaseOperationSelect)
-
-	tagsMap := make(map[uuid.UUID][]shared.Lookup)
-	for _, it := range itemTags {
-		if it.ItemId != nil {
-			tagsMap[*it.ItemId] = it.Tags
-		}
-	}
-
-	for i := range items {
-		if val, ok := tagsMap[items[i].Id]; ok {
-			items[i].Tags = val
-		} else {
-			items[i].Tags = []shared.Lookup{}
-		}
-	}
-
-	return nil
-}
-
-// TODO: это нарушение SRP, надо будет отрефакторить.
-func (repository *ItemsRepository) tagsToItemsReconciliation(ctx context.Context, transaction *sqlx.Tx, tagIds []string, itemId string) error {
-	if tagIds == nil {
-		tagIds = []string{}
-	}
-
-	tracer := otel.Tracer("items")
-	ctx, span := tracer.Start(ctx, "items-repository")
-	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationInsert)
-	defer span.End()
-
-	var tagToItems []string
-
-	query := `SELECT tag_id::text
-			  FROM public.tag_to_item tti 
-			  WHERE tti.item_id = ?`
-	query = transaction.Rebind(query)
-
-	start := time.Now()
-	err := transaction.Select(&tagToItems, query, itemId)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationSelect)
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationSelect)
-		traces.EnrichFailedRepositorySpanRead(span, err, 0)
-		return err
-	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, true, metrics.DatabaseOperationSelect)
-	}
-
-	toDelete, toInsert := dh.Reconcile(tagIds, tagToItems)
-
-	if len(toDelete) > 0 {
-		deleteQuery := `DELETE FROM public.tag_to_item WHERE item_id = ? AND tag_id IN (?)`
-		deleteQuery, inDeleteArgs, err := sqlx.In(deleteQuery, itemId, toDelete)
-		deleteQuery = repository.db.Rebind(deleteQuery)
-		_, err = transaction.Exec(deleteQuery, inDeleteArgs...)
-		metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationDelete)
-		if err != nil {
-			repository.logger.ErrorContext(ctx, "error on DELETE operation while reconciliation was ongoing", "error", err)
-			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
-			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-			return err
-		}
-	}
-
-	if len(toInsert) > 0 {
-		insertQuery := `INSERT INTO public.tag_to_item (tag_id, item_id) VALUES `
-		insertArgs := []interface{}{}
-		for _, tagId := range toInsert {
-			insertQuery = insertQuery + `(?,?),`
-			insertArgs = append(insertArgs, tagId, itemId)
-		}
-		insertQuery = strings.TrimSuffix(insertQuery, ",")
-		insertQuery = repository.db.Rebind(insertQuery)
-		_, err = transaction.Exec(insertQuery, insertArgs...)
-		metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationInsert)
-		if err != nil {
-			repository.logger.ErrorContext(ctx, "error on INSERT operation while reconciliation was ongoing", "error", err)
-			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
-			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-			return err
-		}
-	}
-
-	return nil
 }

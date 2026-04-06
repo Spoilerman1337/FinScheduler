@@ -4,8 +4,9 @@ import (
 	"finscheduler/internal/shared"
 	"finscheduler/pkg/qh"
 	"fmt"
-	"github.com/google/uuid"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 type Tag struct {
@@ -72,11 +73,7 @@ func NewTagsFilter(r *http.Request) TagFilter {
 	}
 }
 
-func NewTagDto(tag *Tag) *TagDto {
-	if tag == nil {
-		return nil
-	}
-
+func NewTagDto(tag Tag) *TagDto {
 	return &TagDto{
 		Id:       &tag.Id,
 		Name:     &tag.Name,

@@ -8,17 +8,19 @@ import (
 	"finscheduler/internal/items"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/profiles"
+	"finscheduler/internal/tag_to_item"
 	"finscheduler/internal/tags"
 	"finscheduler/internal/traces"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/cors"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
 func main() {
@@ -76,12 +78,14 @@ func main() {
 	logger := slog.New(stdoutHandler)
 
 	itemsRepository := items.NewItemsRepository(db, logger)
-	itemsService := items.NewItemsService(itemsRepository, logger)
-	itemsHandler := items.NewItemsHandler(itemsService, logger)
-
 	tagsRepository := tags.NewTagsRepository(db, logger)
+	tagsToItemsRepository := tag_to_item.NewTagToItemsRepository(db, logger)
+
+	itemsService := items.NewItemsService(itemsRepository, tagsRepository, tagsToItemsRepository, logger)
 	tagsService := tags.NewTagsService(tagsRepository, logger)
+
 	tagsHandler := tags.NewTagsHandler(tagsService, logger)
+	itemsHandler := items.NewItemsHandler(itemsService, logger)
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
