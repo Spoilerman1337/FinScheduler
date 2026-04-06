@@ -2,16 +2,17 @@ package items
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_ItemsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
 	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
+	svc := NewItemsService(nil, nil, nil, logger)
 	ctx := context.Background()
 
 	// Act
@@ -24,7 +25,7 @@ func Test_ItemsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing
 func Test_ItemsService_GetById_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
 	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
+	svc := NewItemsService(nil, nil, nil, logger)
 	ctx := context.Background()
 	nilUUID := uuid.Nil
 
@@ -39,7 +40,7 @@ func Test_ItemsService_GetById_ValidateInputs_ShouldReturnErrorOnNilInput(t *tes
 func Test_ItemsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
 	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
+	svc := NewItemsService(nil, nil, nil, logger)
 	ctx := context.Background()
 
 	// Act
@@ -52,7 +53,7 @@ func Test_ItemsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *test
 func Test_ItemsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
 	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
+	svc := NewItemsService(nil, nil, nil, logger)
 	nilUUID := uuid.Nil
 	notNilUUID, _ := uuid.NewV7()
 	ctx := context.Background()
@@ -69,7 +70,7 @@ func Test_ItemsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *test
 func Test_ItemsService_Delete_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
 	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
+	svc := NewItemsService(nil, nil, nil, logger)
 	nilUUID := uuid.Nil
 	ctx := context.Background()
 
