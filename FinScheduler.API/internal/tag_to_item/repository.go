@@ -106,7 +106,7 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
-	res, err := transaction.Exec(query, args...)
+	res, err := transaction.ExecContext(ctx, query, args...)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
@@ -164,7 +164,7 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "fetching delete tag to items:", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)
 	start := time.Now()
-	result, err := transaction.Exec(query, inArgs...)
+	result, err := transaction.ExecContext(ctx, query, inArgs...)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)

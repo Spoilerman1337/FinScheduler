@@ -263,7 +263,7 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *ItemCreat
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
-	res, err := transaction.Exec(query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
+	res, err := transaction.ExecContext(ctx, query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
@@ -319,7 +319,7 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 		itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
 		update.IsActive, "updatedAt", now, "cashback", update.Cashback, "category", update.Category)
 	updateStart := time.Now()
-	result, err := transaction.Exec(query, update.Name, update.Price, update.Description, update.IsActive,
+	result, err := transaction.ExecContext(ctx, query, update.Name, update.Price, update.Description, update.IsActive,
 		sql.NullTime{Time: now, Valid: true}, update.Cashback, update.Category, itemID)
 	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
@@ -389,7 +389,7 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "fetching delete item:", "query", query, "id", itemID)
 	start := time.Now()
-	result, err := transaction.Exec(query, itemID)
+	result, err := transaction.ExecContext(ctx, query, itemID)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "error", err, "id", itemID)

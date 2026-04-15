@@ -6,11 +6,12 @@ import (
 	"finscheduler/internal/shared"
 	"finscheduler/internal/traces"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"go.opentelemetry.io/otel"
-	"log/slog"
-	"time"
 )
 
 type TagsRepository struct {
@@ -235,7 +236,7 @@ func (repository *TagsRepository) Create(ctx context.Context, create *TagCreate)
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
-	res, err := repository.db.Exec(query, newID, create.Name, create.IsActive)
+	res, err := repository.db.ExecContext(ctx, query, newID, create.Name, create.IsActive)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tableName, err != nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
@@ -285,7 +286,7 @@ func (repository *TagsRepository) Update(ctx context.Context, tagID uuid.UUID, u
 	repository.logger.InfoContext(ctx, "updating an tag:", "id", tagID, "name", update.Name,
 		"isActive", update.IsActive)
 	updateStart := time.Now()
-	result, err := transaction.Exec(query, update.Name, update.IsActive, tagID)
+	result, err := transaction.ExecContext(ctx, query, update.Name, update.IsActive, tagID)
 	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on UPDATE operation", "error", err, "id", tagID, "name",
