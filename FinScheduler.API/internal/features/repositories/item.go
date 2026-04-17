@@ -1,8 +1,9 @@
-package items
+package repositories
 
 import (
 	"context"
 	"database/sql"
+	"finscheduler/internal/features/domains"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/rh"
@@ -20,20 +21,17 @@ type ItemsRepository struct {
 	logger *slog.Logger
 }
 
-const databaseDriver string = "postgresql"
-const itemsTableName = "items"
-
 func NewItemsRepository(db *sqlx.DB, logger *slog.Logger) *ItemsRepository {
 	return &ItemsRepository{db: db, logger: logger}
 }
 
-func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) ([]Item, int64, error) {
+func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.ItemFilter) ([]domains.Item, int64, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
 	defer span.End()
 
-	var items []*Item
+	var items []*domains.Item
 	var count int64 = 0
 
 	var itemsQuery = " FROM public.items i "
@@ -191,13 +189,13 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 	return rh.DereferenceSlice(items), count, err
 }
 
-func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*Item, error) {
+func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*domains.Item, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
 	defer span.End()
 
-	var item Item
+	var item domains.Item
 
 	if id == uuid.Nil {
 		repository.logger.ErrorContext(ctx, "id should not be nil")
@@ -229,7 +227,7 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 	return &item, nil
 }
 
-func (repository *ItemsRepository) Create(ctx context.Context, create *ItemCreate) (uuid.UUID, error) {
+func (repository *ItemsRepository) Create(ctx context.Context, create *domains.ItemCreate) (uuid.UUID, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationInsert)
@@ -284,7 +282,7 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *ItemCreat
 	return newID, err
 }
 
-func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID, update *ItemUpdate) (bool, error) {
+func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID, update *domains.ItemUpdate) (bool, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationUpdate)

@@ -1,7 +1,8 @@
-package items
+package services
 
 import (
 	"context"
+	"finscheduler/internal/features/domains"
 	"log/slog"
 	"testing"
 
@@ -59,7 +60,7 @@ func Test_ItemsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *test
 	ctx := context.Background()
 
 	// Act
-	_, err1 := svc.Update(ctx, nilUUID, &ItemUpdate{})
+	_, err1 := svc.Update(ctx, nilUUID, &domains.ItemUpdate{})
 	_, err2 := svc.Update(ctx, notNilUUID, nil)
 
 	// Assert

@@ -1,9 +1,11 @@
 //go:build integration
 // +build integration
 
-package items
+package services
 
 import (
+	"finscheduler/internal/features/domains"
+	"finscheduler/internal/features/repositories"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -14,10 +16,12 @@ import (
 
 func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
-	repository := NewItemsRepository(testDB, testLogger)
-	svc := NewItemsService(repository, testLogger)
+	itemsRepository := repositories.NewItemsRepository(testDB, testLogger)
+	tagsRepository := repositories.NewTagsRepository(testDB, testLogger)
+	tagToItemsRepository := repositories.NewTagToItemsRepository(testDB, testLogger)
+	svc := NewItemsService(itemsRepository, tagsRepository, tagToItemsRepository, testLogger)
 
-	create := &ItemCreate{
+	create := &domains.ItemCreate{
 		Name:     "Item",
 		Category: "FoodDrinks",
 	}
@@ -35,16 +39,18 @@ func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 
 func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
-	repository := NewItemsRepository(testDB, testLogger)
-	svc := NewItemsService(repository, testLogger)
+	itemsRepository := repositories.NewItemsRepository(testDB, testLogger)
+	tagsRepository := repositories.NewTagsRepository(testDB, testLogger)
+	tagToItemsRepository := repositories.NewTagToItemsRepository(testDB, testLogger)
+	svc := NewItemsService(itemsRepository, tagsRepository, tagToItemsRepository, testLogger)
 
-	create := &ItemCreate{
+	create := &domains.ItemCreate{
 		Name:     "Ice",
 		Price:    decimal.NewFromFloat(10.00),
 		Category: "FoodDrinks",
 	}
 
-	update := &ItemUpdate{
+	update := &domains.ItemUpdate{
 		Name:     "Water",
 		Price:    decimal.NewFromFloat(15.50),
 		Category: "FoodDrinks",
@@ -68,10 +74,12 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 
 func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 	// Arrange
-	repository := NewItemsRepository(testDB, testLogger)
-	svc := NewItemsService(repository, testLogger)
+	itemsRepository := repositories.NewItemsRepository(testDB, testLogger)
+	tagsRepository := repositories.NewTagsRepository(testDB, testLogger)
+	tagToItemsRepository := repositories.NewTagToItemsRepository(testDB, testLogger)
+	svc := NewItemsService(itemsRepository, tagsRepository, tagToItemsRepository, testLogger)
 
-	create := &ItemCreate{
+	create := &domains.ItemCreate{
 		Name:     "Orange",
 		Price:    decimal.NewFromFloat(15.50),
 		Category: "FoodDrinks",

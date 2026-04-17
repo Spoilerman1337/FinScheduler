@@ -1,11 +1,12 @@
-package tags
+package featurehttp
 
 import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"finscheduler/internal/features/domains"
+	"finscheduler/internal/features/services"
 	"finscheduler/internal/metrics"
-	"finscheduler/internal/shared"
 	"finscheduler/internal/traces"
 	"fmt"
 	"log/slog"
@@ -18,11 +19,11 @@ import (
 )
 
 type TagsHandler struct {
-	service *TagsService
+	service *services.TagsService
 	logger  *slog.Logger
 }
 
-func NewTagsHandler(service *TagsService, logger *slog.Logger) *TagsHandler {
+func NewTagsHandler(service *services.TagsService, logger *slog.Logger) *TagsHandler {
 	return &TagsHandler{
 		service: service,
 		logger:  logger,
@@ -55,7 +56,7 @@ func (handler *TagsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter := NewTagsFilter(r)
+	filter := domains.NewTagsFilter(r)
 
 	if err := filter.Validate(); err != nil {
 		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
@@ -74,7 +75,7 @@ func (handler *TagsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(shared.NewPaginatedList(tags, count))
+	err = json.NewEncoder(w).Encode(domains.NewPaginatedList(tags, count))
 	if err != nil {
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
 		handler.logger.ErrorContext(ctx, "Failed to encode result", "error", err)
@@ -151,7 +152,7 @@ func (handler *TagsHandler) GetLookup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter := NewTagsFilter(r)
+	filter := domains.NewTagsFilter(r)
 
 	if err := filter.Validate(); err != nil {
 		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
@@ -170,7 +171,7 @@ func (handler *TagsHandler) GetLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(shared.NewPaginatedList(tags, count))
+	err = json.NewEncoder(w).Encode(domains.NewPaginatedList(tags, count))
 	if err != nil {
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
 		handler.logger.ErrorContext(ctx, "Failed to encode result", "error", err)
@@ -200,7 +201,7 @@ func (handler *TagsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var create TagCreate
+	var create domains.TagCreate
 	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
 		statusCode = http.StatusBadRequest
@@ -264,7 +265,7 @@ func (handler *TagsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var update TagUpdate
+	var update domains.TagUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
 		statusCode = http.StatusBadRequest

@@ -1,9 +1,7 @@
-package items
+package domains
 
 import (
 	"database/sql"
-	"finscheduler/internal/shared"
-	"finscheduler/internal/tags"
 	"finscheduler/pkg/qh"
 	"fmt"
 	"net/http"
@@ -26,16 +24,16 @@ type Item struct {
 }
 
 type ItemDto struct {
-	Id          *uuid.UUID       `json:"id"`
-	Name        *string          `json:"name"`
-	Price       *float64         `json:"price"`
-	Description *string          `json:"description"`
-	IsActive    *bool            `json:"isActive"`
-	CreatedAt   *time.Time       `json:"createdAt"`
-	UpdatedAt   *time.Time       `json:"updatedAt"`
-	Cashback    *int32           `json:"cashback"`
-	Category    *ItemCategory    `json:"category"`
-	Tags        []*shared.Lookup `json:"tags"`
+	Id          *uuid.UUID    `json:"id"`
+	Name        *string       `json:"name"`
+	Price       *float64      `json:"price"`
+	Description *string       `json:"description"`
+	IsActive    *bool         `json:"isActive"`
+	CreatedAt   *time.Time    `json:"createdAt"`
+	UpdatedAt   *time.Time    `json:"updatedAt"`
+	Cashback    *int32        `json:"cashback"`
+	Category    *ItemCategory `json:"category"`
+	Tags        []*Lookup     `json:"tags"`
 }
 
 type ItemFilter struct {
@@ -117,7 +115,7 @@ func NewItemFilter(r *http.Request) ItemFilter {
 	}
 }
 
-func NewItemDto(item Item, tags []tags.Tag) *ItemDto {
+func NewItemDto(item Item, tags []Tag) *ItemDto {
 	var updatedAt *time.Time
 	if item.UpdatedAt.Valid {
 		updatedAt = &item.UpdatedAt.Time
@@ -127,10 +125,10 @@ func NewItemDto(item Item, tags []tags.Tag) *ItemDto {
 
 	price, _ := item.Price.Float64()
 
-	var tagLookups []*shared.Lookup
+	var tagLookups []*Lookup
 	for _, tag := range tags {
 		value := tag.Id.String()
-		tagLookup := shared.Lookup{Label: &tag.Name, Value: &value}
+		tagLookup := Lookup{Label: &tag.Name, Value: &value}
 		tagLookups = append(tagLookups, &tagLookup)
 	}
 

@@ -1,8 +1,9 @@
-package tags
+package services
 
 import (
 	"context"
-	"finscheduler/internal/shared"
+	"finscheduler/internal/features/domains"
+	"finscheduler/internal/features/repositories"
 	"finscheduler/internal/traces"
 	"fmt"
 	"log/slog"
@@ -12,18 +13,18 @@ import (
 )
 
 type TagsService struct {
-	repository *TagsRepository
+	repository *repositories.TagsRepository
 	logger     *slog.Logger
 }
 
-func NewTagsService(repository *TagsRepository, logger *slog.Logger) *TagsService {
+func NewTagsService(repository *repositories.TagsRepository, logger *slog.Logger) *TagsService {
 	return &TagsService{
 		repository: repository,
 		logger:     logger,
 	}
 }
 
-func (service *TagsService) Get(ctx context.Context, filter *TagFilter) ([]TagDto, int64, error) {
+func (service *TagsService) Get(ctx context.Context, filter *domains.TagFilter) ([]domains.TagDto, int64, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-service")
 	traces.RecordServiceSpan(span, "Get")
@@ -43,10 +44,10 @@ func (service *TagsService) Get(ctx context.Context, filter *TagFilter) ([]TagDt
 		return nil, 0, err
 	}
 
-	tags := make([]TagDto, 0)
+	tags := make([]domains.TagDto, 0)
 	if rawTags != nil && len(rawTags) > 0 {
 		for _, tag := range rawTags {
-			tags = append(tags, *NewTagDto(tag))
+			tags = append(tags, *domains.NewTagDto(tag))
 		}
 	}
 
@@ -54,7 +55,7 @@ func (service *TagsService) Get(ctx context.Context, filter *TagFilter) ([]TagDt
 	return tags, count, err
 }
 
-func (service *TagsService) GetById(ctx context.Context, id uuid.UUID) (*TagDto, error) {
+func (service *TagsService) GetById(ctx context.Context, id uuid.UUID) (*domains.TagDto, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-service")
 	traces.RecordServiceSpan(span, "GetById")
@@ -75,10 +76,10 @@ func (service *TagsService) GetById(ctx context.Context, id uuid.UUID) (*TagDto,
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
-	return NewTagDto(*rawTag), err
+	return domains.NewTagDto(*rawTag), err
 }
 
-func (service *TagsService) GetLookup(ctx context.Context, filter *TagFilter) ([]shared.Lookup, int64, error) {
+func (service *TagsService) GetLookup(ctx context.Context, filter *domains.TagFilter) ([]domains.Lookup, int64, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-service")
 	traces.RecordServiceSpan(span, "Get")
@@ -102,7 +103,7 @@ func (service *TagsService) GetLookup(ctx context.Context, filter *TagFilter) ([
 	return tags, count, err
 }
 
-func (service *TagsService) Create(ctx context.Context, create *TagCreate) (uuid.UUID, error) {
+func (service *TagsService) Create(ctx context.Context, create *domains.TagCreate) (uuid.UUID, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-service")
 	traces.RecordServiceSpan(span, "Create")
@@ -130,7 +131,7 @@ func (service *TagsService) Create(ctx context.Context, create *TagCreate) (uuid
 	return newId, err
 }
 
-func (service *TagsService) Update(ctx context.Context, tagID uuid.UUID, update *TagUpdate) (bool, error) {
+func (service *TagsService) Update(ctx context.Context, tagID uuid.UUID, update *domains.TagUpdate) (bool, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-service")
 	traces.RecordServiceSpan(span, "Update")

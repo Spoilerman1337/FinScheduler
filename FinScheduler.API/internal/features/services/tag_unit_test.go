@@ -1,7 +1,8 @@
-package tags
+package services
 
 import (
 	"context"
+	"finscheduler/internal/features/domains"
 	"log/slog"
 	"testing"
 
@@ -59,7 +60,7 @@ func Test_TagsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *testi
 	ctx := context.Background()
 
 	// Act
-	_, err1 := svc.Update(ctx, nilUUID, &TagUpdate{})
+	_, err1 := svc.Update(ctx, nilUUID, &domains.TagUpdate{})
 	_, err2 := svc.Update(ctx, notNilUUID, nil)
 
 	// Assert

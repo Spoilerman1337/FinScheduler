@@ -1,9 +1,10 @@
 //go:build integration
 // +build integration
 
-package tags
+package repositories
 
 import (
+	"finscheduler/internal/features/domains"
 	"testing"
 
 	"github.com/google/uuid"
@@ -20,7 +21,7 @@ func Test_TagsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 
 	repo := NewTagsRepository(testDB, testLogger)
 
-	create := &TagCreate{
+	create := &domains.TagCreate{
 		Name: "Apple",
 	}
 
@@ -44,11 +45,11 @@ func Test_TagsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 
 	repo := NewTagsRepository(testDB, testLogger)
 
-	create := &TagCreate{
+	create := &domains.TagCreate{
 		Name: "Old",
 	}
 
-	update := &TagUpdate{
+	update := &domains.TagUpdate{
 		Name: "New",
 	}
 

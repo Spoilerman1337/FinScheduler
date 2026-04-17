@@ -1,11 +1,12 @@
-package items
+package featurehttp
 
 import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"finscheduler/internal/features/domains"
+	"finscheduler/internal/features/services"
 	"finscheduler/internal/metrics"
-	"finscheduler/internal/shared"
 	"finscheduler/internal/traces"
 	"fmt"
 	"log/slog"
@@ -18,11 +19,11 @@ import (
 )
 
 type ItemsHandler struct {
-	service *ItemsService
+	service *services.ItemsService
 	logger  *slog.Logger
 }
 
-func NewItemsHandler(service *ItemsService, logger *slog.Logger) *ItemsHandler {
+func NewItemsHandler(service *services.ItemsService, logger *slog.Logger) *ItemsHandler {
 	return &ItemsHandler{
 		service: service,
 		logger:  logger,
@@ -55,7 +56,7 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter := NewItemFilter(r)
+	filter := domains.NewItemFilter(r)
 
 	if err := filter.Validate(); err != nil {
 		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
@@ -74,7 +75,7 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(shared.NewPaginatedList(items, count))
+	err = json.NewEncoder(w).Encode(domains.NewPaginatedList(items, count))
 	if err != nil {
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
 		handler.logger.ErrorContext(ctx, "Failed to encode result", "error", err)
@@ -155,7 +156,7 @@ func (handler *ItemsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var create ItemCreate
+	var create domains.ItemCreate
 	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
 		statusCode = http.StatusBadRequest
@@ -219,7 +220,7 @@ func (handler *ItemsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var update ItemUpdate
+	var update domains.ItemUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
 		statusCode = http.StatusBadRequest

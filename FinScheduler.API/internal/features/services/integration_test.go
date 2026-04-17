@@ -1,22 +1,25 @@
 //go:build integration
 // +build integration
 
-package items
+package services
 
 import (
 	"context"
-	"finscheduler/internal/infra"
-	"finscheduler/internal/metrics"
 	"fmt"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/jmoiron/sqlx"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"log"
 	"log/slog"
 	"os"
 	"testing"
 	"time"
+
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/jmoiron/sqlx"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+
+	"finscheduler/internal/infra"
+	"finscheduler/internal/metrics"
+
+	"log"
 )
 
 // TODO: Инициализация тестов достаточно одинаковая, нужно выделить общую логику, чтобы не поддерживать одно и то же
@@ -32,9 +35,6 @@ func TestMain(m *testing.M) {
 		fmt.Printf("failed to start postgres: %v", err)
 	}
 
-	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	logger := slog.New(stdoutHandler)
-
 	mp, err := metrics.InitMetrics(ctx, &infra.Config{Env: "Testing", ServiceName: "fin-scheduler-api"})
 	if err != nil {
 		log.Fatal(err)
@@ -46,6 +46,9 @@ func TestMain(m *testing.M) {
 		}
 	}()
 	metrics.InitInstruments()
+
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	logger := slog.New(stdoutHandler)
 
 	testDB = db
 	testLogger = logger
@@ -65,14 +68,13 @@ func TestMain(m *testing.M) {
 		);
     `
 
-	//TODO: это нарушение SRP, надо будет отрефакторить.
 	tagSchema := `
-		CREATE TABLE tags(
+        CREATE TABLE tags(
 			id        UUID PRIMARY KEY,
 			name      TEXT    NOT NULL UNIQUE,
 			is_active BOOLEAN NOT NULL DEFAULT FALSE
 		);
-	`
+    `
 
 	tagToItemSchema := `
 		CREATE TABLE tag_to_item(

@@ -1,8 +1,9 @@
-package tag_to_item
+package repositories
 
 import (
 	"context"
 	"database/sql"
+	"finscheduler/internal/features/domains"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/rh"
@@ -25,16 +26,13 @@ func NewTagToItemsRepository(db *sqlx.DB, logger *slog.Logger) *TagToItemsReposi
 	return &TagToItemsRepository{db: db, logger: logger}
 }
 
-const databaseDriver string = "postgresql"
-const tagsToItemTableName = "tag_to_item"
-
-func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemIds []uuid.UUID) ([]TagToItem, error) {
+func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemIds []uuid.UUID) ([]domains.TagToItem, error) {
 	tracer := otel.Tracer("tag-to-items")
 	ctx, span := tracer.Start(ctx, "tag-to-items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
 	defer span.End()
 
-	var tagToItems []TagToItem
+	var tagToItems []domains.TagToItem
 
 	if itemIds == nil {
 		repository.logger.ErrorContext(ctx, "itemId should not be nil")
@@ -46,10 +44,10 @@ func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemId
 	}
 
 	if len(itemIds) == 0 {
-		return make([]TagToItem, 0), nil
+		return make([]domains.TagToItem, 0), nil
 	}
 
-	query := `SELECT tag_id
+	query := `SELECT item_id, tag_id
 			  FROM public.tag_to_item tti 
 			  WHERE tti.item_id IN (?)`
 	query, inArgs, err := sqlx.In(query, itemIds)
@@ -57,7 +55,7 @@ func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemId
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "itemIds", itemIds)
 	start := time.Now()
-	err = repository.db.SelectContext(ctx, &tagToItems, query, inArgs)
+	err = repository.db.SelectContext(ctx, &tagToItems, query, inArgs...)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
@@ -73,7 +71,7 @@ func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemId
 	return tagToItems, nil
 }
 
-func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *TagToItemCreate) (bool, error) {
+func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *domains.TagToItemCreate) (bool, error) {
 	tracer := otel.Tracer("tag-to-items")
 	ctx, span := tracer.Start(ctx, "tag-to-items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
@@ -132,7 +130,7 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 	return affected > 0, err
 }
 
-func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *TagToItemDelete) (bool, error) {
+func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *domains.TagToItemDelete) (bool, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationDelete)

@@ -1,7 +1,6 @@
-package tags
+package domains
 
 import (
-	"finscheduler/internal/shared"
 	"finscheduler/pkg/qh"
 	"fmt"
 	"net/http"
@@ -46,13 +45,8 @@ type TagUpdate struct {
 }
 
 type ItemTags struct {
-	ItemId *uuid.UUID        `json:"item_id" db:"item_id"`
-	Tags   shared.LookupJSON `json:"tags" db:"tags"`
-}
-
-type TagToItem struct {
-	TagId  *uuid.UUID `db:"tag_id"`
-	ItemId *uuid.UUID `db:"item_id"`
+	ItemId *uuid.UUID `json:"item_id" db:"item_id"`
+	Tags   LookupJSON `json:"tags" db:"tags"`
 }
 
 func NewTagsFilter(r *http.Request) TagFilter {

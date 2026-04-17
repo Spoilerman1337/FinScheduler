@@ -1,9 +1,9 @@
-package items
+package services
 
 import (
 	"context"
-	"finscheduler/internal/tag_to_item"
-	"finscheduler/internal/tags"
+	"finscheduler/internal/features/domains"
+	"finscheduler/internal/features/repositories"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/dh"
 	"finscheduler/pkg/rh"
@@ -15,15 +15,15 @@ import (
 )
 
 type ItemsService struct {
-	itemsRepository      *ItemsRepository
-	tagsRepository       *tags.TagsRepository
-	tagToItemsRepository *tag_to_item.TagToItemsRepository
+	itemsRepository      *repositories.ItemsRepository
+	tagsRepository       *repositories.TagsRepository
+	tagToItemsRepository *repositories.TagToItemsRepository
 	logger               *slog.Logger
 }
 
-func NewItemsService(itemsRepository *ItemsRepository,
-	tagsRepository *tags.TagsRepository,
-	tagToItemsRepository *tag_to_item.TagToItemsRepository,
+func NewItemsService(itemsRepository *repositories.ItemsRepository,
+	tagsRepository *repositories.TagsRepository,
+	tagToItemsRepository *repositories.TagToItemsRepository,
 	logger *slog.Logger) *ItemsService {
 	return &ItemsService{
 		itemsRepository:      itemsRepository,
@@ -33,7 +33,7 @@ func NewItemsService(itemsRepository *ItemsRepository,
 	}
 }
 
-func (service *ItemsService) Get(ctx context.Context, filter *ItemFilter) ([]ItemDto, int64, error) {
+func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter) ([]domains.ItemDto, int64, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
 	traces.RecordServiceSpan(span, "Get")
@@ -78,35 +78,35 @@ func (service *ItemsService) Get(ctx context.Context, filter *ItemFilter) ([]Ite
 		}
 	}
 
-	rawTags, _, err := service.tagsRepository.Get(ctx, &tags.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+	rawTags, _, err := service.tagsRepository.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
 	if err != nil {
 		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
 		return nil, 0, err
 	}
 
-	tagsById := make(map[uuid.UUID]tags.Tag, len(rawTags))
+	tagsById := make(map[uuid.UUID]domains.Tag, len(rawTags))
 	for _, tag := range rawTags {
 		tagsById[tag.Id] = tag
 	}
 
-	itemsWithTags := make(map[uuid.UUID][]tags.Tag)
+	itemsWithTags := make(map[uuid.UUID][]domains.Tag)
 	for _, tti := range rawTagToItems {
 		if tag, exists := tagsById[tti.TagId]; exists {
 			itemsWithTags[tti.ItemId] = append(itemsWithTags[tti.ItemId], tag)
 		}
 	}
 
-	items := make([]ItemDto, 0)
+	items := make([]domains.ItemDto, 0)
 	for _, item := range rawItems {
-		items = append(items, *NewItemDto(item, itemsWithTags[item.Id]))
+		items = append(items, *domains.NewItemDto(item, itemsWithTags[item.Id]))
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
 	return items, count, err
 }
 
-func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*ItemDto, error) {
+func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domains.ItemDto, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
 	traces.RecordServiceSpan(span, "GetById")
@@ -144,7 +144,7 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*ItemDt
 		}
 	}
 
-	rawTags, _, err := service.tagsRepository.Get(ctx, &tags.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+	rawTags, _, err := service.tagsRepository.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
 	if err != nil {
 		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
@@ -152,10 +152,10 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*ItemDt
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
-	return NewItemDto(*rawItem, rawTags), nil
+	return domains.NewItemDto(*rawItem, rawTags), nil
 }
 
-func (service *ItemsService) Create(ctx context.Context, create *ItemCreate) (uuid.UUID, error) {
+func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCreate) (uuid.UUID, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
 	traces.RecordServiceSpan(span, "Create")
@@ -192,11 +192,11 @@ func (service *ItemsService) Create(ctx context.Context, create *ItemCreate) (uu
 	toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 	if len(toDelete) > 0 {
-		_, err = service.tagToItemsRepository.BulkDelete(ctx, &tag_to_item.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
+		_, err = service.tagToItemsRepository.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
 	}
 
 	if len(toInsert) > 0 {
-		_, err = service.tagToItemsRepository.BulkInsert(ctx, &tag_to_item.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
+		_, err = service.tagToItemsRepository.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
 	}
 
 	if err != nil || newId == uuid.Nil {
@@ -212,7 +212,7 @@ func (service *ItemsService) Create(ctx context.Context, create *ItemCreate) (uu
 	return newId, err
 }
 
-func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, update *ItemUpdate) (bool, error) {
+func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, update *domains.ItemUpdate) (bool, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
 	traces.RecordServiceSpan(span, "Update")
@@ -255,11 +255,11 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 	toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 	if len(toDelete) > 0 {
-		success, err = service.tagToItemsRepository.BulkDelete(ctx, &tag_to_item.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
+		success, err = service.tagToItemsRepository.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
 	}
 
 	if len(toInsert) > 0 {
-		success, err = service.tagToItemsRepository.BulkInsert(ctx, &tag_to_item.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
+		success, err = service.tagToItemsRepository.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
 	}
 
 	if err != nil || !success {

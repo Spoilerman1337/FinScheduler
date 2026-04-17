@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"finscheduler/database"
+	featurehttp "finscheduler/internal/features/http"
+	"finscheduler/internal/features/repositories"
+	"finscheduler/internal/features/services"
 	"finscheduler/internal/health"
 	"finscheduler/internal/infra"
-	"finscheduler/internal/items"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/profiles"
-	"finscheduler/internal/tag_to_item"
-	"finscheduler/internal/tags"
 	"finscheduler/internal/traces"
 	"fmt"
 	"log"
@@ -77,15 +77,15 @@ func main() {
 	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	logger := slog.New(stdoutHandler)
 
-	itemsRepository := items.NewItemsRepository(db, logger)
-	tagsRepository := tags.NewTagsRepository(db, logger)
-	tagsToItemsRepository := tag_to_item.NewTagToItemsRepository(db, logger)
+	itemsRepository := repositories.NewItemsRepository(db, logger)
+	tagsRepository := repositories.NewTagsRepository(db, logger)
+	tagsToItemsRepository := repositories.NewTagToItemsRepository(db, logger)
 
-	itemsService := items.NewItemsService(itemsRepository, tagsRepository, tagsToItemsRepository, logger)
-	tagsService := tags.NewTagsService(tagsRepository, logger)
+	itemsService := services.NewItemsService(itemsRepository, tagsRepository, tagsToItemsRepository, logger)
+	tagsService := services.NewTagsService(tagsRepository, logger)
 
-	tagsHandler := tags.NewTagsHandler(tagsService, logger)
-	itemsHandler := items.NewItemsHandler(itemsService, logger)
+	tagsHandler := featurehttp.NewTagsHandler(tagsService, logger)
+	itemsHandler := featurehttp.NewItemsHandler(itemsService, logger)
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
