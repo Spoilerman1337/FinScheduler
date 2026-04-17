@@ -1,10 +1,12 @@
 //go:build integration
 // +build integration
 
-package repositories
+package repositories_test
 
 import (
 	"finscheduler/internal/features/domains"
+	"finscheduler/internal/features/repositories"
+	"finscheduler/tests/internal/testsupport"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,10 +16,10 @@ import (
 
 func Test_TagToItemsRepository_BulkInsertAndGetByItemIds_ShouldNotErr(t *testing.T) {
 	t.Cleanup(func() {
-		testDB.Exec("TRUNCATE items, tags, tag_to_item CASCADE")
+		testsupport.Truncate(t, testDB)
 	})
 
-	repo := NewTagToItemsRepository(testDB, testLogger)
+	repo := repositories.NewTagToItemsRepository(testDB, testLogger)
 
 	itemID := uuid.New()
 	tagID1 := uuid.New()
@@ -61,10 +63,10 @@ func Test_TagToItemsRepository_BulkInsertAndGetByItemIds_ShouldNotErr(t *testing
 
 func Test_TagToItemsRepository_BulkDelete_ShouldRemoveOnlySelectedTags(t *testing.T) {
 	t.Cleanup(func() {
-		testDB.Exec("TRUNCATE items, tags, tag_to_item CASCADE")
+		testsupport.Truncate(t, testDB)
 	})
 
-	repo := NewTagToItemsRepository(testDB, testLogger)
+	repo := repositories.NewTagToItemsRepository(testDB, testLogger)
 
 	itemID := uuid.New()
 	tagID1 := uuid.New()

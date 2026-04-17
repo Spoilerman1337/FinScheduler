@@ -1,11 +1,13 @@
 //go:build integration
 // +build integration
 
-package services
+package services_test
 
 import (
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/features/repositories"
+	"finscheduler/internal/features/services"
+	"finscheduler/tests/internal/testsupport"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,8 +16,12 @@ import (
 
 func Test_TagsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "tags")
+	})
+
 	repository := repositories.NewTagsRepository(testDB, testLogger)
-	svc := NewTagsService(repository, testLogger)
+	svc := services.NewTagsService(repository, testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Tag",
@@ -34,8 +40,12 @@ func Test_TagsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 
 func Test_TagsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "tags")
+	})
+
 	repository := repositories.NewTagsRepository(testDB, testLogger)
-	svc := NewTagsService(repository, testLogger)
+	svc := services.NewTagsService(repository, testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Ice",

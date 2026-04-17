@@ -21,6 +21,8 @@ type ItemsService struct {
 	logger               *slog.Logger
 }
 
+const maxPageSize int32 = 1<<31 - 1
+
 func NewItemsService(itemsRepository *repositories.ItemsRepository,
 	tagsRepository *repositories.TagsRepository,
 	tagToItemsRepository *repositories.TagToItemsRepository,
@@ -61,7 +63,7 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 	}
 
 	//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
-	pageSize := ^int32(0)
+	pageSize := maxPageSize
 	page := int32(0)
 
 	rawTagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, itemIds)
@@ -127,7 +129,7 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 	}
 
 	//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
-	pageSize := ^int32(0)
+	pageSize := maxPageSize
 	page := int32(0)
 
 	rawTagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, []uuid.UUID{id})

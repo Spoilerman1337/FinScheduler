@@ -1,10 +1,12 @@
 //go:build integration
 // +build integration
 
-package repositories
+package repositories_test
 
 import (
 	"finscheduler/internal/features/domains"
+	"finscheduler/internal/features/repositories"
+	"finscheduler/tests/internal/testsupport"
 	"testing"
 
 	"github.com/google/uuid"
@@ -16,10 +18,10 @@ import (
 func Test_TagsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
-		testDB.Exec("TRUNCATE tags CASCADE")
+		testsupport.Truncate(t, testDB, "tags")
 	})
 
-	repo := NewTagsRepository(testDB, testLogger)
+	repo := repositories.NewTagsRepository(testDB, testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Apple",
@@ -40,10 +42,10 @@ func Test_TagsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 func Test_TagsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
-		testDB.Exec("TRUNCATE tags CASCADE")
+		testsupport.Truncate(t, testDB, "tags")
 	})
 
-	repo := NewTagsRepository(testDB, testLogger)
+	repo := repositories.NewTagsRepository(testDB, testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Old",

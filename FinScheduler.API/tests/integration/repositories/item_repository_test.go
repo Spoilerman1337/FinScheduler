@@ -1,14 +1,16 @@
 //go:build integration
 // +build integration
 
-package repositories
+package repositories_test
 
 import (
 	"finscheduler/internal/features/domains"
-	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
+	"finscheduler/internal/features/repositories"
+	"finscheduler/tests/internal/testsupport"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,10 +18,10 @@ import (
 func Test_ItemsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
-		testDB.Exec("TRUNCATE items CASCADE")
+		testsupport.Truncate(t, testDB, "items")
 	})
 
-	repo := NewItemsRepository(testDB, testLogger)
+	repo := repositories.NewItemsRepository(testDB, testLogger)
 
 	create := &domains.ItemCreate{
 		Name:     "Apple",
@@ -44,10 +46,10 @@ func Test_ItemsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 func Test_ItemsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
-		testDB.Exec("TRUNCATE items CASCADE")
+		testsupport.Truncate(t, testDB, "items")
 	})
 
-	repo := NewItemsRepository(testDB, testLogger)
+	repo := repositories.NewItemsRepository(testDB, testLogger)
 
 	create := &domains.ItemCreate{
 		Name:     "Old",
@@ -80,10 +82,10 @@ func Test_ItemsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 func Test_ItemsRepository_DeleteAndGet_ShouldErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
-		testDB.Exec("TRUNCATE items CASCADE")
+		testsupport.Truncate(t, testDB, "items")
 	})
 
-	repo := NewItemsRepository(testDB, testLogger)
+	repo := repositories.NewItemsRepository(testDB, testLogger)
 
 	create := &domains.ItemCreate{
 		Name:     "Book",
