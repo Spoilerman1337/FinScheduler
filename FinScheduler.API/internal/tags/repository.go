@@ -79,7 +79,7 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *TagFilter) ([
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", selectQuery, "args", selectArgs)
 	selectStart := time.Now()
-	err := repository.db.Select(&tags, selectQuery, selectArgs...)
+	err := repository.db.SelectContext(ctx, &tags, selectQuery, selectArgs...)
 	metrics.RecordDatabaseDuration(ctx, selectStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
@@ -185,7 +185,7 @@ func (repository *TagsRepository) GetLookup(ctx context.Context, filter *TagFilt
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", selectQuery, "args", selectArgs)
 	selectStart := time.Now()
-	err := repository.db.Select(&tags, selectQuery, selectArgs...)
+	err := repository.db.SelectContext(ctx, &tags, selectQuery, selectArgs...)
 	metrics.RecordDatabaseDuration(ctx, selectStart, databaseDriver, tableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)

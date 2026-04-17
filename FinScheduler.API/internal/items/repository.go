@@ -159,7 +159,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *ItemFilter) 
 
 	repository.logger.InfoContext(ctx, "executing operation:", "itemsQuery", itemsSelectQuery, "args", itemsSelectArgs)
 	itemsSelectStart := time.Now()
-	err := repository.db.Select(&items, itemsSelectQuery, itemsSelectArgs...)
+	err := repository.db.SelectContext(ctx, &items, itemsSelectQuery, itemsSelectArgs...)
 	metrics.RecordDatabaseDuration(ctx, itemsSelectStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)

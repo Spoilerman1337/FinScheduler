@@ -57,7 +57,7 @@ func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemId
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "itemIds", itemIds)
 	start := time.Now()
-	err = repository.db.Select(&tagToItems, query, inArgs)
+	err = repository.db.SelectContext(ctx, &tagToItems, query, inArgs)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
