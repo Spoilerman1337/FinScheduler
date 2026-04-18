@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"finscheduler/internal/features/domains"
-	"finscheduler/internal/features/repositories"
+	"finscheduler/internal/persistence"
 	"finscheduler/internal/traces"
 	"fmt"
 	"log/slog"
@@ -13,14 +13,14 @@ import (
 )
 
 type TagsService struct {
-	repository *repositories.TagsRepository
-	logger     *slog.Logger
+	uow    *persistence.UnitOfWork
+	logger *slog.Logger
 }
 
-func NewTagsService(repository *repositories.TagsRepository, logger *slog.Logger) *TagsService {
+func NewTagsService(uow *persistence.UnitOfWork, logger *slog.Logger) *TagsService {
 	return &TagsService{
-		repository: repository,
-		logger:     logger,
+		uow:    uow,
+		logger: logger,
 	}
 }
 
@@ -37,18 +37,30 @@ func (service *TagsService) Get(ctx context.Context, filter *domains.TagFilter) 
 		return nil, 0, err
 	}
 
-	rawTags, count, err := service.repository.Get(ctx, filter)
-	if err != nil {
-		service.logger.ErrorContext(ctx, "Get tags failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
-		return nil, 0, err
-	}
+	var tags []domains.TagDto
+	var count int64
 
-	tags := make([]domains.TagDto, 0)
-	if rawTags != nil && len(rawTags) > 0 {
-		for _, tag := range rawTags {
-			tags = append(tags, *domains.NewTagDto(tag))
+	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
+		rawTags, rawTagsCount, err := repositories.Tags.Get(ctx, filter)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tags failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
 		}
+
+		count = rawTagsCount
+
+		tags = make([]domains.TagDto, 0)
+		if rawTags != nil && len(rawTags) > 0 {
+			for _, tag := range rawTags {
+				tags = append(tags, *domains.NewTagDto(tag))
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, 0, err
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
@@ -68,15 +80,26 @@ func (service *TagsService) GetById(ctx context.Context, id uuid.UUID) (*domains
 		return nil, err
 	}
 
-	rawTag, err := service.repository.GetById(ctx, id)
+	var tag *domains.TagDto
+
+	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
+		rawTag, err := repositories.Tags.GetById(ctx, id)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tags failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
+		}
+
+		tag = domains.NewTagDto(*rawTag)
+
+		return nil
+	})
 	if err != nil {
-		service.logger.ErrorContext(ctx, "Get tags failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
 		return nil, err
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
-	return domains.NewTagDto(*rawTag), err
+	return tag, err
 }
 
 func (service *TagsService) GetLookup(ctx context.Context, filter *domains.TagFilter) ([]domains.Lookup, int64, error) {
@@ -92,10 +115,23 @@ func (service *TagsService) GetLookup(ctx context.Context, filter *domains.TagFi
 		return nil, 0, err
 	}
 
-	tags, count, err := service.repository.GetLookup(ctx, filter)
+	var tags []domains.Lookup
+	var count int64
+
+	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
+		rawTags, rawTagsCount, err := repositories.Tags.GetLookup(ctx, filter)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tags failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
+		}
+
+		tags = rawTags
+		count = rawTagsCount
+
+		return nil
+	})
 	if err != nil {
-		service.logger.ErrorContext(ctx, "Get tags failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
 		return nil, 0, err
 	}
 
@@ -116,7 +152,21 @@ func (service *TagsService) Create(ctx context.Context, create *domains.TagCreat
 		return uuid.Nil, err
 	}
 
-	newId, err := service.repository.Create(ctx, create)
+	var newId uuid.UUID
+
+	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var err error
+		newId, err = repositories.Tags.Create(ctx, create)
+
+		if err != nil || newId == uuid.Nil {
+			if err == nil {
+				err = fmt.Errorf("failed to create tag: repository returned nil uuid")
+			}
+			return err
+		}
+
+		return nil
+	})
 
 	if err != nil || newId == uuid.Nil {
 		if err == nil {
@@ -150,7 +200,21 @@ func (service *TagsService) Update(ctx context.Context, tagID uuid.UUID, update 
 		return false, err
 	}
 
-	success, err := service.repository.Update(ctx, tagID, update)
+	var success bool
+
+	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var err error
+		success, err = repositories.Tags.Update(ctx, tagID, update)
+
+		if err != nil || !success {
+			if err == nil {
+				err = fmt.Errorf("failed to update tag: repository returned nil uuid")
+			}
+			return err
+		}
+
+		return nil
+	})
 
 	if err != nil || !success {
 		if err == nil {

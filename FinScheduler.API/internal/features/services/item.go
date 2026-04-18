@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"finscheduler/internal/features/domains"
-	"finscheduler/internal/features/repositories"
+	"finscheduler/internal/persistence"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/dh"
 	"finscheduler/pkg/rh"
@@ -15,23 +15,16 @@ import (
 )
 
 type ItemsService struct {
-	itemsRepository      *repositories.ItemsRepository
-	tagsRepository       *repositories.TagsRepository
-	tagToItemsRepository *repositories.TagToItemsRepository
-	logger               *slog.Logger
+	uow    *persistence.UnitOfWork
+	logger *slog.Logger
 }
 
 const maxPageSize int32 = 1<<31 - 1
 
-func NewItemsService(itemsRepository *repositories.ItemsRepository,
-	tagsRepository *repositories.TagsRepository,
-	tagToItemsRepository *repositories.TagToItemsRepository,
-	logger *slog.Logger) *ItemsService {
+func NewItemsService(uow *persistence.UnitOfWork, logger *slog.Logger) *ItemsService {
 	return &ItemsService{
-		itemsRepository:      itemsRepository,
-		tagsRepository:       tagsRepository,
-		tagToItemsRepository: tagToItemsRepository,
-		logger:               logger,
+		uow:    uow,
+		logger: logger,
 	}
 }
 
@@ -48,60 +41,72 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 		return nil, 0, err
 	}
 
-	rawItems, count, err := service.itemsRepository.Get(ctx, filter)
-	if err != nil {
-		service.logger.ErrorContext(ctx, "Get items failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
-		return nil, 0, err
-	}
+	var items []domains.ItemDto
+	var count int64
 
-	var itemIds []uuid.UUID
-	if rawItems != nil {
+	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
+		rawItems, rawItemsCount, err := repositories.Items.Get(ctx, filter)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get items failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
+		}
+
+		count = rawItemsCount
+
+		var itemIds []uuid.UUID
+		if rawItems != nil {
+			for _, item := range rawItems {
+				itemIds = append(itemIds, item.Id)
+			}
+		}
+
+		//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
+		pageSize := maxPageSize
+		page := int32(0)
+
+		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, itemIds)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
+		}
+
+		tagIds := make([]*uuid.UUID, len(rawTagToItems))
+		if len(rawTagToItems) > 0 {
+			for i, tag := range rawTagToItems {
+				tagIds[i] = &tag.TagId
+			}
+		}
+
+		rawTags, _, err := repositories.Tags.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
+		}
+
+		tagsById := make(map[uuid.UUID]domains.Tag, len(rawTags))
+		for _, tag := range rawTags {
+			tagsById[tag.Id] = tag
+		}
+
+		itemsWithTags := make(map[uuid.UUID][]domains.Tag)
+		for _, tti := range rawTagToItems {
+			if tag, exists := tagsById[tti.TagId]; exists {
+				itemsWithTags[tti.ItemId] = append(itemsWithTags[tti.ItemId], tag)
+			}
+		}
+
+		items = make([]domains.ItemDto, 0)
 		for _, item := range rawItems {
-			itemIds = append(itemIds, item.Id)
+			items = append(items, *domains.NewItemDto(item, itemsWithTags[item.Id]))
 		}
-	}
 
-	//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
-	pageSize := maxPageSize
-	page := int32(0)
-
-	rawTagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, itemIds)
+		return nil
+	})
 	if err != nil {
-		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
 		return nil, 0, err
-	}
-
-	tagIds := make([]*uuid.UUID, len(rawTagToItems))
-	if len(rawTagToItems) > 0 {
-		for i, tag := range rawTagToItems {
-			tagIds[i] = &tag.TagId
-		}
-	}
-
-	rawTags, _, err := service.tagsRepository.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
-	if err != nil {
-		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
-		return nil, 0, err
-	}
-
-	tagsById := make(map[uuid.UUID]domains.Tag, len(rawTags))
-	for _, tag := range rawTags {
-		tagsById[tag.Id] = tag
-	}
-
-	itemsWithTags := make(map[uuid.UUID][]domains.Tag)
-	for _, tti := range rawTagToItems {
-		if tag, exists := tagsById[tti.TagId]; exists {
-			itemsWithTags[tti.ItemId] = append(itemsWithTags[tti.ItemId], tag)
-		}
-	}
-
-	items := make([]domains.ItemDto, 0)
-	for _, item := range rawItems {
-		items = append(items, *domains.NewItemDto(item, itemsWithTags[item.Id]))
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
@@ -121,40 +126,51 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 		return nil, err
 	}
 
-	rawItem, err := service.itemsRepository.GetById(ctx, id)
-	if err != nil {
-		service.logger.ErrorContext(ctx, "Get items failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
-		return nil, err
-	}
+	var item *domains.ItemDto
 
-	//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
-	pageSize := maxPageSize
-	page := int32(0)
-
-	rawTagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, []uuid.UUID{id})
-	if err != nil {
-		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
-		return nil, err
-	}
-
-	tagIds := make([]*uuid.UUID, len(rawTagToItems))
-	if len(rawTagToItems) > 0 {
-		for i, tag := range rawTagToItems {
-			tagIds[i] = &tag.TagId
+	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
+		rawItem, err := repositories.Items.GetById(ctx, id)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get items failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
 		}
-	}
 
-	rawTags, _, err := service.tagsRepository.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+		//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
+		pageSize := maxPageSize
+		page := int32(0)
+
+		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{id})
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
+		}
+
+		tagIds := make([]*uuid.UUID, len(rawTagToItems))
+		if len(rawTagToItems) > 0 {
+			for i, tag := range rawTagToItems {
+				tagIds[i] = &tag.TagId
+			}
+		}
+
+		rawTags, _, err := repositories.Tags.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			return err
+		}
+
+		item = domains.NewItemDto(*rawItem, rawTags)
+
+		return nil
+	})
 	if err != nil {
-		service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-		traces.EnrichFailedServiceSpan(span, err)
 		return nil, err
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
-	return domains.NewItemDto(*rawItem, rawTags), nil
+	return item, nil
 }
 
 func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCreate) (uuid.UUID, error) {
@@ -170,36 +186,51 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		return uuid.Nil, err
 	}
 
-	newId, err := service.itemsRepository.Create(ctx, create)
+	var newId uuid.UUID
 
-	tagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, []uuid.UUID{newId})
+	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var err error
 
-	var currentTagIds []uuid.UUID
-	if tagToItems != nil && len(tagToItems) > 0 {
-		for _, tagToItem := range tagToItems {
-			currentTagIds = append(currentTagIds, tagToItem.TagId)
-		}
-	}
+		newId, err = repositories.Items.Create(ctx, create)
 
-	var updateTagIds []uuid.UUID
-	if create.TagIds != nil && len(create.TagIds) > 0 {
-		for _, tagId := range create.TagIds {
-			uuidTagId, err := uuid.Parse(tagId)
-			if err == nil {
-				updateTagIds = append(updateTagIds, uuidTagId)
+		tagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{newId})
+
+		var currentTagIds []uuid.UUID
+		if tagToItems != nil && len(tagToItems) > 0 {
+			for _, tagToItem := range tagToItems {
+				currentTagIds = append(currentTagIds, tagToItem.TagId)
 			}
 		}
-	}
 
-	toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
+		var updateTagIds []uuid.UUID
+		if create.TagIds != nil && len(create.TagIds) > 0 {
+			for _, tagId := range create.TagIds {
+				uuidTagId, err := uuid.Parse(tagId)
+				if err == nil {
+					updateTagIds = append(updateTagIds, uuidTagId)
+				}
+			}
+		}
 
-	if len(toDelete) > 0 {
-		_, err = service.tagToItemsRepository.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
-	}
+		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
-	if len(toInsert) > 0 {
-		_, err = service.tagToItemsRepository.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
-	}
+		if len(toDelete) > 0 {
+			_, err = repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
+		}
+
+		if len(toInsert) > 0 {
+			_, err = repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
+		}
+
+		if err != nil || newId == uuid.Nil {
+			if err == nil {
+				err = fmt.Errorf("failed to create item: repository returned nil uuid")
+			}
+			return err
+		}
+
+		return nil
+	})
 
 	if err != nil || newId == uuid.Nil {
 		if err == nil {
@@ -233,36 +264,51 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		return false, err
 	}
 
-	success, err := service.itemsRepository.Update(ctx, itemID, update)
+	var success bool
 
-	tagToItems, err := service.tagToItemsRepository.GetByItemIds(ctx, []uuid.UUID{itemID})
+	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var err error
 
-	var currentTagIds []uuid.UUID
-	if tagToItems != nil && len(tagToItems) > 0 {
-		for _, tagToItem := range tagToItems {
-			currentTagIds = append(currentTagIds, tagToItem.TagId)
-		}
-	}
+		success, err = repositories.Items.Update(ctx, itemID, update)
 
-	var updateTagIds []uuid.UUID
-	if update.TagIds != nil && len(update.TagIds) > 0 {
-		for _, tagId := range update.TagIds {
-			uuidTagId, err := uuid.Parse(tagId)
-			if err == nil {
-				updateTagIds = append(updateTagIds, uuidTagId)
+		tagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{itemID})
+
+		var currentTagIds []uuid.UUID
+		if tagToItems != nil && len(tagToItems) > 0 {
+			for _, tagToItem := range tagToItems {
+				currentTagIds = append(currentTagIds, tagToItem.TagId)
 			}
 		}
-	}
 
-	toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
+		var updateTagIds []uuid.UUID
+		if update.TagIds != nil && len(update.TagIds) > 0 {
+			for _, tagId := range update.TagIds {
+				uuidTagId, err := uuid.Parse(tagId)
+				if err == nil {
+					updateTagIds = append(updateTagIds, uuidTagId)
+				}
+			}
+		}
 
-	if len(toDelete) > 0 {
-		success, err = service.tagToItemsRepository.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
-	}
+		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
-	if len(toInsert) > 0 {
-		success, err = service.tagToItemsRepository.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
-	}
+		if len(toDelete) > 0 {
+			success, err = repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
+		}
+
+		if len(toInsert) > 0 {
+			success, err = repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
+		}
+
+		if err != nil || !success {
+			if err == nil {
+				err = fmt.Errorf("failed to update item: repository returned nil uuid")
+			}
+			return err
+		}
+
+		return nil
+	})
 
 	if err != nil || !success {
 		if err == nil {
@@ -289,7 +335,21 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 		return false, err
 	}
 
-	success, err := service.itemsRepository.Delete(ctx, itemID)
+	var success bool
+
+	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var err error
+		success, err = repositories.Items.Delete(ctx, itemID)
+
+		if err != nil || !success {
+			if err == nil {
+				err = fmt.Errorf("failed to delete item: repository returned nil uuid")
+			}
+			return err
+		}
+
+		return nil
+	})
 
 	if err != nil || !success {
 		if err == nil {

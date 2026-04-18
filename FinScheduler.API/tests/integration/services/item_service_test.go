@@ -5,11 +5,12 @@ package services_test
 
 import (
 	"finscheduler/internal/features/domains"
-	"finscheduler/internal/features/repositories"
 	"finscheduler/internal/features/services"
+	"finscheduler/internal/persistence"
 	"finscheduler/tests/internal/testsupport"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/stretchr/testify/assert"
@@ -22,10 +23,8 @@ func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB)
 	})
 
-	itemsRepository := repositories.NewItemsRepository(testDB, testLogger)
-	tagsRepository := repositories.NewTagsRepository(testDB, testLogger)
-	tagToItemsRepository := repositories.NewTagToItemsRepository(testDB, testLogger)
-	svc := services.NewItemsService(itemsRepository, tagsRepository, tagToItemsRepository, testLogger)
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewItemsService(uow, testLogger)
 
 	create := &domains.ItemCreate{
 		Name:     "Item",
@@ -49,10 +48,8 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB)
 	})
 
-	itemsRepository := repositories.NewItemsRepository(testDB, testLogger)
-	tagsRepository := repositories.NewTagsRepository(testDB, testLogger)
-	tagToItemsRepository := repositories.NewTagToItemsRepository(testDB, testLogger)
-	svc := services.NewItemsService(itemsRepository, tagsRepository, tagToItemsRepository, testLogger)
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewItemsService(uow, testLogger)
 
 	create := &domains.ItemCreate{
 		Name:     "Ice",
@@ -88,10 +85,8 @@ func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 		testsupport.Truncate(t, testDB)
 	})
 
-	itemsRepository := repositories.NewItemsRepository(testDB, testLogger)
-	tagsRepository := repositories.NewTagsRepository(testDB, testLogger)
-	tagToItemsRepository := repositories.NewTagToItemsRepository(testDB, testLogger)
-	svc := services.NewItemsService(itemsRepository, tagsRepository, tagToItemsRepository, testLogger)
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewItemsService(uow, testLogger)
 
 	create := &domains.ItemCreate{
 		Name:     "Orange",
@@ -112,4 +107,32 @@ func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 	// Assert
 	assert.Nil(t, item)
 	assert.Error(t, err)
+}
+
+func Test_ItemsService_Create_ShouldRollbackItemWhenTagInsertFails(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewItemsService(uow, testLogger)
+
+	create := &domains.ItemCreate{
+		Name:     "Rollback",
+		Price:    decimal.NewFromFloat(15.50),
+		Category: "FoodDrinks",
+		TagIds:   []string{uuid.New().String()},
+	}
+
+	// Act
+	id, err := svc.Create(testContext, create)
+
+	// Assert
+	require.Error(t, err)
+	assert.NotEqual(t, uuid.Nil, id)
+
+	var count int
+	require.NoError(t, testDB.Get(&count, "SELECT COUNT(*) FROM items WHERE name = $1", create.Name))
+	assert.Equal(t, 0, count)
 }

@@ -4,11 +4,11 @@ import (
 	"context"
 	"finscheduler/database"
 	featurehttp "finscheduler/internal/features/http"
-	"finscheduler/internal/features/repositories"
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/health"
 	"finscheduler/internal/infra"
 	"finscheduler/internal/metrics"
+	"finscheduler/internal/persistence"
 	"finscheduler/internal/profiles"
 	"finscheduler/internal/traces"
 	"fmt"
@@ -77,12 +77,10 @@ func main() {
 	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	logger := slog.New(stdoutHandler)
 
-	itemsRepository := repositories.NewItemsRepository(db, logger)
-	tagsRepository := repositories.NewTagsRepository(db, logger)
-	tagsToItemsRepository := repositories.NewTagToItemsRepository(db, logger)
+	uow := persistence.NewUnitOfWork(db, logger)
 
-	itemsService := services.NewItemsService(itemsRepository, tagsRepository, tagsToItemsRepository, logger)
-	tagsService := services.NewTagsService(tagsRepository, logger)
+	itemsService := services.NewItemsService(uow, logger)
+	tagsService := services.NewTagsService(uow, logger)
 
 	tagsHandler := featurehttp.NewTagsHandler(tagsService, logger)
 	itemsHandler := featurehttp.NewItemsHandler(itemsService, logger)

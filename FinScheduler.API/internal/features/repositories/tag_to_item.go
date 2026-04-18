@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/traces"
@@ -18,11 +17,11 @@ import (
 )
 
 type TagToItemsRepository struct {
-	db     *sqlx.DB
+	db     DBTX
 	logger *slog.Logger
 }
 
-func NewTagToItemsRepository(db *sqlx.DB, logger *slog.Logger) *TagToItemsRepository {
+func NewTagToItemsRepository(db DBTX, logger *slog.Logger) *TagToItemsRepository {
 	return &TagToItemsRepository{db: db, logger: logger}
 }
 
@@ -55,7 +54,7 @@ func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemId
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "itemIds", itemIds)
 	start := time.Now()
-	err = repository.db.SelectContext(ctx, &tagToItems, query, inArgs...)
+	err = sqlx.SelectContext(ctx, repository.db, &tagToItems, query, inArgs...)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
@@ -77,20 +76,6 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
 	defer span.End()
 
-	transaction, err := repository.db.Beginx()
-	defer func() {
-		if p := recover(); p != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-			panic(p)
-		} else if err != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-		}
-	}()
-
 	args := make([]interface{}, 0, len(create.TagIds)*2)
 	values := make([]string, 0, len(create.TagIds))
 
@@ -104,7 +89,7 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
-	res, err := transaction.ExecContext(ctx, query, args...)
+	res, err := repository.db.ExecContext(ctx, query, args...)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
@@ -118,14 +103,6 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, true, metrics.DatabaseOperationInsert)
 	}
 
-	err = transaction.Commit()
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
-
 	traces.EnrichSuccessRepositorySpanWrite(span, affected)
 	return affected > 0, err
 }
@@ -136,33 +113,12 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationDelete)
 	defer span.End()
 
-	transaction, err := repository.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
-	defer func() {
-		if p := recover(); p != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-			panic(p)
-		} else if err != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-		}
-	}()
-
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "transaction error", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
-
 	query := `DELETE FROM public.tag_to_item WHERE item_id = ? AND tag_id IN (?)`
 	query, inArgs, err := sqlx.In(query, *delete.ItemId, rh.DereferenceSlice(delete.TagIds))
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "fetching delete tag to items:", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)
 	start := time.Now()
-	result, err := transaction.ExecContext(ctx, query, inArgs...)
+	result, err := repository.db.ExecContext(ctx, query, inArgs...)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)
@@ -171,13 +127,6 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 		return false, err
 	}
 
-	err = transaction.Commit()
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on commit item", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)

@@ -17,11 +17,11 @@ import (
 )
 
 type ItemsRepository struct {
-	db     *sqlx.DB
+	db     DBTX
 	logger *slog.Logger
 }
 
-func NewItemsRepository(db *sqlx.DB, logger *slog.Logger) *ItemsRepository {
+func NewItemsRepository(db DBTX, logger *slog.Logger) *ItemsRepository {
 	return &ItemsRepository{db: db, logger: logger}
 }
 
@@ -157,7 +157,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 
 	repository.logger.InfoContext(ctx, "executing operation:", "itemsQuery", itemsSelectQuery, "args", itemsSelectArgs)
 	itemsSelectStart := time.Now()
-	err := repository.db.SelectContext(ctx, &items, itemsSelectQuery, itemsSelectArgs...)
+	err := sqlx.SelectContext(ctx, repository.db, &items, itemsSelectQuery, itemsSelectArgs...)
 	metrics.RecordDatabaseDuration(ctx, itemsSelectStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
@@ -174,7 +174,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 
 	repository.logger.InfoContext(ctx, "executing operation:", "itemsQuery", itemsCountQuery, "args", itemsCountArgs)
 	itemsCountStart := time.Now()
-	err = repository.db.Get(&count, itemsCountQuery, itemsCountArgs...)
+	err = sqlx.GetContext(ctx, repository.db, &count, itemsCountQuery, itemsCountArgs...)
 	metrics.RecordDatabaseDuration(ctx, itemsCountStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
@@ -211,7 +211,7 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)
 	start := time.Now()
-	err := repository.db.Get(&item, query, id)
+	err := sqlx.GetContext(ctx, repository.db, &item, query, id)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
 
 	if err != nil {
@@ -233,20 +233,6 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *domains.I
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationInsert)
 	defer span.End()
 
-	transaction, err := repository.db.Beginx()
-	defer func() {
-		if p := recover(); p != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-			panic(p)
-		} else if err != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-		}
-	}()
-
 	newID, err := uuid.NewV7()
 	now := time.Now().UTC()
 
@@ -261,7 +247,7 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *domains.I
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
-	res, err := transaction.ExecContext(ctx, query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
+	res, err := repository.db.ExecContext(ctx, query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
@@ -276,8 +262,6 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *domains.I
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationInsert)
 	}
 
-	err = transaction.Commit()
-
 	traces.EnrichSuccessRepositorySpanWrite(span, affected)
 	return newID, err
 }
@@ -288,28 +272,7 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationUpdate)
 	defer span.End()
 
-	transaction, err := repository.db.Beginx()
-	defer func() {
-		if p := recover(); p != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-			panic(p)
-		} else if err != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-		}
-	}()
-
 	now := time.Now().UTC()
-
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "transaction error", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
 
 	query := "UPDATE public.items SET name = ?, price = ?, description = ?, is_active = ?, updated_at = ?, cashback = ?, category = ? WHERE id = ?"
 	query = repository.db.Rebind(query)
@@ -317,7 +280,7 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 		itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
 		update.IsActive, "updatedAt", now, "cashback", update.Cashback, "category", update.Category)
 	updateStart := time.Now()
-	result, err := transaction.ExecContext(ctx, query, update.Name, update.Price, update.Description, update.IsActive,
+	result, err := repository.db.ExecContext(ctx, query, update.Name, update.Price, update.Description, update.IsActive,
 		sql.NullTime{Time: now, Valid: true}, update.Cashback, update.Category, itemID)
 	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
@@ -329,13 +292,6 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 		return false, err
 	}
 
-	err = transaction.Commit()
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on commit item", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)
@@ -362,32 +318,11 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationDelete)
 	defer span.End()
 
-	transaction, err := repository.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
-	defer func() {
-		if p := recover(); p != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-			panic(p)
-		} else if err != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-		}
-	}()
-
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "transaction error", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
-
 	query := "DELETE FROM public.items WHERE id = ?"
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "fetching delete item:", "query", query, "id", itemID)
 	start := time.Now()
-	result, err := transaction.ExecContext(ctx, query, itemID)
+	result, err := repository.db.ExecContext(ctx, query, itemID)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "error", err, "id", itemID)
@@ -396,13 +331,6 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 		return false, err
 	}
 
-	err = transaction.Commit()
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on commit item", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationDelete)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)

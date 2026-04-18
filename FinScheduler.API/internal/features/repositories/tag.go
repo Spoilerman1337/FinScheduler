@@ -15,11 +15,11 @@ import (
 )
 
 type TagsRepository struct {
-	db     *sqlx.DB
+	db     DBTX
 	logger *slog.Logger
 }
 
-func NewTagsRepository(db *sqlx.DB, logger *slog.Logger) *TagsRepository {
+func NewTagsRepository(db DBTX, logger *slog.Logger) *TagsRepository {
 	return &TagsRepository{db: db, logger: logger}
 }
 
@@ -76,7 +76,7 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", selectQuery, "args", selectArgs)
 	selectStart := time.Now()
-	err := repository.db.SelectContext(ctx, &tags, selectQuery, selectArgs...)
+	err := sqlx.SelectContext(ctx, repository.db, &tags, selectQuery, selectArgs...)
 	metrics.RecordDatabaseDuration(ctx, selectStart, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
@@ -93,7 +93,7 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", countQuery, "args", countArgs)
 	countStart := time.Now()
-	err = repository.db.Get(&count, countQuery, countArgs...)
+	err = sqlx.GetContext(ctx, repository.db, &count, countQuery, countArgs...)
 	metrics.RecordDatabaseDuration(ctx, countStart, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
@@ -130,7 +130,7 @@ func (repository *TagsRepository) GetById(ctx context.Context, id uuid.UUID) (*d
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)
 	start := time.Now()
-	err := repository.db.Get(&tag, query, id)
+	err := sqlx.GetContext(ctx, repository.db, &tag, query, id)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
 
 	if err != nil {
@@ -182,7 +182,7 @@ func (repository *TagsRepository) GetLookup(ctx context.Context, filter *domains
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", selectQuery, "args", selectArgs)
 	selectStart := time.Now()
-	err := repository.db.SelectContext(ctx, &tags, selectQuery, selectArgs...)
+	err := sqlx.SelectContext(ctx, repository.db, &tags, selectQuery, selectArgs...)
 	metrics.RecordDatabaseDuration(ctx, selectStart, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
@@ -199,7 +199,7 @@ func (repository *TagsRepository) GetLookup(ctx context.Context, filter *domains
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", countQuery, "args", countArgs)
 	countStart := time.Now()
-	err = repository.db.Get(&count, countQuery, countArgs...)
+	err = sqlx.GetContext(ctx, repository.db, &count, countQuery, countArgs...)
 	metrics.RecordDatabaseDuration(ctx, countStart, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
@@ -257,33 +257,12 @@ func (repository *TagsRepository) Update(ctx context.Context, tagID uuid.UUID, u
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationUpdate)
 	defer span.End()
 
-	transaction, err := repository.db.Beginx()
-	defer func() {
-		if p := recover(); p != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-			panic(p)
-		} else if err != nil {
-			if rbErr := transaction.Rollback(); rbErr != nil {
-				repository.logger.ErrorContext(ctx, "rollback failed", "error", rbErr)
-			}
-		}
-	}()
-
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "transaction error", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationNone)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
-
 	query := "UPDATE public.tags SET name = ?, is_active = ? WHERE id = ?"
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "updating an tag:", "id", tagID, "name", update.Name,
 		"isActive", update.IsActive)
 	updateStart := time.Now()
-	result, err := transaction.ExecContext(ctx, query, update.Name, update.IsActive, tagID)
+	result, err := repository.db.ExecContext(ctx, query, update.Name, update.IsActive, tagID)
 	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on UPDATE operation", "error", err, "id", tagID, "name",
@@ -293,13 +272,6 @@ func (repository *TagsRepository) Update(ctx context.Context, tagID uuid.UUID, u
 		return false, err
 	}
 
-	err = transaction.Commit()
-	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on commit tag", "error", err)
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationUpdate)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-		return false, err
-	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)

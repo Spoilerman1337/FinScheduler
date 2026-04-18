@@ -5,8 +5,8 @@ package services_test
 
 import (
 	"finscheduler/internal/features/domains"
-	"finscheduler/internal/features/repositories"
 	"finscheduler/internal/features/services"
+	"finscheduler/internal/persistence"
 	"finscheduler/tests/internal/testsupport"
 	"testing"
 
@@ -20,8 +20,8 @@ func Test_TagsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB, "tags")
 	})
 
-	repository := repositories.NewTagsRepository(testDB, testLogger)
-	svc := services.NewTagsService(repository, testLogger)
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewTagsService(uow, testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Tag",
@@ -44,8 +44,8 @@ func Test_TagsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB, "tags")
 	})
 
-	repository := repositories.NewTagsRepository(testDB, testLogger)
-	svc := services.NewTagsService(repository, testLogger)
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewTagsService(uow, testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Ice",
