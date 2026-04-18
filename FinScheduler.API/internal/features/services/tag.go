@@ -67,7 +67,7 @@ func (service *TagsService) Get(ctx context.Context, filter *domains.TagFilter) 
 	return tags, count, err
 }
 
-func (service *TagsService) GetLookup(ctx context.Context, filter *domains.TagFilter) ([]domains.Lookup, int64, error) {
+func (service *TagsService) GetLookup(ctx context.Context, filter *domains.TagLookupFilter) ([]domains.Lookup, int64, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-service")
 	traces.RecordServiceSpan(span, "Get")

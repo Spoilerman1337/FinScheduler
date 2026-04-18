@@ -162,7 +162,7 @@ func (repository *TagsRepository) GetByIds(ctx context.Context, ids []uuid.UUID)
 	return tags, nil
 }
 
-func (repository *TagsRepository) GetLookup(ctx context.Context, filter *domains.TagFilter) ([]domains.Lookup, int64, error) {
+func (repository *TagsRepository) GetLookup(ctx context.Context, filter *domains.TagLookupFilter) ([]domains.Lookup, int64, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)

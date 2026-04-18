@@ -98,7 +98,7 @@ func (handler *TagsHandler) GetLookup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter := domains.NewTagsFilter(r)
+	filter := domains.NewTagLookupFilter(r)
 
 	if err := filter.Validate(); err != nil {
 		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)

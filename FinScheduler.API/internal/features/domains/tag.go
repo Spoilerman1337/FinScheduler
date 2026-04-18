@@ -67,6 +67,20 @@ func NewTagsFilter(r *http.Request) TagFilter {
 	}
 }
 
+func NewTagLookupFilter(r *http.Request) TagLookupFilter {
+	queryParams := r.URL.Query()
+
+	name := qh.ParseString(queryParams, "name")
+	page := qh.ParseInt32(queryParams, "page")
+	pageSize := qh.ParseInt32(queryParams, "pageSize")
+
+	return TagLookupFilter{
+		Name:     name,
+		Page:     page,
+		PageSize: pageSize,
+	}
+}
+
 func NewTagDto(tag Tag) *TagDto {
 	return &TagDto{
 		Id:       &tag.Id,
@@ -92,6 +106,17 @@ func (item *TagUpdate) Validate() error {
 }
 
 func (item *TagFilter) Validate() error {
+	if item.Page == nil || *item.Page < 0 {
+		return fmt.Errorf("page is negative")
+	}
+	if item.PageSize == nil || *item.PageSize < 0 {
+		return fmt.Errorf("pageSize is negative")
+	}
+
+	return nil
+}
+
+func (item *TagLookupFilter) Validate() error {
 	if item.Page == nil || *item.Page < 0 {
 		return fmt.Errorf("page is negative")
 	}
