@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"net/http"
@@ -19,6 +20,20 @@ func RecordHTTPRequest(ctx context.Context, r *http.Request, route string, statu
 			attribute.String("path", r.URL.Path),
 			attribute.String("route", route),
 			attribute.Int("status", statusCode),
+		),
+	)
+}
+
+func RecordServiceFailure(ctx context.Context, service string, operation string, err error) {
+	if err == nil || Metrics.ServiceMetrics.Failed == nil {
+		return
+	}
+
+	Metrics.ServiceMetrics.Failed.Add(ctx, 1,
+		metric.WithAttributes(
+			attribute.String("service", service),
+			attribute.String("operation", operation),
+			attribute.String("error_type", fmt.Sprintf("%T", err)),
 		),
 	)
 }

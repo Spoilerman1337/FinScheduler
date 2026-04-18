@@ -136,12 +136,7 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 	}
 
 	success := rowsAffected > 0
-	if success {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, true, metrics.DatabaseOperationDelete)
-	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-	}
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, true, metrics.DatabaseOperationDelete)
 
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err

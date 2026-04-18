@@ -304,12 +304,7 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 	}
 
 	success := rowsAffected > 0
-	if success {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationUpdate)
-	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-	}
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationUpdate)
 
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err
@@ -343,12 +338,7 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 	}
 
 	success := rowsAffected > 0
-	if success {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationDelete)
-	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationDelete)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-	}
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationDelete)
 
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err

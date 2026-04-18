@@ -51,7 +51,7 @@ func newHTTPMetrics(meter metric.Meter) *HTTPMetrics {
 }
 
 func newServiceMetrics(meter metric.Meter) *ServiceMetrics {
-	failed, _ := meter.Int64Counter("items_failed_total")
+	failed, _ := meter.Int64Counter("service_failures_total")
 
 	return &ServiceMetrics{Failed: failed}
 }

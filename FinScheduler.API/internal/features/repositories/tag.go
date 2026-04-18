@@ -302,12 +302,7 @@ func (repository *TagsRepository) Update(ctx context.Context, tagID uuid.UUID, u
 	}
 
 	success := rowsAffected > 0
-	if success {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, true, metrics.DatabaseOperationUpdate)
-	} else {
-		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationUpdate)
-		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
-	}
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, true, metrics.DatabaseOperationUpdate)
 
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err

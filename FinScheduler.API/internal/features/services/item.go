@@ -2,7 +2,10 @@ package services
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"finscheduler/internal/features/domains"
+	"finscheduler/internal/metrics"
 	"finscheduler/internal/persistence"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/dh"
@@ -18,6 +21,8 @@ type ItemsService struct {
 	uow    *persistence.UnitOfWork
 	logger *slog.Logger
 }
+
+const itemsServiceName = "items"
 
 func NewItemsService(uow *persistence.UnitOfWork, logger *slog.Logger) *ItemsService {
 	return &ItemsService{
@@ -36,6 +41,7 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 		service.logger.ErrorContext(ctx, "filter is nil")
 		err := fmt.Errorf("filter is nil")
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
 		return nil, 0, err
 	}
 
@@ -47,6 +53,7 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
 			return err
 		}
 
@@ -63,6 +70,7 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
 			return err
 		}
 
@@ -77,6 +85,7 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
 			return err
 		}
 
@@ -117,6 +126,7 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 		service.logger.ErrorContext(ctx, "id is nil")
 		err := fmt.Errorf("id is nil")
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
 		return nil, err
 	}
 
@@ -125,8 +135,13 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
 		rawItem, err := repositories.Items.GetById(ctx, id)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+
 			service.logger.ErrorContext(ctx, "Get items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
 			return err
 		}
 
@@ -134,6 +149,7 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
 			return err
 		}
 
@@ -148,6 +164,7 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
 			return err
 		}
 
@@ -156,6 +173,10 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			traces.EnrichSuccessServiceSpan(span)
+		}
+
 		return nil, err
 	}
 
@@ -173,6 +194,7 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		service.logger.ErrorContext(ctx, "create is nil")
 		err := fmt.Errorf("create is nil")
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Create", err)
 		return uuid.Nil, err
 	}
 
@@ -182,8 +204,17 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		var err error
 
 		newId, err = repositories.Items.Create(ctx, create)
+		if err != nil {
+			return err
+		}
+		if newId == uuid.Nil {
+			return fmt.Errorf("failed to create item: repository returned nil uuid")
+		}
 
 		tagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{newId})
+		if err != nil {
+			return err
+		}
 
 		var currentTagIds []uuid.UUID
 		if tagToItems != nil && len(tagToItems) > 0 {
@@ -205,18 +236,23 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 		if len(toDelete) > 0 {
-			_, err = repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
+			success, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
+			if err != nil {
+				return err
+			}
+			if !success {
+				return fmt.Errorf("failed to create item: tag to item delete affected no rows")
+			}
 		}
 
 		if len(toInsert) > 0 {
-			_, err = repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
-		}
-
-		if err != nil || newId == uuid.Nil {
-			if err == nil {
-				err = fmt.Errorf("failed to create item: repository returned nil uuid")
+			success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
+			if err != nil {
+				return err
 			}
-			return err
+			if !success {
+				return fmt.Errorf("failed to create item: tag to item insert affected no rows")
+			}
 		}
 
 		return nil
@@ -228,6 +264,8 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		}
 		service.logger.ErrorContext(ctx, "error creating an item", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Create", err)
+		return newId, err
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
@@ -245,12 +283,14 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		service.logger.ErrorContext(ctx, "itemID is nil")
 		err := fmt.Errorf("itemID is nil")
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Update", err)
 		return false, err
 	}
 	if update == nil {
 		service.logger.ErrorContext(ctx, "update is nil")
 		err := fmt.Errorf("update is nil")
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Update", err)
 		return false, err
 	}
 
@@ -260,8 +300,17 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		var err error
 
 		success, err = repositories.Items.Update(ctx, itemID, update)
+		if err != nil {
+			return err
+		}
+		if !success {
+			return nil
+		}
 
 		tagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{itemID})
+		if err != nil {
+			return err
+		}
 
 		var currentTagIds []uuid.UUID
 		if tagToItems != nil && len(tagToItems) > 0 {
@@ -283,33 +332,37 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 		if len(toDelete) > 0 {
-			success, err = repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
+			tagSuccess, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
+			if err != nil {
+				return err
+			}
+			if !tagSuccess {
+				return fmt.Errorf("failed to update item: tag to item delete affected no rows")
+			}
 		}
 
 		if len(toInsert) > 0 {
-			success, err = repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
-		}
-
-		if err != nil || !success {
-			if err == nil {
-				err = fmt.Errorf("failed to update item: repository returned nil uuid")
+			tagSuccess, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
+			if err != nil {
+				return err
 			}
-			return err
+			if !tagSuccess {
+				return fmt.Errorf("failed to update item: tag to item insert affected no rows")
+			}
 		}
 
 		return nil
 	})
 
-	if err != nil || !success {
-		if err == nil {
-			err = fmt.Errorf("failed to update item: repository returned nil uuid")
-		}
+	if err != nil {
 		service.logger.ErrorContext(ctx, "error updating an item", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Update", err)
+		return success, err
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
-	return success, err
+	return success, nil
 }
 
 func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool, error) {
@@ -322,6 +375,7 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 		service.logger.ErrorContext(ctx, "itemID is nil")
 		err := fmt.Errorf("itemID is nil")
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Delete", err)
 		return false, err
 	}
 
@@ -331,24 +385,20 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 		var err error
 		success, err = repositories.Items.Delete(ctx, itemID)
 
-		if err != nil || !success {
-			if err == nil {
-				err = fmt.Errorf("failed to delete item: repository returned nil uuid")
-			}
+		if err != nil {
 			return err
 		}
 
 		return nil
 	})
 
-	if err != nil || !success {
-		if err == nil {
-			err = fmt.Errorf("failed to delete item: repository returned nil uuid")
-		}
+	if err != nil {
 		service.logger.ErrorContext(ctx, "error deleting an item", "error", err)
 		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Delete", err)
+		return success, err
 	}
 
 	traces.EnrichSuccessServiceSpan(span)
-	return success, err
+	return success, nil
 }
