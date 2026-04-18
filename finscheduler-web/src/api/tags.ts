@@ -18,21 +18,6 @@ export default class TagsService extends FinschedulerApiClient {
         return response.json();
     }
 
-    async getTagById(id: string): Promise<TagDto> {
-        const response = await fetch(`${this.baseUrl}/tags/${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch tag: ${response.statusText}`);
-        }
-
-        return response.json();
-    }
-
     async createTag(item: Omit<TagDto, 'id'>): Promise<string> {
         const response = await fetch(`${this.baseUrl}/tags`, {
             method: 'POST',
