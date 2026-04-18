@@ -35,11 +35,13 @@ func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 	id, err := svc.Create(testContext, create)
 	require.NoError(t, err)
 
-	item, err := svc.GetById(testContext, id)
+	items, count, err := svc.Get(testContext, newItemFilterByID(id))
 	require.NoError(t, err)
+	require.Len(t, items, 1)
 
 	// Assert
-	assert.Equal(t, "Item", *item.Name)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, "Item", *items[0].Name)
 }
 
 func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
@@ -71,12 +73,14 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	item, err := svc.GetById(testContext, id)
+	items, count, err := svc.Get(testContext, newItemFilterByID(id))
 	require.NoError(t, err)
+	require.Len(t, items, 1)
 
 	// Assert
-	assert.Equal(t, "Water", *item.Name)
-	assert.Equal(t, 15.50, *item.Price)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, "Water", *items[0].Name)
+	assert.Equal(t, 15.50, *items[0].Price)
 }
 
 func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
@@ -102,11 +106,20 @@ func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	item, err := svc.GetById(testContext, id)
+	page := int32(0)
+	pageSize := int32(20)
+
+	var filter = domains.ItemFilter{
+		Ids:      []*uuid.UUID{&id},
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+	items, count, err := svc.Get(testContext, &filter)
 
 	// Assert
-	assert.Nil(t, item)
-	assert.Error(t, err)
+	require.NoError(t, err)
+	assert.Empty(t, items)
+	assert.Equal(t, int64(0), count)
 }
 
 func Test_ItemsService_Create_ShouldRollbackItemWhenTagInsertFails(t *testing.T) {

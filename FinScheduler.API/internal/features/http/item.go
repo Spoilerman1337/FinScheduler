@@ -1,9 +1,7 @@
 package featurehttp
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/metrics"
@@ -32,7 +30,6 @@ func NewItemsHandler(service *services.ItemsService, logger *slog.Logger) *Items
 
 func (handler *ItemsHandler) RegisterEndpoints(router chi.Router) {
 	router.Get("/", handler.Get)
-	router.Get("/{id}", handler.GetById)
 	router.Post("/", handler.Create)
 	router.Put("/{id}", handler.Update)
 	router.Delete("/{id}", handler.Delete)
@@ -78,57 +75,6 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(domains.NewPaginatedList(items, count))
 	if err != nil {
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		handler.logger.ErrorContext(ctx, "Failed to encode result", "error", err)
-		return
-	}
-}
-
-func (handler *ItemsHandler) GetById(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	statusCode := http.StatusOK
-	tracer := otel.Tracer("items")
-	ctx, span := tracer.Start(r.Context(), "items-http")
-	traces.RecordHttpSpan(span, r, "/items/{id}")
-	defer func() {
-		metrics.RecordHTTPDuration(ctx, start)
-		metrics.RecordHTTPRequest(ctx, r, "GET /items/{id}", statusCode)
-
-		if statusCode < 400 {
-			traces.EnrichSuccessHttpSpan(span, statusCode)
-		}
-		span.End()
-	}()
-
-	w.Header().Set("Content-Type", "application/json")
-
-	id := chi.URLParam(r, "id")
-	idParam, err := uuid.Parse(id)
-	if err != nil {
-		handler.logger.ErrorContext(ctx, "Failed to parse id to uuid", "id", id, "error", err)
-		statusCode = http.StatusBadRequest
-		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		http.Error(w, err.Error(), statusCode)
-		return
-	}
-
-	item, err := handler.service.GetById(ctx, idParam)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			statusCode = http.StatusNotFound
-			traces.EnrichFailedHttpSpan(span, err, statusCode)
-			http.Error(w, "item not found", statusCode)
-			return
-		}
-
-		handler.logger.ErrorContext(ctx, "Fetching item ended in failure", "error", err)
-		statusCode = http.StatusNotFound
-		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(item)
-	if err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to encode result", "error", err)
 		return
 	}

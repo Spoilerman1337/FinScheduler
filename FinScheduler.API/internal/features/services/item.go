@@ -2,8 +2,6 @@ package services
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/persistence"
@@ -59,11 +57,14 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 
 		count = rawItemsCount
 
+		if len(rawItems) == 0 {
+			items = make([]domains.ItemDto, 0)
+			return nil
+		}
+
 		var itemIds []uuid.UUID
-		if rawItems != nil {
-			for _, item := range rawItems {
-				itemIds = append(itemIds, item.Id)
-			}
+		for _, item := range rawItems {
+			itemIds = append(itemIds, item.Id)
 		}
 
 		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, itemIds)
@@ -114,74 +115,6 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 
 	traces.EnrichSuccessServiceSpan(span)
 	return items, count, err
-}
-
-func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domains.ItemDto, error) {
-	tracer := otel.Tracer("items")
-	ctx, span := tracer.Start(ctx, "items-service")
-	traces.RecordServiceSpan(span, "GetById")
-	defer span.End()
-
-	if id == uuid.Nil {
-		service.logger.ErrorContext(ctx, "id is nil")
-		err := fmt.Errorf("id is nil")
-		traces.EnrichFailedServiceSpan(span, err)
-		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
-		return nil, err
-	}
-
-	var item *domains.ItemDto
-
-	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
-		rawItem, err := repositories.Items.GetById(ctx, id)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return err
-			}
-
-			service.logger.ErrorContext(ctx, "Get items failed", "error", err)
-			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
-			return err
-		}
-
-		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{id})
-		if err != nil {
-			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
-			return err
-		}
-
-		tagIds := make([]uuid.UUID, len(rawTagToItems))
-		if len(rawTagToItems) > 0 {
-			for i, tag := range rawTagToItems {
-				tagIds[i] = tag.TagId
-			}
-		}
-
-		rawTags, err := repositories.Tags.GetByIds(ctx, tagIds)
-		if err != nil {
-			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
-			return err
-		}
-
-		item = domains.NewItemDto(*rawItem, rawTags)
-
-		return nil
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			traces.EnrichSuccessServiceSpan(span)
-		}
-
-		return nil, err
-	}
-
-	traces.EnrichSuccessServiceSpan(span)
-	return item, nil
 }
 
 func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCreate) (uuid.UUID, error) {

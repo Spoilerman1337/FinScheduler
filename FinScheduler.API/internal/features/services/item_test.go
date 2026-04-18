@@ -23,21 +23,6 @@ func Test_ItemsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing
 	assert.NotNilf(t, err, "expected to get an error")
 }
 
-func Test_ItemsService_GetById_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
-	// Arrange
-	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
-	ctx := context.Background()
-	nilUUID := uuid.Nil
-
-	// Act
-	_, err := svc.GetById(ctx, nilUUID)
-
-	// Assert
-	assert.NotNilf(t, err, "expected to get an error")
-
-}
-
 func Test_ItemsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
 	logger := slog.Default()
