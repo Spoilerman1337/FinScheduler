@@ -7,6 +7,7 @@ import (
 	"finscheduler/internal/traces"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,11 +33,12 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 	var tags []domains.Tag
 	var count int64 = 0
 
-	var query = " FROM public.tags WHERE 1=1"
+	query := "FROM public.tags"
+	filters := make([]string, 0)
 	args := make([]interface{}, 0)
 
 	if filter.Ids != nil && len(filter.Ids) > 0 {
-		inQuery, inArgs, err := sqlx.In(" AND id IN (?)", filter.Ids)
+		inQuery, inArgs, err := sqlx.In("id IN (?)", filter.Ids)
 
 		if err != nil {
 			repository.logger.ErrorContext(ctx, "error binding \"Ids\" array to IN filter", "error", err)
@@ -45,18 +47,22 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 			return nil, 0, err
 		}
 
-		query += inQuery
+		filters = append(filters, inQuery)
 		args = append(args, inArgs...)
 	}
 
 	if filter.Name != nil && len(*filter.Name) > 0 {
-		query += " AND name ILIKE ?"
+		filters = append(filters, "name ILIKE ?")
 		args = append(args, fmt.Sprintf("%%%s%%", *filter.Name))
 	}
 
 	if filter.IsActive != nil {
-		query += " AND is_active = ?"
+		filters = append(filters, "is_active = ?")
 		args = append(args, *filter.IsActive)
+	}
+
+	if len(filters) > 0 {
+		query += " WHERE " + strings.Join(filters, " AND ")
 	}
 
 	var pageSize int32 = 20
@@ -155,15 +161,20 @@ func (repository *TagsRepository) GetLookup(ctx context.Context, filter *domains
 	var tags []domains.Lookup
 	var count int64 = 0
 
-	var query = " FROM public.tags WHERE 1=1"
+	query := "FROM public.tags"
+	filters := make([]string, 0)
 	args := make([]interface{}, 0)
 
 	if filter.Name != nil && len(*filter.Name) > 0 {
-		query += " AND name ILIKE ?"
+		filters = append(filters, "name ILIKE ?")
 		args = append(args, fmt.Sprintf("%%%s%%", *filter.Name))
 	}
 
-	query += " AND is_active = true"
+	filters = append(filters, "is_active = true")
+
+	if len(filters) > 0 {
+		query += " WHERE " + strings.Join(filters, " AND ")
+	}
 
 	var pageSize int32 = 20
 	if filter.PageSize != nil {

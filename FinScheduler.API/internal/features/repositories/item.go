@@ -9,6 +9,7 @@ import (
 	"finscheduler/pkg/rh"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,14 +35,12 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	var items []*domains.Item
 	var count int64 = 0
 
-	var itemsQuery = " FROM public.items i "
-
-	//TODO: bruh. В Go наверняка есть что-то вроде сишарписткого string.Join(',', []). Собрать параметры именно так, и не писать кринж типа 1 = 1
-	itemsQuery += " WHERE 1=1"
+	itemsQuery := "FROM public.items i"
+	filters := make([]string, 0)
 	args := make([]interface{}, 0)
 
 	if filter.Ids != nil && len(filter.Ids) > 0 {
-		inQuery, inArgs, err := sqlx.In(" AND id IN (?)", filter.Ids)
+		inQuery, inArgs, err := sqlx.In("i.id IN (?)", filter.Ids)
 
 		if err != nil {
 			repository.logger.ErrorContext(ctx, "error binding \"Ids\" array to IN filter", "error", err)
@@ -50,67 +49,67 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 			return nil, 0, err
 		}
 
-		itemsQuery += inQuery
+		filters = append(filters, inQuery)
 		args = append(args, inArgs...)
 	}
 
 	if filter.Name != nil && len(*filter.Name) > 0 {
-		itemsQuery += " AND i.name ILIKE ?"
+		filters = append(filters, "i.name ILIKE ?")
 		args = append(args, fmt.Sprintf("%%%s%%", *filter.Name))
 	}
 
 	if filter.PriceFrom != nil {
-		itemsQuery += " AND i.price >= ?"
+		filters = append(filters, "i.price >= ?")
 		args = append(args, *filter.PriceFrom)
 	}
 
 	if filter.PriceTo != nil {
-		itemsQuery += " AND i.price <= ?"
+		filters = append(filters, "i.price <= ?")
 		args = append(args, *filter.PriceTo)
 	}
 
 	if filter.Description != nil && len(*filter.Description) > 0 {
-		itemsQuery += " AND i.description ILIKE ?"
+		filters = append(filters, "i.description ILIKE ?")
 		args = append(args, fmt.Sprintf("%%%s%%", *filter.Description))
 	}
 
 	if filter.IsActive != nil {
-		itemsQuery += " AND i.is_active = ?"
+		filters = append(filters, "i.is_active = ?")
 		args = append(args, *filter.IsActive)
 	}
 
 	if filter.CreatedFrom != nil {
-		itemsQuery += " AND i.created_at >= ?"
+		filters = append(filters, "i.created_at >= ?")
 		args = append(args, *filter.CreatedFrom)
 	}
 
 	if filter.CreatedTo != nil {
-		itemsQuery += " AND i.created_at <= ?"
+		filters = append(filters, "i.created_at <= ?")
 		args = append(args, *filter.CreatedTo)
 	}
 
 	if filter.UpdatedFrom != nil {
-		itemsQuery += " AND i.updated_at >= ?"
+		filters = append(filters, "i.updated_at >= ?")
 		args = append(args, *filter.UpdatedFrom)
 	}
 
 	if filter.UpdatedTo != nil {
-		itemsQuery += " AND i.updated_at <= ?"
+		filters = append(filters, "i.updated_at <= ?")
 		args = append(args, *filter.UpdatedTo)
 	}
 
 	if filter.CashbackFrom != nil {
-		itemsQuery += " AND i.cashback >= ?"
+		filters = append(filters, "i.cashback >= ?")
 		args = append(args, *filter.CashbackFrom)
 	}
 
 	if filter.CashbackTo != nil {
-		itemsQuery += " AND i.cashback <= ?"
+		filters = append(filters, "i.cashback <= ?")
 		args = append(args, *filter.CashbackTo)
 	}
 
 	if filter.Categories != nil && len(filter.Categories) > 0 {
-		inQuery, inArgs, err := sqlx.In(" AND i.category IN (?)", filter.Categories)
+		inQuery, inArgs, err := sqlx.In("i.category IN (?)", filter.Categories)
 
 		if err != nil {
 			repository.logger.ErrorContext(ctx, "error binding \"Categories\" array to IN filter", "error", err)
@@ -119,12 +118,12 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 			return nil, 0, err
 		}
 
-		itemsQuery += inQuery
+		filters = append(filters, inQuery)
 		args = append(args, inArgs...)
 	}
 
 	if filter.TagIds != nil && len(filter.TagIds) > 0 {
-		inQuery, inArgs, err := sqlx.In(` AND EXISTS (
+		inQuery, inArgs, err := sqlx.In(`EXISTS (
 			SELECT 1 FROM public.tag_to_item tti 
 			WHERE tti.item_id = i.id AND tti.tag_id IN (?)
 		)`, filter.TagIds)
@@ -136,8 +135,12 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 			return nil, 0, err
 		}
 
-		itemsQuery += inQuery
+		filters = append(filters, inQuery)
 		args = append(args, inArgs...)
+	}
+
+	if len(filters) > 0 {
+		itemsQuery += " WHERE " + strings.Join(filters, " AND ")
 	}
 
 	var pageSize int32 = 20
