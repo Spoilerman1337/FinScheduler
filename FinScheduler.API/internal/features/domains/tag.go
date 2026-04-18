@@ -44,11 +44,6 @@ type TagUpdate struct {
 	IsActive bool   `json:"isActive"`
 }
 
-type ItemTags struct {
-	ItemId *uuid.UUID `json:"item_id" db:"item_id"`
-	Tags   LookupJSON `json:"tags" db:"tags"`
-}
-
 func NewTagsFilter(r *http.Request) TagFilter {
 	queryParams := r.URL.Query()
 
