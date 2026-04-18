@@ -23,21 +23,6 @@ func Test_TagsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.
 	assert.NotNilf(t, err, "expected to get an error")
 }
 
-func Test_TagsService_GetById_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
-	// Arrange
-	logger := slog.Default()
-	svc := NewTagsService(nil, logger)
-	ctx := context.Background()
-	nilUUID := uuid.Nil
-
-	// Act
-	_, err := svc.GetById(ctx, nilUUID)
-
-	// Assert
-	assert.NotNilf(t, err, "expected to get an error")
-
-}
-
 func Test_TagsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
 	// Arrange
 	logger := slog.Default()

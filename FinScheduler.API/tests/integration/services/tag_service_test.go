@@ -10,6 +10,7 @@ import (
 	"finscheduler/tests/internal/testsupport"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,11 +32,13 @@ func Test_TagsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 	id, err := svc.Create(testContext, create)
 	require.NoError(t, err)
 
-	tag, err := svc.GetById(testContext, id)
+	tags, count, err := svc.Get(testContext, &domains.TagFilter{Ids: []*uuid.UUID{&id}})
 	require.NoError(t, err)
+	require.Len(t, tags, 1)
 
 	// Assert
-	assert.Equal(t, "Tag", *tag.Name)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, "Tag", *tags[0].Name)
 }
 
 func Test_TagsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
@@ -63,9 +66,11 @@ func Test_TagsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	tag, err := svc.GetById(testContext, id)
+	tags, count, err := svc.Get(testContext, &domains.TagFilter{Ids: []*uuid.UUID{&id}})
 	require.NoError(t, err)
+	require.Len(t, tags, 1)
 
 	// Assert
-	assert.Equal(t, "Water", *tag.Name)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, "Water", *tags[0].Name)
 }

@@ -19,8 +19,6 @@ type ItemsService struct {
 	logger *slog.Logger
 }
 
-const maxPageSize int32 = 1<<31 - 1
-
 func NewItemsService(uow *persistence.UnitOfWork, logger *slog.Logger) *ItemsService {
 	return &ItemsService{
 		uow:    uow,
@@ -61,10 +59,6 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 			}
 		}
 
-		//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
-		pageSize := maxPageSize
-		page := int32(0)
-
 		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, itemIds)
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
@@ -72,14 +66,14 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 			return err
 		}
 
-		tagIds := make([]*uuid.UUID, len(rawTagToItems))
+		tagIds := make([]uuid.UUID, len(rawTagToItems))
 		if len(rawTagToItems) > 0 {
 			for i, tag := range rawTagToItems {
-				tagIds[i] = &tag.TagId
+				tagIds[i] = tag.TagId
 			}
 		}
 
-		rawTags, _, err := repositories.Tags.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+		rawTags, err := repositories.Tags.GetByIds(ctx, tagIds)
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
@@ -136,10 +130,6 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 			return err
 		}
 
-		//TODO: Возможно, стоит сделать отдельные методы в репозиториях для получения тегов/тти по ID итема, и без пагинации, чтобы не делать вот это вот.
-		pageSize := maxPageSize
-		page := int32(0)
-
 		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{id})
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
@@ -147,14 +137,14 @@ func (service *ItemsService) GetById(ctx context.Context, id uuid.UUID) (*domain
 			return err
 		}
 
-		tagIds := make([]*uuid.UUID, len(rawTagToItems))
+		tagIds := make([]uuid.UUID, len(rawTagToItems))
 		if len(rawTagToItems) > 0 {
 			for i, tag := range rawTagToItems {
-				tagIds[i] = &tag.TagId
+				tagIds[i] = tag.TagId
 			}
 		}
 
-		rawTags, _, err := repositories.Tags.Get(ctx, &domains.TagFilter{PageSize: &pageSize, Page: &page, Ids: tagIds})
+		rawTags, err := repositories.Tags.GetByIds(ctx, tagIds)
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)

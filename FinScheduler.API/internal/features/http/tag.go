@@ -1,9 +1,7 @@
 package featurehttp
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/metrics"
@@ -32,7 +30,6 @@ func NewTagsHandler(service *services.TagsService, logger *slog.Logger) *TagsHan
 
 func (handler *TagsHandler) RegisterEndpoints(router chi.Router) {
 	router.Get("/", handler.Get)
-	router.Get("/{id}", handler.GetById)
 	router.Get("/lookup", handler.GetLookup)
 	router.Post("/", handler.Create)
 	router.Put("/{id}", handler.Update)
@@ -78,57 +75,6 @@ func (handler *TagsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(domains.NewPaginatedList(tags, count))
 	if err != nil {
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		handler.logger.ErrorContext(ctx, "Failed to encode result", "error", err)
-		return
-	}
-}
-
-func (handler *TagsHandler) GetById(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	statusCode := http.StatusOK
-	tracer := otel.Tracer("tags")
-	ctx, span := tracer.Start(r.Context(), "tags-http")
-	traces.RecordHttpSpan(span, r, "/tags/{id}")
-	defer func() {
-		metrics.RecordHTTPDuration(ctx, start)
-		metrics.RecordHTTPRequest(ctx, r, "GET /tags/{id}", statusCode)
-
-		if statusCode < 400 {
-			traces.EnrichSuccessHttpSpan(span, statusCode)
-		}
-		span.End()
-	}()
-
-	w.Header().Set("Content-Type", "application/json")
-
-	id := chi.URLParam(r, "id")
-	idParam, err := uuid.Parse(id)
-	if err != nil {
-		handler.logger.ErrorContext(ctx, "Failed to parse id to uuid", "id", id, "error", err)
-		statusCode = http.StatusBadRequest
-		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		http.Error(w, err.Error(), statusCode)
-		return
-	}
-
-	tag, err := handler.service.GetById(ctx, idParam)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			statusCode = http.StatusNotFound
-			traces.EnrichFailedHttpSpan(span, err, statusCode)
-			http.Error(w, "tag not found", statusCode)
-			return
-		}
-
-		handler.logger.ErrorContext(ctx, "Fetching tag ended in failure", "error", err)
-		statusCode = http.StatusNotFound
-		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(tag)
-	if err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to encode result", "error", err)
 		return
 	}

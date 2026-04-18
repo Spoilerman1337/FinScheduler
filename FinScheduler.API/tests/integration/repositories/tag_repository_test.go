@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_TagsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
+func Test_TagsRepository_CreateAndGetByIds_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "tags")
@@ -32,11 +32,35 @@ func Test_TagsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, uuid.Nil, id)
 
-	tag, err := repo.GetById(testContext, id)
+	tags, err := repo.GetByIds(testContext, []uuid.UUID{id})
 	require.NoError(t, err)
+	require.Len(t, tags, 1)
 
 	// Assert
-	assert.Equal(t, "Apple", tag.Name)
+	assert.Equal(t, "Apple", tags[0].Name)
+}
+
+func Test_TagsRepository_GetByIds_ShouldReturnOnlyRequestedTags(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "tags")
+	})
+
+	repo := repositories.NewTagsRepository(testDB, testLogger)
+
+	firstID, err := repo.Create(testContext, &domains.TagCreate{Name: "Apple"})
+	require.NoError(t, err)
+	secondID, err := repo.Create(testContext, &domains.TagCreate{Name: "Orange"})
+	require.NoError(t, err)
+
+	// Act
+	tags, err := repo.GetByIds(testContext, []uuid.UUID{firstID})
+
+	// Assert
+	require.NoError(t, err)
+	require.Len(t, tags, 1)
+	assert.Equal(t, firstID, tags[0].Id)
+	assert.NotEqual(t, secondID, tags[0].Id)
 }
 
 func Test_TagsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
@@ -63,9 +87,10 @@ func Test_TagsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	tag, err := repo.GetById(testContext, id)
+	tags, err := repo.GetByIds(testContext, []uuid.UUID{id})
 	require.NoError(t, err)
+	require.Len(t, tags, 1)
 
 	// Assert
-	assert.Equal(t, "New", tag.Name)
+	assert.Equal(t, "New", tags[0].Name)
 }

@@ -114,33 +114,43 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 	return tags, count, err
 }
 
-func (repository *TagsRepository) GetById(ctx context.Context, id uuid.UUID) (*domains.Tag, error) {
+func (repository *TagsRepository) GetByIds(ctx context.Context, ids []uuid.UUID) ([]domains.Tag, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
 	defer span.End()
 
-	var tag domains.Tag
+	var tags []domains.Tag
 
-	if id == uuid.Nil {
-		repository.logger.ErrorContext(ctx, "id should not be nil")
+	if ids == nil {
+		repository.logger.ErrorContext(ctx, "ids should not be nil")
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationNone)
 
-		err := fmt.Errorf("id should not be nil")
+		err := fmt.Errorf("ids should not be nil")
 		traces.EnrichFailedRepositorySpanRead(span, err, 0)
 		return nil, err
 	}
 
-	query := "SELECT * FROM public.tags WHERE id = ?"
+	if len(ids) == 0 {
+		return make([]domains.Tag, 0), nil
+	}
+
+	query := "SELECT * FROM public.tags WHERE id IN (?)"
+	query, inArgs, err := sqlx.In(query, ids)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error binding \"Ids\" array to IN filter", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationNone)
+		traces.EnrichFailedRepositorySpanRead(span, err, 0)
+		return nil, err
+	}
 	query = repository.db.Rebind(query)
 
-	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)
+	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "ids", ids)
 	start := time.Now()
-	err := sqlx.GetContext(ctx, repository.db, &tag, query, id)
+	err = sqlx.SelectContext(ctx, repository.db, &tags, query, inArgs...)
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsTableName, err != nil, metrics.DatabaseOperationSelect)
-
 	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
+		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationSelect)
 		traces.EnrichFailedRepositorySpanRead(span, err, 0)
 		return nil, err
@@ -148,8 +158,8 @@ func (repository *TagsRepository) GetById(ctx context.Context, id uuid.UUID) (*d
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, true, metrics.DatabaseOperationSelect)
 	}
 
-	traces.EnrichSuccessRepositorySpanRead(span, 1)
-	return &tag, nil
+	traces.EnrichSuccessRepositorySpanRead(span, int64(len(tags)))
+	return tags, nil
 }
 
 func (repository *TagsRepository) GetLookup(ctx context.Context, filter *domains.TagFilter) ([]domains.Lookup, int64, error) {
