@@ -39,13 +39,17 @@ func RecordServiceFailure(ctx context.Context, service string, operation string,
 }
 
 func RecordDatabaseDuration(ctx context.Context, start time.Time, driver string, table string, success bool, operation DatabaseOperation) {
+	attributes := []attribute.KeyValue{
+		attribute.String("driver", driver),
+		attribute.String("table", table),
+		attribute.Bool("success", success),
+	}
+	if operation != DatabaseOperationNone {
+		attributes = append(attributes, attribute.String("operation", string(operation)))
+	}
+
 	Metrics.DatabaseMetrics.Duration.Record(ctx, time.Since(start).Seconds(),
-		metric.WithAttributes(
-			attribute.String("driver", driver),
-			attribute.String("table", table),
-			attribute.Bool("success", success),
-			attribute.String("operation", string(operation)),
-		),
+		metric.WithAttributes(attributes...),
 	)
 }
 
@@ -60,10 +64,6 @@ func RecordDatabaseRequest(ctx context.Context, driver string, table string, suc
 	}
 
 	Metrics.DatabaseMetrics.Requests.Add(ctx, 1,
-		metric.WithAttributes(
-			attribute.String("driver", driver),
-			attribute.String("table", table),
-			attribute.Bool("success", true),
-		),
+		metric.WithAttributes(attributes...),
 	)
 }

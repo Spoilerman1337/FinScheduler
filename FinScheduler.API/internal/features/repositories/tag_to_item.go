@@ -55,7 +55,7 @@ func (repository *TagToItemsRepository) GetByItemIds(ctx context.Context, itemId
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "itemIds", itemIds)
 	start := time.Now()
 	err = sqlx.SelectContext(ctx, repository.db, &tagToItems, query, inArgs...)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationSelect)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err == nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationSelect)
@@ -90,7 +90,7 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
 	res, err := repository.db.ExecContext(ctx, query, args...)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationInsert)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err == nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err, "itemId",
@@ -119,7 +119,7 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 	repository.logger.InfoContext(ctx, "fetching delete tag to items:", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)
 	start := time.Now()
 	result, err := repository.db.ExecContext(ctx, query, inArgs...)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err != nil, metrics.DatabaseOperationDelete)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err == nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)

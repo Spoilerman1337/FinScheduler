@@ -161,7 +161,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	repository.logger.InfoContext(ctx, "executing operation:", "itemsQuery", itemsSelectQuery, "args", itemsSelectArgs)
 	itemsSelectStart := time.Now()
 	err := sqlx.SelectContext(ctx, repository.db, &items, itemsSelectQuery, itemsSelectArgs...)
-	metrics.RecordDatabaseDuration(ctx, itemsSelectStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
+	metrics.RecordDatabaseDuration(ctx, itemsSelectStart, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationSelect)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationSelect)
@@ -178,7 +178,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	repository.logger.InfoContext(ctx, "executing operation:", "itemsQuery", itemsCountQuery, "args", itemsCountArgs)
 	itemsCountStart := time.Now()
 	err = sqlx.GetContext(ctx, repository.db, &count, itemsCountQuery, itemsCountArgs...)
-	metrics.RecordDatabaseDuration(ctx, itemsCountStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
+	metrics.RecordDatabaseDuration(ctx, itemsCountStart, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationCount)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationCount)
@@ -215,7 +215,7 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)
 	start := time.Now()
 	err := sqlx.GetContext(ctx, repository.db, &item, query, id)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationSelect)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationSelect)
 
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on COUNT operation", "error", err)
@@ -251,7 +251,7 @@ func (repository *ItemsRepository) Create(ctx context.Context, create *domains.I
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query)
 	start := time.Now()
 	res, err := repository.db.ExecContext(ctx, query, newID, create.Name, create.Price, create.Description, create.IsActive, now, create.Cashback, create.Category)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationInsert)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err, "newID",
@@ -285,7 +285,7 @@ func (repository *ItemsRepository) Update(ctx context.Context, itemID uuid.UUID,
 	updateStart := time.Now()
 	result, err := repository.db.ExecContext(ctx, query, update.Name, update.Price, update.Description, update.IsActive,
 		sql.NullTime{Time: now, Valid: true}, update.Cashback, update.Category, itemID)
-	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationUpdate)
+	metrics.RecordDatabaseDuration(ctx, updateStart, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationUpdate)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on UPDATE operation", "error", err, "id",
 			itemID, "name", update.Name, "price", update.Price, "description", update.Description, "isActive",
@@ -321,7 +321,7 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 	repository.logger.InfoContext(ctx, "fetching delete item:", "query", query, "id", itemID)
 	start := time.Now()
 	result, err := repository.db.ExecContext(ctx, query, itemID)
-	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err != nil, metrics.DatabaseOperationDelete)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "error", err, "id", itemID)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationDelete)
