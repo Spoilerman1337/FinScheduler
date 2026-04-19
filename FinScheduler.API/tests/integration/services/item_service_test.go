@@ -35,7 +35,15 @@ func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 	id, err := svc.Create(testContext, create)
 	require.NoError(t, err)
 
-	items, count, err := svc.Get(testContext, newItemFilterByID(id))
+	page := int32(0)
+	pageSize := int32(20)
+	filter := domains.ItemFilter{
+		Ids:      []*uuid.UUID{&id},
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	items, count, err := svc.Get(testContext, &filter)
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 
@@ -73,7 +81,15 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	items, count, err := svc.Get(testContext, newItemFilterByID(id))
+	page := int32(0)
+	pageSize := int32(20)
+	filter := domains.ItemFilter{
+		Ids:      []*uuid.UUID{&id},
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	items, count, err := svc.Get(testContext, &filter)
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 
@@ -108,18 +124,49 @@ func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 
 	page := int32(0)
 	pageSize := int32(20)
-
-	var filter = domains.ItemFilter{
+	filter := domains.ItemFilter{
 		Ids:      []*uuid.UUID{&id},
 		Page:     &page,
 		PageSize: &pageSize,
 	}
+
 	items, count, err := svc.Get(testContext, &filter)
 
 	// Assert
 	require.NoError(t, err)
 	assert.Empty(t, items)
 	assert.Equal(t, int64(0), count)
+}
+
+func Test_ItemsService_UpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
+	// Arrange
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewItemsService(uow, testLogger)
+
+	update := &domains.ItemUpdate{
+		Name:     "Missing",
+		Category: "FoodDrinks",
+	}
+
+	// Act
+	ok, err := svc.Update(testContext, uuid.New(), update)
+
+	// Assert
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func Test_ItemsService_DeleteMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
+	// Arrange
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewItemsService(uow, testLogger)
+
+	// Act
+	ok, err := svc.Delete(testContext, uuid.New())
+
+	// Assert
+	require.NoError(t, err)
+	assert.False(t, ok)
 }
 
 func Test_ItemsService_Create_ShouldRollbackItemWhenTagInsertFails(t *testing.T) {

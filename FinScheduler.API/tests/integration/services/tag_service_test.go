@@ -74,3 +74,20 @@ func Test_TagsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	assert.Equal(t, int64(1), count)
 	assert.Equal(t, "Water", *tags[0].Name)
 }
+
+func Test_TagsService_UpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
+	// Arrange
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	svc := services.NewTagsService(uow, testLogger)
+
+	update := &domains.TagUpdate{
+		Name: "Missing",
+	}
+
+	// Act
+	ok, err := svc.Update(testContext, uuid.New(), update)
+
+	// Assert
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
