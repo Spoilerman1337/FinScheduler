@@ -75,7 +75,7 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 	}
 	offset := page * pageSize
 
-	selectQuery := fmt.Sprintf("SELECT * %s LIMIT ? OFFSET ?", query)
+	selectQuery := fmt.Sprintf("SELECT * %s ORDER BY id DESC LIMIT ? OFFSET ?", query)
 	selectQuery = repository.db.Rebind(selectQuery)
 	selectArgs := append(make([]interface{}, 0), args...)
 	selectArgs = append(selectArgs, pageSize, offset)
@@ -196,7 +196,7 @@ func (repository *TagsRepository) GetLookup(ctx context.Context, filter *domains
 	}
 	offset := page * pageSize
 
-	selectQuery := fmt.Sprintf("SELECT id as value, name as label %s LIMIT ? OFFSET ?", query)
+	selectQuery := fmt.Sprintf("SELECT id as value, name as label %s ORDER BY LOWER(name), id LIMIT ? OFFSET ?", query)
 	selectQuery = repository.db.Rebind(selectQuery)
 	selectArgs := append(make([]interface{}, 0), args...)
 	selectArgs = append(selectArgs, pageSize, offset)

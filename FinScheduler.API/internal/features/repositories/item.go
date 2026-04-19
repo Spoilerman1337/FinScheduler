@@ -153,7 +153,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	}
 	offset := page * pageSize
 
-	itemsSelectQuery := fmt.Sprintf("SELECT * %s LIMIT ? OFFSET ?", itemsQuery)
+	itemsSelectQuery := fmt.Sprintf("SELECT * %s ORDER BY i.created_at DESC, i.id DESC LIMIT ? OFFSET ?", itemsQuery)
 	itemsSelectQuery = repository.db.Rebind(itemsSelectQuery)
 	itemsSelectArgs := append(make([]interface{}, 0), args...)
 	itemsSelectArgs = append(itemsSelectArgs, pageSize, offset)
