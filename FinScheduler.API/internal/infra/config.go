@@ -11,6 +11,7 @@ type Config struct {
 	ServerPort       int
 	ConnectionString string
 	ServiceName      string
+	AllowedOrigins   []string
 }
 
 func LoadConfig() (*Config, error) {
@@ -21,6 +22,7 @@ func LoadConfig() (*Config, error) {
 	v.AutomaticEnv()
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.SetDefault("allowedOrigins", []string{"*"})
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
