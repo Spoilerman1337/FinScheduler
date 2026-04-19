@@ -120,10 +120,10 @@ func (item *TagUpdate) Validate() error {
 
 func (item *TagFilter) Validate() error {
 	if item.Page == nil || *item.Page < 0 {
-		return fmt.Errorf("page is negative")
+		return fmt.Errorf("page must be zero or greater")
 	}
-	if item.PageSize == nil || *item.PageSize < 0 {
-		return fmt.Errorf("pageSize is negative")
+	if item.PageSize == nil || *item.PageSize <= 0 {
+		return fmt.Errorf("pageSize must be positive")
 	}
 
 	return nil
@@ -131,10 +131,10 @@ func (item *TagFilter) Validate() error {
 
 func (item *TagLookupFilter) Validate() error {
 	if item.Page == nil || *item.Page < 0 {
-		return fmt.Errorf("page is negative")
+		return fmt.Errorf("page must be zero or greater")
 	}
-	if item.PageSize == nil || *item.PageSize < 0 {
-		return fmt.Errorf("pageSize is negative")
+	if item.PageSize == nil || *item.PageSize <= 0 {
+		return fmt.Errorf("pageSize must be positive")
 	}
 
 	return nil

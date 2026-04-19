@@ -230,10 +230,10 @@ func (item *ItemUpdate) Validate() error {
 
 func (item *ItemFilter) Validate() error {
 	if item.Page == nil || *item.Page < 0 {
-		return fmt.Errorf("page is negative")
+		return fmt.Errorf("page must be zero or greater")
 	}
-	if item.PageSize == nil || *item.PageSize < 0 {
-		return fmt.Errorf("pageSize is negative")
+	if item.PageSize == nil || *item.PageSize <= 0 {
+		return fmt.Errorf("pageSize must be positive")
 	}
 	if item.PriceFrom != nil && item.PriceTo != nil && (*item.PriceTo).LessThan(*item.PriceFrom) {
 		return fmt.Errorf("priceTo cannot be lesser than priceFrom")
