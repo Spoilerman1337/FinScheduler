@@ -1,5 +1,9 @@
 package domains
 
+import "errors"
+
+var ErrInvalidReference = errors.New("invalid reference")
+
 type PaginatedList[T any] struct {
 	Data  []T   `json:"data"`
 	Count int64 `json:"count"`

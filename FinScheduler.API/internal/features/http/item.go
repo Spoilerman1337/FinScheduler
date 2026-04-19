@@ -2,6 +2,7 @@ package featurehttp
 
 import (
 	"encoding/json"
+	"errors"
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/metrics"
@@ -53,7 +54,14 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter := domains.NewItemFilter(r)
+	filter, err := domains.NewItemFilter(r)
+	if err != nil {
+		handler.logger.ErrorContext(ctx, "Failed to parse query", "error", err)
+		statusCode = http.StatusBadRequest
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
 
 	if err := filter.Validate(); err != nil {
 		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
@@ -122,6 +130,13 @@ func (handler *ItemsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	newItemID, err := handler.service.Create(ctx, &create)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Item creation ended in failure", "error", err)
+		if errors.Is(err, domains.ErrInvalidReference) {
+			statusCode = http.StatusBadRequest
+			traces.EnrichFailedHttpSpan(span, err, statusCode)
+			http.Error(w, err.Error(), statusCode)
+			return
+		}
+
 		statusCode = http.StatusInternalServerError
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
 		http.Error(w, err.Error(), statusCode)
@@ -186,6 +201,13 @@ func (handler *ItemsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	success, err := handler.service.Update(ctx, idParam, &update)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "database error", "error", err)
+		if errors.Is(err, domains.ErrInvalidReference) {
+			statusCode = http.StatusBadRequest
+			traces.EnrichFailedHttpSpan(span, err, statusCode)
+			http.Error(w, err.Error(), statusCode)
+			return
+		}
+
 		statusCode = http.StatusInternalServerError
 		http.Error(w, err.Error(), statusCode)
 		return

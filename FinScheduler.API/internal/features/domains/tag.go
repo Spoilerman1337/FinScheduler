@@ -44,14 +44,26 @@ type TagUpdate struct {
 	IsActive bool   `json:"isActive"`
 }
 
-func NewTagsFilter(r *http.Request) TagFilter {
+func NewTagsFilter(r *http.Request) (TagFilter, error) {
 	queryParams := r.URL.Query()
 
-	ids := qh.ParseUUIDs(queryParams, "ids")
+	ids, err := qh.ParseUUIDs(queryParams, "ids")
+	if err != nil {
+		return TagFilter{}, err
+	}
 	name := qh.ParseString(queryParams, "name")
-	isActive := qh.ParseBool(queryParams, "isActive")
-	page := qh.ParseInt32(queryParams, "page")
-	pageSize := qh.ParseInt32(queryParams, "pageSize")
+	isActive, err := qh.ParseBool(queryParams, "isActive")
+	if err != nil {
+		return TagFilter{}, err
+	}
+	page, err := qh.ParseInt32(queryParams, "page")
+	if err != nil {
+		return TagFilter{}, err
+	}
+	pageSize, err := qh.ParseInt32(queryParams, "pageSize")
+	if err != nil {
+		return TagFilter{}, err
+	}
 
 	return TagFilter{
 		Ids:      ids,
@@ -59,21 +71,27 @@ func NewTagsFilter(r *http.Request) TagFilter {
 		IsActive: isActive,
 		Page:     page,
 		PageSize: pageSize,
-	}
+	}, nil
 }
 
-func NewTagLookupFilter(r *http.Request) TagLookupFilter {
+func NewTagLookupFilter(r *http.Request) (TagLookupFilter, error) {
 	queryParams := r.URL.Query()
 
 	name := qh.ParseString(queryParams, "name")
-	page := qh.ParseInt32(queryParams, "page")
-	pageSize := qh.ParseInt32(queryParams, "pageSize")
+	page, err := qh.ParseInt32(queryParams, "page")
+	if err != nil {
+		return TagLookupFilter{}, err
+	}
+	pageSize, err := qh.ParseInt32(queryParams, "pageSize")
+	if err != nil {
+		return TagLookupFilter{}, err
+	}
 
 	return TagLookupFilter{
 		Name:     name,
 		Page:     page,
 		PageSize: pageSize,
-	}
+	}, nil
 }
 
 func NewTagDto(tag Tag) *TagDto {

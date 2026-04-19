@@ -181,6 +181,9 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		if len(toInsert) > 0 {
 			success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
 			if err != nil {
+				if dh.IsPostgresForeignKeyViolation(err) {
+					return domains.ErrInvalidReference
+				}
 				return err
 			}
 			if !success {
@@ -277,6 +280,9 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		if len(toInsert) > 0 {
 			tagSuccess, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
 			if err != nil {
+				if dh.IsPostgresForeignKeyViolation(err) {
+					return domains.ErrInvalidReference
+				}
 				return err
 			}
 			if !tagSuccess {

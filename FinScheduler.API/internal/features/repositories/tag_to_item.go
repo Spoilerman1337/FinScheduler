@@ -5,6 +5,7 @@ import (
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/traces"
+	"finscheduler/pkg/dh"
 	"finscheduler/pkg/rh"
 	"fmt"
 	"log/slog"
@@ -93,8 +94,11 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err == nil, metrics.DatabaseOperationInsert)
 	var affected int64 = 0
 	if err != nil {
-		repository.logger.ErrorContext(ctx, "error on INSERT operation", "error", err, "itemId",
-			create.ItemId, "tagIds", create.TagIds)
+		args := []any{"error", err, "itemId", create.ItemId, "tagIds", create.TagIds}
+		if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
+			args = append(args, "postgresCode", details.Code, "constraint", details.ConstraintName)
+		}
+		repository.logger.ErrorContext(ctx, "error on INSERT operation", args...)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationInsert)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err

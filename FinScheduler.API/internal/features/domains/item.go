@@ -75,25 +75,67 @@ type ItemUpdate struct {
 	TagIds      []string        `json:"tagIds"`
 }
 
-func NewItemFilter(r *http.Request) ItemFilter {
+func NewItemFilter(r *http.Request) (ItemFilter, error) {
 	queryParams := r.URL.Query()
 
-	ids := qh.ParseUUIDs(queryParams, "ids")
+	ids, err := qh.ParseUUIDs(queryParams, "ids")
+	if err != nil {
+		return ItemFilter{}, err
+	}
 	name := qh.ParseString(queryParams, "name")
-	priceFrom := qh.ParseDecimal(queryParams, "priceFrom")
-	priceTo := qh.ParseDecimal(queryParams, "priceTo")
+	priceFrom, err := qh.ParseDecimal(queryParams, "priceFrom")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	priceTo, err := qh.ParseDecimal(queryParams, "priceTo")
+	if err != nil {
+		return ItemFilter{}, err
+	}
 	description := qh.ParseString(queryParams, "description")
-	isActive := qh.ParseBool(queryParams, "isActive")
-	page := qh.ParseInt32(queryParams, "page")
-	pageSize := qh.ParseInt32(queryParams, "pageSize")
-	createdFrom := qh.ParseTime(queryParams, "createdFrom")
-	createdTo := qh.ParseTime(queryParams, "createdTo")
-	updatedFrom := qh.ParseTime(queryParams, "updatedFrom")
-	updatedTo := qh.ParseTime(queryParams, "updatedTo")
-	cashbackFrom := qh.ParseInt32(queryParams, "cashbackFrom")
-	cashbackTo := qh.ParseInt32(queryParams, "cashbackTo")
-	categories := qh.ParseEnums[ItemCategory](queryParams, "categories")
-	tagIds := qh.ParseUUIDs(queryParams, "tagIds")
+	isActive, err := qh.ParseBool(queryParams, "isActive")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	page, err := qh.ParseInt32(queryParams, "page")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	pageSize, err := qh.ParseInt32(queryParams, "pageSize")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	createdFrom, err := qh.ParseTime(queryParams, "createdFrom")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	createdTo, err := qh.ParseTime(queryParams, "createdTo")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	updatedFrom, err := qh.ParseTime(queryParams, "updatedFrom")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	updatedTo, err := qh.ParseTime(queryParams, "updatedTo")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	cashbackFrom, err := qh.ParseInt32(queryParams, "cashbackFrom")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	cashbackTo, err := qh.ParseInt32(queryParams, "cashbackTo")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	categories, err := qh.ParseEnums[ItemCategory](queryParams, "categories")
+	if err != nil {
+		return ItemFilter{}, err
+	}
+	tagIds, err := qh.ParseUUIDs(queryParams, "tagIds")
+	if err != nil {
+		return ItemFilter{}, err
+	}
 
 	return ItemFilter{
 		Ids:          ids,
@@ -112,7 +154,7 @@ func NewItemFilter(r *http.Request) ItemFilter {
 		TagIds:       tagIds,
 		Page:         page,
 		PageSize:     pageSize,
-	}
+	}, nil
 }
 
 func NewItemDto(item Item, tags []Tag) *ItemDto {
@@ -159,6 +201,9 @@ func (item *ItemCreate) Validate() error {
 	if !ItemCategory(item.Category).IsValid() {
 		return fmt.Errorf("category is invalid")
 	}
+	if err := validateTagIds(item.TagIds); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -175,6 +220,9 @@ func (item *ItemUpdate) Validate() error {
 	}
 	if !ItemCategory(item.Category).IsValid() {
 		return fmt.Errorf("category is invalid")
+	}
+	if err := validateTagIds(item.TagIds); err != nil {
+		return err
 	}
 
 	return nil
@@ -227,4 +275,14 @@ func (itemCategory ItemCategory) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+func validateTagIds(tagIds []string) error {
+	for _, tagId := range tagIds {
+		if _, err := uuid.Parse(tagId); err != nil {
+			return fmt.Errorf("tagId is invalid: %s", tagId)
+		}
+	}
+
+	return nil
 }

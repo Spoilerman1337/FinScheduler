@@ -53,7 +53,14 @@ func (handler *TagsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter := domains.NewTagsFilter(r)
+	filter, err := domains.NewTagsFilter(r)
+	if err != nil {
+		handler.logger.ErrorContext(ctx, "Failed to parse query", "error", err)
+		statusCode = http.StatusBadRequest
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
 
 	if err := filter.Validate(); err != nil {
 		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
@@ -98,7 +105,14 @@ func (handler *TagsHandler) GetLookup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter := domains.NewTagLookupFilter(r)
+	filter, err := domains.NewTagLookupFilter(r)
+	if err != nil {
+		handler.logger.ErrorContext(ctx, "Failed to parse query", "error", err)
+		statusCode = http.StatusBadRequest
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
 
 	if err := filter.Validate(); err != nil {
 		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
