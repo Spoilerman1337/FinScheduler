@@ -2,7 +2,7 @@ import DataTable, {type TableColumn} from "../dataTable/DataTable.tsx";
 import {Badge, Box, Button, Flex, Input, Text, Spinner} from "@chakra-ui/react";
 import {SearchIcon} from "lucide-react";
 import {useState, useEffect, useCallback} from "react";
-import type {ItemDto, ItemFilter} from "../../../api/types.ts";
+import type {ItemDto, ItemFilter, ItemModification} from "../../../api/types.ts";
 import ItemModal from "./subcomponents/ItemModal.tsx";
 import {toaster} from "../../ui/toaster.tsx";
 import Layout from "../Main/subcomponents/Layout.tsx";
@@ -173,7 +173,7 @@ export default function Items() {
         setSelectedRows(new Set());
     };
 
-    const handleSaveItem = async (itemData: Omit<ItemDto, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const handleSaveItem = async (itemData: ItemModification) => {
         try {
             if (modalMode === 'create') {
                 await itemsService.createItem(itemData);

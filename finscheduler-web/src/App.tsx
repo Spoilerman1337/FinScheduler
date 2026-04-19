@@ -1,8 +1,8 @@
 import {Provider} from "./components/ui/provider.tsx";
 import {Theme, Flex} from "@chakra-ui/react";
 import {motion} from "framer-motion";
-import Sidebar from "./components/features/sideMenu/Sidebar.tsx";
-import Main from "./components/features/main/Main.tsx";
+import Sidebar from "./components/features/SideMenu/Sidebar.tsx";
+import Main from "./components/features/Main/Main.tsx";
 
 const MotionFlex = motion.create(Flex)
 
