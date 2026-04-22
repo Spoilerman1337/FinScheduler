@@ -1,16 +1,14 @@
 import {
     Dialog,
     Button,
-    Input,
-    Flex,
     Text,
-    Field,
-    Switch,
     Stack,
     CloseButton,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import type { ItemDto } from "../../../../api/types.ts";
+import SwitchField from "../../formFields/SwitchField.tsx";
+import TextField from "../../formFields/TextField.tsx";
 
 interface TagModalProps {
     isOpen: boolean;
@@ -101,47 +99,19 @@ export default function TagModal({ isOpen, onClose, onSave, item, mode }: TagMod
                                 </Text>
                             )}
 
-                            <Field.Root required>
-                                <Field.Label color="neon.blue">Название</Field.Label>
-                                <Input
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    bg="bg.layer2"
-                                    borderColor="glass.border"
-                                    color="neon.blue"
-                                    _placeholder={{ color: 'textMuted' }}
-                                    placeholder="Введите название"
-                                />
-                            </Field.Root>
+                            <TextField
+                                label="Название"
+                                value={formData.name}
+                                placeholder="Введите название"
+                                required
+                                onChange={(value) => setFormData({...formData, name: value})}
+                            />
 
-                            <Field.Root>
-                                <Flex align="center" gap={2}>
-                                    <Field.Label color="neon.blue" mb={0}>
-                                        Активен
-                                    </Field.Label>
-                                    <Switch.Root
-                                        checked={formData.isActive}
-                                        onCheckedChange={(details) => {
-                                            const isChecked = details.checked;
-                                            setFormData(prev => ({ ...prev, isActive: isChecked }));
-                                        }}
-                                    >
-                                        <Switch.HiddenInput />
-                                        <Switch.Control
-                                            bg={formData.isActive ? "neon.blue" : "neon.purple"}
-                                            filter={formData.isActive
-                                                ? "drop-shadow(0 0 8px rgba(0, 212, 255, 0.9))"
-                                                : "drop-shadow(0 0 8px rgba(212, 0, 255, 0.9))"}
-                                            boxShadow={formData.isActive
-                                                ? "0 0 12px rgba(0, 212, 255, 0.6)"
-                                                : "0 0 12px rgba(212, 0, 255, 0.6)"}
-                                            transition="all 0.3s ease-in-out"
-                                        >
-                                            <Switch.Thumb />
-                                        </Switch.Control>
-                                    </Switch.Root>
-                                </Flex>
-                            </Field.Root>
+                            <SwitchField
+                                label="Активен"
+                                checked={formData.isActive}
+                                onChange={(value) => setFormData(prev => ({...prev, isActive: value}))}
+                            />
                         </Stack>
                     </Dialog.Body>
 

@@ -1,27 +1,20 @@
 import {
     Dialog,
     Button,
-    Input,
-    Textarea,
-    Flex,
     Text,
-    Field,
-    Switch,
     Stack,
     CloseButton,
-    createListCollection,
-    SelectRoot,
-    SelectTrigger,
-    SelectValueText,
-    SelectContent,
-    SelectItem,
-    Spinner,
-    NumberInput,
 } from "@chakra-ui/react";
 import {useState, useEffect, useMemo} from "react";
 import type {ItemDto, ItemModification, Lookup} from "../../../../api/types.ts";
-import {categoryTranslations} from "../../../../models/items.ts";
+import {categoryOptions, categoryTranslations} from "../../../../models/items.ts";
 import TagsService from "../../../../api/tags.ts";
+import NumberField from "../../formFields/NumberField.tsx";
+import SelectField from "../../formFields/SelectField.tsx";
+import SwitchField from "../../formFields/SwitchField.tsx";
+import TextAreaField from "../../formFields/TextAreaField.tsx";
+import TextField from "../../formFields/TextField.tsx";
+import type {SelectOption} from "../../formFields/types.ts";
 
 interface ItemModalProps {
     isOpen: boolean;
@@ -31,33 +24,56 @@ interface ItemModalProps {
     mode: 'create' | 'edit';
 }
 
+interface ItemModalFormData {
+    name: string;
+    description: string;
+    price: string;
+    cashback: string;
+    isActive: boolean;
+    category: string;
+    tags: Lookup[];
+}
+
 const tagsService = new TagsService();
 
+const getDefaultFormData = (): ItemModalFormData => ({
+    name: '',
+    description: '',
+    price: '',
+    cashback: '',
+    isActive: true,
+    category: 'Не выбрано',
+    tags: [],
+});
+
 export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemModalProps) {
-    const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        price: '',
-        cashback: '',
-        isActive: true,
-        category: 'Не выбрано',
-        tags: [] as Lookup[]
-    });
+    const [formData, setFormData] = useState<ItemModalFormData>(getDefaultFormData);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [tagsLoading, setTagsLoading] = useState(false);
     const [tagOptions, setTagOptions] = useState<Lookup[]>([]);
 
+    const tagSelectOptions = useMemo<SelectOption[]>(() => (tagOptions ?? [])
+        .filter((tag): tag is Lookup & { value: string } => Boolean(tag.value))
+        .map((tag) => ({
+            label: tag.label ?? tag.value,
+            value: tag.value,
+        })), [tagOptions]);
+
+    const selectedTagValues = useMemo(() => (formData.tags ?? [])
+        .map((tag) => tag.value)
+        .filter((value): value is string => Boolean(value)), [formData.tags]);
+
     useEffect(() => {
         if (isOpen && mode === 'edit' && item) {
-            const newFormData = {
+            const newFormData: ItemModalFormData = {
                 name: item.name || '',
                 description: item.description || '',
                 price: item.price !== undefined && item.price !== null ? item.price.toString() : '',
                 cashback: item.cashback !== undefined && item.cashback !== null ? item.cashback.toString() : '',
                 isActive: item.isActive !== undefined ? item.isActive : true,
                 category: item.category !== undefined ? item.category : '',
-                tags: item.tags !== undefined ? item.tags : []
+                tags: Array.isArray(item.tags) ? item.tags : []
             };
             setFormData(newFormData);
         }
@@ -65,33 +81,47 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
 
     useEffect(() => {
         if (isOpen && mode === 'create') {
-            setFormData({
-                name: '',
-                description: '',
-                price: '',
-                cashback: '',
-                isActive: true,
-                category: 'Не выбрано',
-                tags: []
-            });
+            setFormData(getDefaultFormData());
             setError(null);
         }
     }, [isOpen, mode]);
 
     useEffect(() => {
         if (!isOpen) {
-            setFormData({
-                name: '',
-                description: '',
-                price: '',
-                cashback: '',
-                isActive: true,
-                category: 'Не выбрано',
-                tags: []
-            });
+            setFormData(getDefaultFormData());
             setError(null);
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        if (isOpen) {
+            const fetchTags = async () => {
+                setTagsLoading(true);
+                try {
+                    const tags = await tagsService.getLookup({
+                        page: 0,
+                        pageSize: 10,
+                    });
+                    if (tags) {
+                        setTagOptions(Array.isArray(tags.data) ? tags.data : []);
+                    }
+
+                } catch (e) {
+                    console.error("Ошибка загрузки тегов", e);
+                } finally {
+                    setTagsLoading(false);
+                }
+            };
+            fetchTags();
+        }
+    }, [isOpen]);
+
+    const updateFormData = <K extends keyof ItemModalFormData>(
+        field: K,
+        value: ItemModalFormData[K],
+    ) => {
+        setFormData((prev) => ({...prev, [field]: value}));
+    };
 
     const handleSubmit = async () => {
         setError(null);
@@ -125,7 +155,7 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
                 cashback: formData.cashback ? parseFloat(formData.cashback) : 0,
                 isActive: formData.isActive,
                 category: formData.category,
-                tagIds: formData.tags ? formData.tags?.map(x => x.value ?? '').filter(Boolean) : [],
+                tagIds: (formData.tags ?? []).map(x => x.value ?? '').filter(Boolean),
             });
             onClose();
         } catch (err) {
@@ -134,43 +164,6 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
             setLoading(false);
         }
     };
-
-    const categoryList = createListCollection({
-        items: Object.entries(categoryTranslations).map(([value, label]) => ({
-            label,
-            value,
-        })),
-    });
-
-    useEffect(() => {
-        if (isOpen) {
-            const fetchTags = async () => {
-                setTagsLoading(true);
-                try {
-                    const tags = await tagsService.getLookup({
-                        page: 0,
-                        pageSize: 10,
-                    });
-                    if (tags && tags.data) {
-                        setTagOptions(tags.data);
-                    }
-
-                } catch (e) {
-                    console.error("Ошибка загрузки тегов", e);
-                } finally {
-                    setTagsLoading(false);
-                }
-            };
-            fetchTags();
-        }
-    }, [isOpen]);
-
-    const tagsCollection = useMemo(() => createListCollection({
-        items: tagOptions.map(tag => ({
-            label: tag.label,
-            value: tag.value,
-        })),
-    }), [tagOptions]);
 
     return (
         <Dialog.Root open={isOpen} onOpenChange={(details) => !details.open && onClose()} placement="center">
@@ -194,170 +187,64 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
                                 </Text>
                             )}
 
-                            <Field.Root required gap={0}>
-                                <Field.Label color="neon.blue">Название</Field.Label>
-                                <Input
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    bg="bg.layer2"
-                                    borderColor="glass.border"
-                                    color="neon.blue"
-                                    _placeholder={{color: 'textMuted'}}
-                                    placeholder="Введите название"
-                                />
-                            </Field.Root>
-
-                            <Field.Root gap={0}>
-                                <Field.Label color="neon.blue">Описание</Field.Label>
-                                <Textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                    bg="bg.layer2"
-                                    borderColor="glass.border"
-                                    color="neon.blue"
-                                    _placeholder={{color: 'textMuted'}}
-                                    placeholder="Введите описание"
-                                    rows={4}
-                                />
-                            </Field.Root>
-
-                            <Field.Root gap={0}>
-                                <Field.Label color="neon.blue">Цена (₽)</Field.Label>
-                                <NumberInput.Root
-                                    value={formData.price}
-                                    onValueChange={(e) => setFormData({...formData, price: e.value})}
-                                    bg="bg.layer2"
-                                    borderColor="glass.border"
-                                    color="neon.blue"
-                                    _placeholder={{color: 'textMuted'}}
-                                    defaultValue="0.00"
-                                    step={0.01}
-                                    min={0}
-                                    width="100%"
-                                >
-                                    <NumberInput.Control>
-                                        <NumberInput.IncrementTrigger bg="bg.layer2" color="neon.blue"
-                                                                      p={0}>+</NumberInput.IncrementTrigger>
-                                        <NumberInput.DecrementTrigger bg="bg.layer2" color="neon.blue"
-                                                                      p={0}>-</NumberInput.DecrementTrigger>
-                                    </NumberInput.Control>
-                                    <NumberInput.Input/>
-                                </NumberInput.Root>/
-                            </Field.Root>
-
-                            <Field.Root gap={0}>
-                                <Field.Label color="neon.blue">Кэшбэк (%)</Field.Label>
-                                <NumberInput.Root
-                                    value={formData.cashback}
-                                    onValueChange={(e) => setFormData({...formData, cashback: e.value})}
-                                    bg="bg.layer2"
-                                    borderColor="glass.border"
-                                    color="neon.blue"
-                                    _placeholder={{color: 'textMuted'}}
-                                    defaultValue="0"
-                                    step={1}
-                                    min={0}
-                                    max={100}
-                                    width="100%"
-                                    gap={0}
-                                >
-                                    <NumberInput.Control>
-                                        <NumberInput.IncrementTrigger bg="bg.layer2" color="neon.blue"
-                                                                      p={0}>+</NumberInput.IncrementTrigger>
-                                        <NumberInput.DecrementTrigger bg="bg.layer2" color="neon.blue"
-                                                                      p={0}>-</NumberInput.DecrementTrigger>
-                                    </NumberInput.Control>
-                                    <NumberInput.Input/>
-                                </NumberInput.Root>/
-                            </Field.Root>
-
-                            <Field.Root required gap={0}>
-                                <Field.Label color="neon.blue">Категория</Field.Label>
-                                <SelectRoot
-                                    collection={categoryList}
-                                    value={[formData.category]}
-                                    onValueChange={(details) =>
-                                        setFormData({...formData, category: details.value[0]})
-                                    }
-                                >
-                                    <SelectTrigger bg="bg.layer2" borderColor="glass.border">
-                                        <SelectValueText placeholder="Выберите категорию" color="neon.blue"/>
-                                    </SelectTrigger>
-                                    <SelectContent bg="bg.layer1" borderColor="glass.border" zIndex="popover">
-                                        {categoryList.items.map((cat) => (
-                                            <SelectItem
-                                                item={cat}
-                                                key={cat.value}
-                                                _hover={{bg: "bg.layer3"}}
-                                                color="white"
-                                            >
-                                                {cat.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </SelectRoot>
-                            </Field.Root>
-
-                            <Field.Root gap={0}>
-                                <Field.Label color="neon.blue">
-                                    Теги {tagsLoading && <Spinner size="xs" ml={2}/>}
-                                </Field.Label>
-                                <SelectRoot
-                                    multiple
-                                    collection={tagsCollection}
-                                    value={formData.tags?.map(t => t.value ?? '')}
-                                    onValueChange={(details) => {
-                                        const selectedTags = tagOptions.filter(opt => details.value.includes(opt.value!));
-                                        setFormData({...formData, tags: selectedTags});
-                                    }}
-                                >
-                                    <SelectTrigger bg="bg.layer2" borderColor="glass.border">
-                                        <SelectValueText placeholder="Выберите теги" color="neon.blue"/>
-                                    </SelectTrigger>
-                                    <SelectContent bg="bg.layer1" borderColor="glass.border" zIndex="popover">
-                                        {tagsCollection.items.map((tag) => (
-                                            <SelectItem
-                                                item={tag}
-                                                key={tag.value}
-                                                _hover={{bg: "bg.layer3"}}
-                                                _selected={{color: "neon.blue", fontWeight: "bold"}}
-                                                color="white"
-                                            >
-                                                {tag.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </SelectRoot>
-                            </Field.Root>
-
-                            <Field.Root gap={0}>
-                                <Flex align="center" gap={2}>
-                                    <Field.Label color="neon.blue" mb={0}>
-                                        Активен
-                                    </Field.Label>
-                                    <Switch.Root
-                                        checked={formData.isActive}
-                                        onCheckedChange={(details) => {
-                                            const isChecked = details.checked;
-                                            setFormData(prev => ({...prev, isActive: isChecked}));
-                                        }}
-                                    >
-                                        <Switch.HiddenInput/>
-                                        <Switch.Control
-                                            bg={formData.isActive ? "neon.blue" : "neon.purple"}
-                                            filter={formData.isActive
-                                                ? "drop-shadow(0 0 8px rgba(0, 212, 255, 0.9))"
-                                                : "drop-shadow(0 0 8px rgba(212, 0, 255, 0.9))"}
-                                            boxShadow={formData.isActive
-                                                ? "0 0 12px rgba(0, 212, 255, 0.6)"
-                                                : "0 0 12px rgba(212, 0, 255, 0.6)"}
-                                            transition="all 0.3s ease-in-out"
-                                        >
-                                            <Switch.Thumb/>
-                                        </Switch.Control>
-                                    </Switch.Root>
-                                </Flex>
-                            </Field.Root>
+                            <TextField
+                                label="Название"
+                                value={formData.name}
+                                placeholder="Введите название"
+                                required
+                                onChange={(value) => updateFormData('name', value)}
+                            />
+                            <TextAreaField
+                                label="Описание"
+                                value={formData.description}
+                                placeholder="Введите описание"
+                                rows={4}
+                                onChange={(value) => updateFormData('description', value)}
+                            />
+                            <NumberField
+                                label="Цена (₽)"
+                                value={formData.price}
+                                defaultValue="0.00"
+                                step={0.01}
+                                min={0}
+                                onChange={(value) => updateFormData('price', value)}
+                            />
+                            <NumberField
+                                label="Кэшбэк (%)"
+                                value={formData.cashback}
+                                defaultValue="0"
+                                step={1}
+                                min={0}
+                                max={100}
+                                onChange={(value) => updateFormData('cashback', value)}
+                            />
+                            <SelectField
+                                label="Категория"
+                                value={formData.category}
+                                options={categoryOptions}
+                                placeholder="Выберите категорию"
+                                required
+                                onChange={(value) => updateFormData('category', value)}
+                            />
+                            <SelectField
+                                multiple
+                                label="Теги"
+                                value={selectedTagValues}
+                                options={tagSelectOptions}
+                                placeholder="Выберите теги"
+                                loading={tagsLoading}
+                                onChange={(values) => {
+                                    const selectedTags = tagOptions.filter((tag) =>
+                                        tag.value ? values.includes(tag.value) : false,
+                                    );
+                                    updateFormData('tags', selectedTags);
+                                }}
+                            />
+                            <SwitchField
+                                label="Активен"
+                                checked={formData.isActive}
+                                onChange={(value) => updateFormData('isActive', value)}
+                            />
                         </Stack>
                     </Dialog.Body>
 
