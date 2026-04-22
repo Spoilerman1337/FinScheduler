@@ -6,9 +6,9 @@ import {
     CloseButton,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
-import type { ItemDto } from "../../../../api/types.ts";
-import SwitchField from "../../formFields/SwitchField.tsx";
-import TextField from "../../formFields/TextField.tsx";
+import type { ItemDto } from "../../../api/types.ts";
+import SwitchField from "../../../components/formFields/SwitchField.tsx";
+import TextField from "../../../components/formFields/TextField.tsx";
 
 interface TagModalProps {
     isOpen: boolean;

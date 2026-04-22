@@ -6,15 +6,15 @@ import {
     CloseButton,
 } from "@chakra-ui/react";
 import {useState, useEffect, useMemo} from "react";
-import type {ItemDto, ItemModification, Lookup} from "../../../../api/types.ts";
-import {categoryOptions, categoryTranslations} from "../../../../models/items.ts";
-import TagsService from "../../../../api/tags.ts";
-import NumberField from "../../formFields/NumberField.tsx";
-import SelectField from "../../formFields/SelectField.tsx";
-import SwitchField from "../../formFields/SwitchField.tsx";
-import TextAreaField from "../../formFields/TextAreaField.tsx";
-import TextField from "../../formFields/TextField.tsx";
-import type {SelectOption} from "../../formFields/types.ts";
+import type {ItemDto, ItemModification, Lookup} from "../../../api/types.ts";
+import {categoryOptions, categoryTranslations} from "../../../models/items.ts";
+import TagsService from "../../../api/tags.ts";
+import NumberField from "../../../components/formFields/NumberField.tsx";
+import SelectField from "../../../components/formFields/SelectField.tsx";
+import SwitchField from "../../../components/formFields/SwitchField.tsx";
+import TextAreaField from "../../../components/formFields/TextAreaField.tsx";
+import TextField from "../../../components/formFields/TextField.tsx";
+import type {SelectOption} from "../../../components/formFields/types.ts";
 
 interface ItemModalProps {
     isOpen: boolean;

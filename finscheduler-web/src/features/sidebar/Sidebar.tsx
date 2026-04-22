@@ -6,7 +6,7 @@ import {
     LayoutDashboardIcon,
     ShoppingCartIcon, TagIcon,
 } from "lucide-react";
-import SvgLogoIcon from "../../svgIcon/SvgLogoIcon.tsx";
+import SvgLogoIcon from "../../components/svgIcon/SvgLogoIcon.tsx";
 import SidebarItem from "./subcomponents/SidebarItem.tsx";
 
 export default function Sidebar() {
