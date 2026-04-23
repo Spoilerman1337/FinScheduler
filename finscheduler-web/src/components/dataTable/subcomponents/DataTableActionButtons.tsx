@@ -1,32 +1,17 @@
-import {Button, Flex} from "@chakra-ui/react";
-import {PencilIcon, PlusIcon, TrashIcon} from "lucide-react";
+import {Flex} from "@chakra-ui/react";
+import DataTableAddButton from "./DataTableAddButton.tsx";
+import DataTableDeleteButton from "./DataTableDeleteButton.tsx";
+import DataTableEditButton from "./DataTableEditButton.tsx";
 
-interface DataTableActionButtonsProps<T> {
-    data: T[];
-    selectedRows?: Set<string>;
+interface DataTableActionButtonsProps {
+    selectedCount: number;
     onAdd?: () => void;
-    onEdit?: (row: T) => void;
-    onDelete?: (ids: string[]) => void;
-    getRowId?: (row: T) => string;
-    handleEdit: (row: T) => void;
+    onEditSelected?: () => void;
+    onDeleteSelected?: () => void;
 }
 
-export default function DataTableActionButtons<T extends object>(props: DataTableActionButtonsProps<T>) {
-    const {
-        data = [],
-        selectedRows = new Set(),
-        onAdd,
-        onEdit,
-        onDelete,
-        getRowId,
-        handleEdit
-    } = props;
-
-    const handleDelete = () => {
-        if (onDelete && selectedRows.size > 0) {
-            onDelete(Array.from(selectedRows));
-        }
-    };
+export default function DataTableActionButtons(props: DataTableActionButtonsProps) {
+    const {selectedCount, onAdd, onEditSelected, onDeleteSelected} = props;
 
     return (
         <Flex
@@ -39,63 +24,14 @@ export default function DataTableActionButtons<T extends object>(props: DataTabl
             justify="flex-end"
             gap={2}
         >
-            {onAdd && (
-                <Button
-                    onClick={onAdd}
-                    bg="neon.blue"
-                    color="bg.base"
-                    _hover={{bg: 'neon.blue', opacity: 0.8}}
-                >
-                    <PlusIcon size={18} style={{marginRight: '8px'}}/>
-                    Добавить
-                </Button>
-            )}
-            {onEdit && selectedRows.size === 1 && (
-                <Button
-                    onClick={() => {
-                        const selectedId = Array.from(selectedRows)[0];
-                        const selectedRow = data.find(row => {
-                            const rowId = getRowId ? getRowId(row) : String(row['id' as keyof T] || '');
-                            return rowId === selectedId;
-                        });
-                        if (selectedRow) {
-                            handleEdit(selectedRow);
-                        }
-                    }}
-                    bg="neon.green"
-                    color="bg.base"
-                    _hover={{bg: 'neon.green', opacity: 0.8}}
-                    disabled={selectedRows.size !== 1}
-                >
-                    <PencilIcon size={18} style={{marginRight: '8px'}}/>
-                    Редактировать
-                </Button>
-            )}
-            {onDelete && (
-                <Button
-                    onClick={handleDelete}
-                    color="neon.blue"
-                    borderColor="neon.blue"
-                    backdropFilter="blur(12px)"
-                    bg="glass.bgHover"
-                    border="1px solid"
-                    transition="all 0.3s ease-in-out"
-                    disabled={selectedRows.size === 0}
-                    opacity={selectedRows.size === 0 ? 0.5 : 1}
-                    _hover={selectedRows.size > 0 ? {
-                        filter: "drop-shadow(0 0 16px rgba(212, 0,255,0.9))",
-                        boxShadow: "0 0 20px rgba(212, 0,255,1)",
-                        color: "neon.purple",
-                        bg: "glass.bgHover",
-                        backdropFilter: "blur(12px)",
-                        borderColor: "neon.purple",
-                    } : {}}
-                    focusRing="none"
-                >
-                    <TrashIcon size={18} style={{marginRight: '8px'}}/>
-                    Удалить {selectedRows.size > 0 ? `(${selectedRows.size})` : ''}
-                </Button>
+            {onAdd && <DataTableAddButton onClick={onAdd}/>}
+            {onEditSelected && selectedCount === 1 && <DataTableEditButton onClick={onEditSelected}/>}
+            {onDeleteSelected && selectedCount === 1 &&  (
+                <DataTableDeleteButton
+                    selectedCount={selectedCount}
+                    onClick={onDeleteSelected}
+                />
             )}
         </Flex>
-    )
+    );
 }

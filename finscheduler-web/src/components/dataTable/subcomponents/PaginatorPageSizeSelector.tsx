@@ -1,4 +1,4 @@
-import {pageSizes} from "./models.ts";
+import {pageSizes} from "../models.ts";
 import {Box, Flex, Select, Text} from "@chakra-ui/react";
 import {CheckIcon, ChevronDownIcon} from "lucide-react";
 
@@ -53,7 +53,7 @@ export default function PaginatorPageSizeSelector(props: PaginatorPageSizeSelect
                          }}>
                         <Select.ValueText
                             placeholder={props.pageSize.toString()}
-                            color="textPrimary"
+                            color="currentColor"
                             _placeholder={{color: 'textMuted'}}
                             fontSize="sm"
                         />
@@ -84,43 +84,57 @@ export default function PaginatorPageSizeSelector(props: PaginatorPageSizeSelect
                 width="--trigger-width"
                 maxH="200px"
                 overflowY="auto"
+                className="custom-scrollbar"
             >
-                {pageSizes.items.map((item) => (
-                    <Select.Item
-                        item={item}
-                        key={item.value}
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        py="1.5"
-                        px="2"
-                        borderRadius="sm"
-                        color="neon.blue"
-                        fontSize="sm"
-                        transition="all 0.2s"
-                        cursor="pointer"
-                        _hover={{
-                            filter: "drop-shadow(0 0 8px rgba(212, 0,255,0.9))",
-                            color: "neon.purple",
-                            bg: "glass.bgHover",
-                        }}
-                        _selected={{
-                            filter: "drop-shadow(0 0 8px rgba(0,212,255,0.9))",
-                            bg: "glass.bgHover",
-                            fontWeight: "semibold",
-                        }}
-                        _focus={{
-                            outline: "none",
-                            bg: "glass.bgHover",
-                            boxShadow: "0 0 0 2px rgba(0, 212, 255, 0.5)",
-                        }}
-                    >
-                        <Text>{item.label}</Text>
-                        <Select.ItemIndicator asChild>
-                            <CheckIcon/>
-                        </Select.ItemIndicator>
-                    </Select.Item>
-                ))}
+                {pageSizes.items.map((item) => {
+                    const isSelected = item.value === props.pageSize;
+
+                    return (
+                        <Select.Item
+                            item={item}
+                            key={item.value}
+                            display="flex"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            py="1.5"
+                            px="2"
+                            borderRadius="sm"
+                            color={isSelected ? "neon.blue" : "neon.blue"}
+                            bg={isSelected ? "glass.bgHover" : "transparent"}
+                            filter={isSelected ? "drop-shadow(0 0 8px rgba(0,212,255,0.9))" : "none"}
+                            fontSize="sm"
+                            fontWeight={isSelected ? "semibold" : "normal"}
+                            transition="all 0.2s"
+                            cursor="pointer"
+                            _hover={{
+                                filter: "drop-shadow(0 0 8px rgba(212, 0,255,0.9))",
+                                color: "neon.purple",
+                                bg: "glass.bgHover",
+                            }}
+                            _highlighted={{
+                                filter: "drop-shadow(0 0 8px rgba(212, 0,255,0.9))",
+                                color: "neon.purple",
+                                bg: "glass.bgHover",
+                            }}
+                            _selected={{
+                                filter: "drop-shadow(0 0 8px rgba(0,212,255,0.9))",
+                                color: "neon.blue",
+                                bg: "glass.bgHover",
+                                fontWeight: "semibold",
+                            }}
+                            _focus={{
+                                outline: "none",
+                                bg: "glass.bgHover",
+                                boxShadow: "0 0 0 2px rgba(0, 212, 255, 0.5)",
+                            }}
+                        >
+                            <Text color="currentColor">{item.label}</Text>
+                            <Select.ItemIndicator asChild>
+                                <CheckIcon/>
+                            </Select.ItemIndicator>
+                        </Select.Item>
+                    );
+                })}
             </Select.Content>
         </Select.Positioner>
     </Select.Root>)

@@ -12,15 +12,17 @@ export default function Main() {
         <MotionFlex layout
                     flex={1}
                     h="100%"
-                    overflow="hidden"
+                    overflowY="auto"
+                    overflowX="hidden"
                     pl="4"
                     pr="4"
                     pt="4"
-                    pb="2"
+                    pb="0"
                     direction="column"
                     backdropFilter="blur(8px)"
                     bg="rgba(0,0,0,0.25)"
-                    minHeight={0}>
+                    minHeight={0}
+                    className="custom-scrollbar">
             <Routes>
                 <Route path="/" element={<Dashboard/>}/>
                 <Route path="/items" element={<Items/>}/>

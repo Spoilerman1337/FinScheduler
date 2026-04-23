@@ -28,5 +28,5 @@ export default function Paginator(props: PaginatorProps) {
                 onPageChange={props.onPageChange}
             />
         </Flex>
-    )
+    );
 }
