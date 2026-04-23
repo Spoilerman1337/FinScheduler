@@ -3,6 +3,7 @@ import {
     Field,
     SelectContent,
     SelectItem,
+    SelectPositioner,
     SelectRoot,
     SelectTrigger,
     SelectValueText,
@@ -33,6 +34,10 @@ type MultipleSelectFieldProps = BaseSelectFieldProps & {
 
 type SelectFieldProps = SingleSelectFieldProps | MultipleSelectFieldProps;
 
+const SELECT_MAX_VISIBLE_OPTIONS = 5;
+const SELECT_OPTION_HEIGHT_PX = 40;
+const SELECT_CONTENT_MAX_HEIGHT = `${SELECT_MAX_VISIBLE_OPTIONS * SELECT_OPTION_HEIGHT_PX}px`;
+
 export default function SelectField(props: SelectFieldProps) {
     const {
     label,
@@ -62,21 +67,36 @@ export default function SelectField(props: SelectFieldProps) {
                 }}
             >
                 <SelectTrigger bg="bg.layer2" borderColor="glass.border">
-                    <SelectValueText placeholder={placeholder} color="neon.blue"/>
+                    <SelectValueText
+                        placeholder={placeholder}
+                        color="neon.blue"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                    />
                 </SelectTrigger>
-                <SelectContent bg="bg.layer1" borderColor="glass.border" zIndex="popover">
-                    {collection.items.map((option) => (
-                        <SelectItem
-                            item={option}
-                            key={option.value}
-                            _hover={{bg: "bg.layer3"}}
-                            _selected={props.multiple ? {color: "neon.blue", fontWeight: "bold"} : undefined}
-                            color="white"
-                        >
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
+                <SelectPositioner>
+                    <SelectContent
+                        bg="bg.layer1"
+                        borderColor="glass.border"
+                        zIndex="popover"
+                        maxH={SELECT_CONTENT_MAX_HEIGHT}
+                        overflowY="auto"
+                        overscrollBehavior="contain"
+                    >
+                        {collection.items.map((option) => (
+                            <SelectItem
+                                item={option}
+                                key={option.value}
+                                _hover={{bg: "bg.layer3"}}
+                                _selected={props.multiple ? {color: "neon.blue", fontWeight: "bold"} : undefined}
+                                color="white"
+                            >
+                                {option.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </SelectPositioner>
             </SelectRoot>
         </Field.Root>
     );
