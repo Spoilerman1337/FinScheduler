@@ -39,10 +39,26 @@ export default function NumberField({
                 gap={0}
             >
                 <NumberInput.Control>
-                    <NumberInput.IncrementTrigger bg="bg.layer2" color="neon.blue" p={0}>
+                    <NumberInput.IncrementTrigger
+                        bg="bg.layer2"
+                        color="neon.blue"
+                        p={0}
+                        _hover={{
+                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
+                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                        }}
+                    >
                         +
                     </NumberInput.IncrementTrigger>
-                    <NumberInput.DecrementTrigger bg="bg.layer2" color="neon.blue" p={0}>
+                    <NumberInput.DecrementTrigger
+                        bg="bg.layer2"
+                        color="neon.blue"
+                        p={0}
+                        _hover={{
+                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
+                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                        }}
+                    >
                         -
                     </NumberInput.DecrementTrigger>
                 </NumberInput.Control>
