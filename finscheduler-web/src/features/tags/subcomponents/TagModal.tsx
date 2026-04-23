@@ -1,14 +1,8 @@
-import {
-    Dialog,
-    Button,
-    Text,
-    Stack,
-    CloseButton,
-} from "@chakra-ui/react";
-import { useState, useEffect } from "react";
-import type { ItemDto } from "../../../api/types.ts";
+import {useEffect, useState} from "react";
+import type {ItemDto} from "../../../api/types.ts";
 import SwitchField from "../../../components/formFields/SwitchField.tsx";
 import TextField from "../../../components/formFields/TextField.tsx";
+import FormModal from "../../../components/ui/FormModal.tsx";
 
 interface TagModalProps {
     isOpen: boolean;
@@ -18,40 +12,35 @@ interface TagModalProps {
     mode: 'create' | 'edit';
 }
 
-export default function TagModal({ isOpen, onClose, onSave, item, mode }: TagModalProps) {
-    const [formData, setFormData] = useState({
+export default function TagModal({isOpen, onClose, onSave, item, mode}: TagModalProps) {
+    const getDefaultFormData = () => ({
         name: '',
-        isActive: true
+        isActive: true,
     });
+
+    const [formData, setFormData] = useState(getDefaultFormData);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen && mode === 'edit' && item) {
-            const newFormData = {
+            setFormData({
                 name: item.name || '',
-                isActive: item.isActive !== undefined ? item.isActive : true,
-            };
-            setFormData(newFormData);
+                isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
+            });
         }
     }, [isOpen, item, mode]);
 
     useEffect(() => {
         if (isOpen && mode === 'create') {
-            setFormData({
-                name: '',
-                isActive: true,
-            });
+            setFormData(getDefaultFormData());
             setError(null);
         }
     }, [isOpen, mode]);
 
     useEffect(() => {
         if (!isOpen) {
-            setFormData({
-                name: '',
-                isActive: true,
-            });
+            setFormData(getDefaultFormData());
             setError(null);
         }
     }, [isOpen]);
@@ -79,64 +68,27 @@ export default function TagModal({ isOpen, onClose, onSave, item, mode }: TagMod
     };
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(details) => !details.open && onClose()} placement="center">
-            <Dialog.Backdrop />
-            <Dialog.Positioner>
-                <Dialog.Content bg="bg.layer1" border="1px solid" borderColor="glass.border" maxW="600px">
-                    <Dialog.Header>
-                        <Dialog.Title color="neon.blue">
-                            {mode === 'create' ? 'Добавить новый элемент' : 'Редактировать элемент'}
-                        </Dialog.Title>
-                        <Dialog.CloseTrigger asChild>
-                            <CloseButton />
-                        </Dialog.CloseTrigger>
-                    </Dialog.Header>
-                    <Dialog.Body>
-                        <Stack gap={4}>
-                            {error && (
-                                <Text color="neon.pink" fontSize="sm">
-                                    {error}
-                                </Text>
-                            )}
+        <FormModal
+            isOpen={isOpen}
+            onClose={onClose}
+            onSubmit={handleSubmit}
+            title={mode === 'create' ? 'Добавить новый элемент' : 'Редактировать элемент'}
+            error={error}
+            loading={loading}
+        >
+            <TextField
+                label="Название"
+                value={formData.name}
+                placeholder="Введите название"
+                required
+                onChange={(value) => setFormData((prev) => ({...prev, name: value}))}
+            />
 
-                            <TextField
-                                label="Название"
-                                value={formData.name}
-                                placeholder="Введите название"
-                                required
-                                onChange={(value) => setFormData({...formData, name: value})}
-                            />
-
-                            <SwitchField
-                                label="Активен"
-                                checked={formData.isActive}
-                                onChange={(value) => setFormData(prev => ({...prev, isActive: value}))}
-                            />
-                        </Stack>
-                    </Dialog.Body>
-
-                    <Dialog.Footer>
-                        <Button
-                            variant="ghost"
-                            mr={3}
-                            onClick={onClose}
-                            color="textMuted"
-                            _hover={{ bg: 'bg.layer2' }}
-                        >
-                            Отмена
-                        </Button>
-                        <Button
-                            bg="neon.blue"
-                            color="bg.base"
-                            onClick={handleSubmit}
-                            loading={loading}
-                            _hover={{ bg: 'neon.blue', opacity: 0.8 }}
-                        >
-                            Сохранить
-                        </Button>
-                    </Dialog.Footer>
-                </Dialog.Content>
-            </Dialog.Positioner>
-        </Dialog.Root>
+            <SwitchField
+                label="Активен"
+                checked={formData.isActive}
+                onChange={(value) => setFormData((prev) => ({...prev, isActive: value}))}
+            />
+        </FormModal>
     );
 }
