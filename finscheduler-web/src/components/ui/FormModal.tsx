@@ -45,8 +45,25 @@ export default function FormModal({
                             <Dialog.CloseTrigger asChild bg="bg.layer1" border="1px solid" borderColor="neon.blue">
                                 <CloseButton
                                     color="neon.blue"
-                                    filter="drop-shadow(0 0 8px rgba(0, 212, 255, 0.9))"
-                                    boxShadow="0 0 12px rgba(0, 212, 255, 0.6)"
+                                    bg="transparent"
+                                    border="none"
+                                    outline="none"
+                                    boxShadow="none"
+                                    transition="all 0.3s ease-in-out"
+                                    _hover={{
+                                        color: "neon.blue",
+                                        bg: "glass.bgHover",
+                                        backdropFilter: "blur(12px)",
+                                        borderColor: "neon.blue",
+                                        outline: "none",
+                                        filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
+                                        boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                                    }}
+                                    _focusVisible={{
+                                        bg: "transparent",
+                                        outline: "none",
+                                        boxShadow: "none",
+                                    }}
                                 />
                             </Dialog.CloseTrigger>
                         </Dialog.Header>
