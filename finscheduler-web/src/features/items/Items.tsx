@@ -1,11 +1,11 @@
 import DataTable, {type TableColumn} from "../../components/dataTable/DataTable.tsx";
-import {Badge, Box, Button, Flex, Input, Text, Spinner} from "@chakra-ui/react";
-import {SearchIcon} from "lucide-react";
+import {Badge, Flex, Spinner, Text} from "@chakra-ui/react";
 import {useState, useEffect, useCallback} from "react";
 import type {ItemDto, ItemFilter, ItemModification} from "../../api/types.ts";
 import ItemModal from "./subcomponents/ItemModal.tsx";
 import {toaster} from "../../components/ui/toaster.tsx";
 import ItemsService from "../../api/items.ts";
+import ItemsFilters from "./subcomponents/ItemsFilters.tsx";
 
 const itemsService = new ItemsService();
 
@@ -43,12 +43,12 @@ export default function Items() {
                 <Text color="neon.blue" fontWeight="medium">
                     {row.price !== undefined ? `₽${row.price.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
+                        maximumFractionDigits: 2,
                     })}` : '-'}
                 </Text>
             ),
             headerProps: {textAlign: 'right'},
-            cellProps: {justifyContent: 'flex-start'}
+            cellProps: {justifyContent: 'flex-start'},
         },
         {
             header: 'Кэшбэк (%)',
@@ -59,7 +59,7 @@ export default function Items() {
                 </Text>
             ),
             headerProps: {textAlign: 'right'},
-            cellProps: {justifyContent: 'flex-start'}
+            cellProps: {justifyContent: 'flex-start'},
         },
         {
             header: 'Статус',
@@ -76,7 +76,7 @@ export default function Items() {
                     {row.isActive ? "Активен" : "Неактивен"}
                 </Badge>
             ),
-            headerProps: {textAlign: 'left'}
+            headerProps: {textAlign: 'left'},
         },
         {
             header: 'Создан',
@@ -86,7 +86,7 @@ export default function Items() {
                     {row.createdAt ? new Date(row.createdAt).toLocaleDateString('ru-RU') : '-'}
                 </Text>
             ),
-            headerProps: {textAlign: 'left'}
+            headerProps: {textAlign: 'left'},
         },
     ];
 
@@ -97,16 +97,17 @@ export default function Items() {
             color = cashback > 1 ? "neon.green" : "neon.yellow";
         }
 
-        return color
-    }
+        return color;
+    };
 
     const loadItems = useCallback(async () => {
         setLoading(true);
         setError(null);
+
         try {
             const filter: ItemFilter = {
                 page: page - 1,
-                pageSize: pageSize,
+                pageSize,
             };
 
             if (searchTerm) {
@@ -152,7 +153,7 @@ export default function Items() {
         setPriceFrom('');
         setPriceTo('');
         setPage(1);
-    }
+    };
 
     const handleOpenAddModal = () => {
         setEditingItem(null);
@@ -192,6 +193,7 @@ export default function Items() {
                 console.error('Cannot save: missing id for edit mode', {modalMode, editingItem});
                 throw new Error('Не удалось определить режим сохранения');
             }
+
             await loadItems();
         } catch (err) {
             console.error('Error saving item:', err);
@@ -201,7 +203,7 @@ export default function Items() {
 
     const handleDeleteItems = async (ids: string[]) => {
         try {
-            await Promise.all(ids.map(id => itemsService.deleteItem(id)));
+            await Promise.all(ids.map((id) => itemsService.deleteItem(id)));
             toaster.create({
                 title: 'Успешно',
                 description: `Удалено элементов: ${ids.length}`,
@@ -222,145 +224,29 @@ export default function Items() {
         return row.id ?? '';
     };
 
-    const filterWidthProps = {
-        w: {base: '100%', md: 'calc(50% - var(--chakra-space-2))', xl: 'calc(20% - var(--chakra-space-3))'},
-    };
-
-    const statusOptions: Array<'All' | 'Active' | 'Inactive'> = ['All', 'Active', 'Inactive'];
-
-    return <Flex direction="column" width="100%">
-            <Flex
-                mb={4}
-                p={4}
-                bg="bg.layer2"
-                borderRadius="lg"
-                border="1px solid"
-                borderColor="glass.border"
-                width="100%"
-                align="center"
-                gap={4}
-                flexWrap="wrap"
-                justifyContent="flex-start"
-            >
-                <Box {...filterWidthProps} position="relative">
-                    <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1"
-                         pointerEvents="none">
-                        <SearchIcon size={18} color="rgba(255,255,255,0.6)"/>
-                    </Box>
-                    <Input
-                        placeholder="Поиск по названию..."
-                        value={searchTerm}
-                        onChange={(e) => {
-                            setPage(1)
-                            setSearchTerm(e.target.value)
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                setPage(1);
-                                loadItems();
-                            }
-                        }}
-                        pl="10"
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="neon.blue"
-                        _placeholder={{color: 'textMuted'}}
-                    />
-                </Box>
-
-                <Box {...filterWidthProps}>
-                    <Flex gap={1} borderRadius="md" p={1} bg="bg.layer1" border="1px solid" borderColor="glass.border">
-                        {statusOptions.map(status => (
-                            <Button
-                                key={status}
-                                size="sm"
-                                flex={1}
-                                onClick={() => {
-                                    setStatusFilter(status);
-                                    setPage(1);
-                                }}
-                                color={statusFilter === status ? "neon.blue" : "neon.blue"}
-                                borderColor={statusFilter === status ? "neon.blue" : "glass.border"}
-                                backdropFilter="blur(12px)"
-                                bg={statusFilter === status ? "glass.bgHover" : "transparent"}
-                                border="1px solid"
-                                transition="all 0.3s ease-in-out"
-                                filter={statusFilter === status ? "drop-shadow(0 0 16px rgba(0,212,255,0.9))" : "none"}
-                                boxShadow={statusFilter === status ? "0 0 20px rgba(0,212,255,1)" : "none"}
-                                _hover={{
-                                    filter: "drop-shadow(0 0 16px rgba(212, 0,255,0.9))",
-                                    boxShadow: "0 0 20px rgba(212, 0,255,1)",
-                                    color: "neon.purple",
-                                    bg: "glass.bgHover",
-                                    backdropFilter: "blur(12px)",
-                                    borderColor: "neon.purple",
-                                }}
-                                _active={{
-                                    filter: "drop-shadow(0 0 16px rgba(0,212,255,0.9))",
-                                    boxShadow: "0 0 20px rgba(0,212,255,1)",
-                                    color: "neon.blue",
-                                    bg: "glass.bgHover",
-                                    backdropFilter: "blur(12px)",
-                                    borderColor: "neon.blue",
-                                }}
-                                focusRing="none"
-                            >
-                                {status === 'All' ? 'Все' : status === 'Active' ? 'Активные' : 'Неактивные'}
-                            </Button>
-                        ))}
-                    </Flex>
-                </Box>
-
-                <Box {...filterWidthProps}>
-                    <Input
-                        placeholder="Цена от"
-                        type="number"
-                        value={priceFrom}
-                        onChange={(e) => setPriceFrom(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                setPage(1);
-                                loadItems();
-                            }
-                        }}
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="neon.blue"
-                        _placeholder={{color: 'textMuted'}}
-                    />
-                </Box>
-
-                <Box {...filterWidthProps}>
-                    <Input
-                        placeholder="Цена до"
-                        type="number"
-                        value={priceTo}
-                        onChange={(e) => setPriceTo(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                setPage(1);
-                                loadItems();
-                            }
-                        }}
-                        bg="bg.layer1"
-                        borderColor="glass.border"
-                        color="neon.blue"
-                        _placeholder={{color: 'textMuted'}}
-                    />
-                </Box>
-
-                <Button
-                    {...filterWidthProps}
-                    onClick={handleReset}
-                    bg="bg.layer3"
-                    color="textMuted"
-                    borderColor="glass.border"
-                    border="1px solid"
-                    _hover={{bg: 'neon.pink', color: 'bg.base'}}
-                >
-                    Сброс
-                </Button>
-            </Flex>
+    return (
+        <Flex direction="column" width="100%">
+            <ItemsFilters
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                priceFrom={priceFrom}
+                priceTo={priceTo}
+                onSearchTermChange={(value) => {
+                    setPage(1);
+                    setSearchTerm(value);
+                }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                    setPage(1);
+                }}
+                onPriceFromChange={setPriceFrom}
+                onPriceToChange={setPriceTo}
+                onApply={() => {
+                    setPage(1);
+                    loadItems();
+                }}
+                onReset={handleReset}
+            />
 
             {loading ? (
                 <Flex justify="center" align="center" minH="400px">
@@ -402,4 +288,5 @@ export default function Items() {
                 </>
             )}
         </Flex>
+    );
 }
