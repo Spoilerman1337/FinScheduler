@@ -10,7 +10,6 @@ export type {TableColumn} from "./models.ts";
 interface DataTableProps<T> {
     data: T[];
     columns: TableColumn<T>[];
-    rowKey?: keyof T;
     total: number;
     page?: number;
     pageSize?: number;
