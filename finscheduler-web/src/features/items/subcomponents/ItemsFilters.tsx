@@ -1,8 +1,8 @@
-import {Button, Flex} from "@chakra-ui/react";
 import ActivityFilter from "../../../components/listingFilters/ActivityFilter.tsx";
+import FilterWrapper from "../../../components/listingFilters/FilterWrapper.tsx";
 import NumberInputFilter from "../../../components/listingFilters/NumberInputFilter.tsx";
 import TextInputFilter from "../../../components/listingFilters/TextInputFilter.tsx";
-import {filterWidthProps, type ActivityFilterValue} from "../../../components/listingFilters/shared.ts";
+import type {ActivityFilterValue} from "../../../components/listingFilters/shared.ts";
 
 type ItemsFiltersProps = {
     searchTerm: string;
@@ -19,19 +19,7 @@ type ItemsFiltersProps = {
 
 export default function ItemsFilters(props: ItemsFiltersProps) {
     return (
-        <Flex
-            mb={4}
-            p={4}
-            bg="bg.layer2"
-            borderRadius="lg"
-            border="1px solid"
-            borderColor="glass.border"
-            width="100%"
-            align="center"
-            gap={4}
-            flexWrap="wrap"
-            justifyContent="flex-start"
-        >
+        <FilterWrapper onReset={props.onReset}>
             <TextInputFilter
                 value={props.searchTerm}
                 placeholder="Поиск по названию..."
@@ -51,17 +39,6 @@ export default function ItemsFilters(props: ItemsFiltersProps) {
                 onChange={props.onPriceToChange}
                 onApply={props.onApply}
             />
-            <Button
-                {...filterWidthProps}
-                onClick={props.onReset}
-                bg="bg.layer3"
-                color="textMuted"
-                borderColor="glass.border"
-                border="1px solid"
-                _hover={{bg: 'neon.pink', color: 'bg.base'}}
-            >
-                Сброс
-            </Button>
-        </Flex>
+        </FilterWrapper>
     );
 }
