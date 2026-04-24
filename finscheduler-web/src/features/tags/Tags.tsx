@@ -147,7 +147,7 @@ export default function Tags() {
 
     const statusOptions: Array<'All' | 'Active' | 'Inactive'> = ['All', 'Active', 'Inactive'];
 
-    return (<Layout headerName={"Тэги"}>
+    return (<Layout headerName={"Теги"}>
         <Flex direction="column" width="100%">
 
             <Flex
