@@ -1,13 +1,15 @@
 import {Flex} from "@chakra-ui/react";
 import {motion} from "framer-motion";
-import {Route, Routes} from "react-router-dom";
-import Items from "../../features/items/Items.tsx";
-import Dashboard from "../../features/dashboard/Dashboard.tsx";
-import Tags from "../../features/tags/Tags.tsx";
+import {Route, Routes, matchPath, useLocation} from "react-router-dom";
+import Layout from "./subcomponents/Layout.tsx";
+import {routes} from "./routes.tsx";
 
 const MotionFlex = motion.create(Flex)
 
 export default function Main() {
+    const location = useLocation();
+    const currentRoute = routes.find((route) => matchPath({path: route.path, end: true}, location.pathname));
+
     return (
         <MotionFlex layout
                     flex={1}
@@ -23,11 +25,13 @@ export default function Main() {
                     bg="rgba(0,0,0,0.25)"
                     minHeight={0}
                     className="custom-scrollbar">
-            <Routes>
-                <Route path="/" element={<Dashboard/>}/>
-                <Route path="/items" element={<Items/>}/>
-                <Route path="/tags" element={<Tags/>}/>
-            </Routes>
+            <Layout headerName={currentRoute?.title}>
+                <Routes>
+                    {routes.map((route) => (
+                        <Route key={route.path} path={route.path} element={route.element}/>
+                    ))}
+                </Routes>
+            </Layout>
         </MotionFlex>
     )
 }

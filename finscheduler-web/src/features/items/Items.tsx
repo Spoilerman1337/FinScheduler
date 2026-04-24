@@ -5,7 +5,6 @@ import {useState, useEffect, useCallback} from "react";
 import type {ItemDto, ItemFilter, ItemModification} from "../../api/types.ts";
 import ItemModal from "./subcomponents/ItemModal.tsx";
 import {toaster} from "../../components/ui/toaster.tsx";
-import Layout from "../../layout/main/subcomponents/Layout.tsx";
 import ItemsService from "../../api/items.ts";
 
 const itemsService = new ItemsService();
@@ -229,9 +228,7 @@ export default function Items() {
 
     const statusOptions: Array<'All' | 'Active' | 'Inactive'> = ['All', 'Active', 'Inactive'];
 
-    return (<Layout headerName={"Виды расходов"}>
-        <Flex direction="column" width="100%">
-
+    return <Flex direction="column" width="100%">
             <Flex
                 mb={4}
                 p={4}
@@ -245,7 +242,6 @@ export default function Items() {
                 flexWrap="wrap"
                 justifyContent="flex-start"
             >
-
                 <Box {...filterWidthProps} position="relative">
                     <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1"
                          pointerEvents="none">
@@ -364,7 +360,6 @@ export default function Items() {
                 >
                     Сброс
                 </Button>
-
             </Flex>
 
             {loading ? (
@@ -407,5 +402,4 @@ export default function Items() {
                 </>
             )}
         </Flex>
-    </Layout>)
 }
