@@ -29,6 +29,7 @@ export default class ItemsService extends FinschedulerApiClient {
                 price: item.price,
                 description: item.description,
                 isActive: item.isActive,
+                category: item.category,
                 cashback: item.cashback,
                 tagIds: item.tagIds,
             }),
