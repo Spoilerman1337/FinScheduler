@@ -1,9 +1,9 @@
 import {Flex} from "@chakra-ui/react";
 import {motion} from "framer-motion";
 import {Route, Routes} from "react-router-dom";
-import Items from "../items/Items.tsx";
-import Dashboard from "../dashboard/Dashboard.tsx";
-import Tags from "../tags/Tags.tsx";
+import Items from "../../features/items/Items.tsx";
+import Dashboard from "../../features/dashboard/Dashboard.tsx";
+import Tags from "../../features/tags/Tags.tsx";
 
 const MotionFlex = motion.create(Flex)
 

@@ -4,7 +4,7 @@ import {SearchIcon} from "lucide-react";
 import {useState, useEffect, useCallback} from "react";
 import type {TagDto, TagFilter} from "../../api/types.ts";
 import {toaster} from "../../components/ui/toaster.tsx";
-import Layout from "../main/subcomponents/Layout.tsx";
+import Layout from "../../layout/main/subcomponents/Layout.tsx";
 import TagModal from "./subcomponents/TagModal.tsx";
 import TagsService from "../../api/tags.ts";
 

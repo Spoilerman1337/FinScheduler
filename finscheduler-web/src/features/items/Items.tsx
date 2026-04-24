@@ -5,7 +5,7 @@ import {useState, useEffect, useCallback} from "react";
 import type {ItemDto, ItemFilter, ItemModification} from "../../api/types.ts";
 import ItemModal from "./subcomponents/ItemModal.tsx";
 import {toaster} from "../../components/ui/toaster.tsx";
-import Layout from "../main/subcomponents/Layout.tsx";
+import Layout from "../../layout/main/subcomponents/Layout.tsx";
 import ItemsService from "../../api/items.ts";
 
 const itemsService = new ItemsService();

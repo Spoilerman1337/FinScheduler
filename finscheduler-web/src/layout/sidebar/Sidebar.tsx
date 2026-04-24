@@ -50,21 +50,21 @@ export default function Sidebar() {
                     <SidebarItem
                         isCollapsed={isCollapsed}
                         icon={<LayoutDashboardIcon/>}
-                        label="Дашборды"
+                        label="Р”Р°С€Р±РѕСЂРґС‹"
                         id={'dashboard'}
                         path={"/"}
                     />
                     <SidebarItem
                         isCollapsed={isCollapsed}
                         icon={<ShoppingCartIcon/>}
-                        label="Виды расходов"
+                        label="Р’РёРґС‹ СЂР°СЃС…РѕРґРѕРІ"
                         id={'items'}
                         path={"/items"}
                     />
                     <SidebarItem
                         isCollapsed={isCollapsed}
                         icon={<TagIcon/>}
-                        label="Тэги"
+                        label="РўСЌРіРё"
                         id={'tags'}
                         path={"/tags"}
                     />
@@ -73,7 +73,7 @@ export default function Sidebar() {
                 <Box position="relative" h="96px" mt="auto">
                     <Box position="absolute" right={2} bottom={3}>
                         <IconButton
-                            aria-label="Свернуть/развернуть"
+                            aria-label="РЎРІРµСЂРЅСѓС‚СЊ/СЂР°Р·РІРµСЂРЅСѓС‚СЊ"
                             size="sm"
                             borderRadius="full"
                             variant="ghost"
