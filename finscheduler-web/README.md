@@ -1,73 +1,92 @@
-# React + TypeScript + Vite
+# FinScheduler Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React frontend for FinScheduler.
 
-Currently, two official plugins are available:
+The app provides UI pages for the dashboard, expense items, and tags. It talks to the backend through the API client in `src/api`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tech Stack
 
-## React Compiler
+- React 19.
+- TypeScript.
+- Vite / rolldown-vite.
+- Chakra UI.
+- React Router.
+- lucide-react and react-icons.
+- pnpm.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
 
-## Expanding the ESLint configuration
+Install dependencies:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Run the dev server:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev
 ```
+
+Build:
+
+```bash
+pnpm build
+```
+
+Lint:
+
+```bash
+pnpm lint
+```
+
+Preview a production build:
+
+```bash
+pnpm preview
+```
+
+## Environment
+
+The frontend uses `VITE_API_BASE_URL` to choose the backend API base URL.
+
+Default:
+
+```text
+http://localhost:8081/api
+```
+
+Example override:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8081/api pnpm dev
+```
+
+## App Routes
+
+- `/` - dashboard.
+- `/items` - expense items.
+- `/tags` - tags.
+
+## API Client
+
+The base client is `src/api/finscheduler-api-client.ts`.
+
+Resource clients:
+
+- `src/api/items.ts`
+- `src/api/tags.ts`
+
+## Project Structure
+
+```text
+src/api/        # API clients and shared DTO types
+src/components/ # Shared UI components
+src/features/   # Feature pages and local subcomponents
+src/layout/     # App shell, sidebar, routes
+```
+
+## Notes
+
+- The backend should be running on `localhost:8081` for the default API URL.
+- Some existing UI labels appear to have encoding issues and should be normalized to UTF-8.
