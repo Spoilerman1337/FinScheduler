@@ -26,7 +26,7 @@ export default function DataTableActionButtons(props: DataTableActionButtonsProp
         >
             {onAdd && <DataTableAddButton onClick={onAdd}/>}
             {onEditSelected && selectedCount === 1 && <DataTableEditButton onClick={onEditSelected}/>}
-            {onDeleteSelected && selectedCount === 1 &&  (
+            {onDeleteSelected && selectedCount > 0 &&  (
                 <DataTableDeleteButton
                     selectedCount={selectedCount}
                     onClick={onDeleteSelected}
