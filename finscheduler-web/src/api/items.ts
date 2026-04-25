@@ -4,7 +4,7 @@ import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
 export default class ItemsService extends FinschedulerApiClient {
     async getItems(filter?: ItemFilter): Promise<PaginatedList<ItemDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';
-        const response = await fetch(`${this.baseUrl}/items/${queryString}`, {
+        const response = await fetch(`${this.baseUrl}/items${queryString}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
