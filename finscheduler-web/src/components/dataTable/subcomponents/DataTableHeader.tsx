@@ -1,5 +1,4 @@
 import {Flex, Text} from "@chakra-ui/react";
-import {ArrowUpDownIcon} from "lucide-react";
 import DataTableCell from "./DataTableCell.tsx";
 import DataTableSelectionCheckbox from "./DataTableSelectionCheckbox.tsx";
 import type {TableColumn} from "../models.ts";
@@ -44,14 +43,7 @@ export default function DataTableHeader<T>(props: DataTableHeaderProps<T>) {
                         isHeader
                         {...col.headerProps}
                     >
-                        {col.key === "asset" ? (
-                            <Flex align="center" cursor="pointer" _hover={{color: "neon.blue"}}>
-                                <Text color="neon.blue">{col.header}</Text>
-                                <ArrowUpDownIcon size={14} style={{marginLeft: "8px"}}/>
-                            </Flex>
-                        ) : (
-                            <Text color="neon.blue">{col.header}</Text>
-                        )}
+                        <Text color="neon.blue">{col.header}</Text>
                     </DataTableCell>
                 ))}
             </Flex>
