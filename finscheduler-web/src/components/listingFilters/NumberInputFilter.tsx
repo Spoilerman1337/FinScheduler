@@ -1,4 +1,4 @@
-import {Box, Input} from "@chakra-ui/react";
+import {Box, NumberInput} from "@chakra-ui/react";
 import {filterWidthProps} from "./shared.ts";
 
 type NumberInputFilterProps = {
@@ -11,21 +11,49 @@ type NumberInputFilterProps = {
 export default function NumberInputFilter(props: NumberInputFilterProps) {
     return (
         <Box {...filterWidthProps}>
-            <Input
-                placeholder={props.placeholder}
-                type="number"
+            <NumberInput.Root
                 value={props.value}
-                onChange={(e) => props.onChange(e.target.value)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                        props.onApply();
-                    }
-                }}
+                onValueChange={(details) => props.onChange(details.value)}
                 bg="bg.layer1"
                 borderColor="glass.border"
                 color="neon.blue"
-                _placeholder={{color: 'text.placeholder'}}
-            />
+                width="100%"
+                gap={0}
+            >
+                <NumberInput.Control>
+                    <NumberInput.IncrementTrigger
+                        bg="bg.layer1"
+                        color="neon.blue"
+                        p={0}
+                        _hover={{
+                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
+                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                        }}
+                    >
+                        +
+                    </NumberInput.IncrementTrigger>
+                    <NumberInput.DecrementTrigger
+                        bg="bg.layer1"
+                        color="neon.blue"
+                        p={0}
+                        _hover={{
+                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
+                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                        }}
+                    >
+                        -
+                    </NumberInput.DecrementTrigger>
+                </NumberInput.Control>
+                <NumberInput.Input
+                    placeholder={props.placeholder}
+                    _placeholder={{color: 'text.placeholder'}}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            props.onApply();
+                        }
+                    }}
+                />
+            </NumberInput.Root>
         </Box>
     );
 }
