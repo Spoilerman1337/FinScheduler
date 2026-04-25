@@ -9,3 +9,11 @@ func DereferenceSlice[T any](input []*T) []T {
 	}
 	return result
 }
+
+func ReferenceSlice[T any](input []T) []*T {
+	result := make([]*T, len(input))
+	for i, v := range input {
+		result[i] = &v
+	}
+	return result
+}

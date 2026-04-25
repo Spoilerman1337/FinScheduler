@@ -12,3 +12,8 @@ export const categoryTranslations: Record<string, string> = {
     Telecom: "Интернет и связь",
     Education: "Обучение"
 };
+
+export const categoryOptions = Object.entries(categoryTranslations).map(([value, label]) => ({
+    label,
+    value,
+}));

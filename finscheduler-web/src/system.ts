@@ -42,7 +42,8 @@ export const system = createSystem(defaultConfig, {
                     primary: {value: "#ffffff"},
                     secondary: {value: "rgba(255, 255, 255, 0.75)"},
                     muted: {value: "rgba(255, 255, 255, 0.55)"},
-                    disabled: {value: "rgba(255, 255, 255, 0.35)"},
+                    disabled: {value: "#727a96"},
+                    placeholder: {value: "#5c7398"},
                 },
 
                 btc: {value: "#00d4ff"},
@@ -96,6 +97,7 @@ export const system = createSystem(defaultConfig, {
                 textPrimary: {value: "{colors.text.primary}"},
                 textSecondary: {value: "{colors.text.secondary}"},
                 textMuted: {value: "{colors.text.muted}"},
+                textDisabled: {value: "{colors.text.disabled}"},
             },
             shadows: {
                 card: {value: "{shadows.glass}"},

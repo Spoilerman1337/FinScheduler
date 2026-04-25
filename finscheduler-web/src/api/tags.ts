@@ -4,7 +4,7 @@ import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
 export default class TagsService extends FinschedulerApiClient {
     async getTags(filter?: TagFilter): Promise<PaginatedList<TagDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';
-        const response = await fetch(`${this.baseUrl}/tags/${queryString}`, {
+        const response = await fetch(`${this.baseUrl}/tags${queryString}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -13,21 +13,6 @@ export default class TagsService extends FinschedulerApiClient {
 
         if (!response.ok) {
             throw new Error(`Failed to fetch tags: ${response.statusText}`);
-        }
-
-        return response.json();
-    }
-
-    async getTagById(id: string): Promise<TagDto> {
-        const response = await fetch(`${this.baseUrl}/tags/${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch tag: ${response.statusText}`);
         }
 
         return response.json();

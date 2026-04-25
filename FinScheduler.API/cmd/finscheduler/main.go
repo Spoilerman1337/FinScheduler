@@ -3,22 +3,24 @@ package main
 import (
 	"context"
 	"finscheduler/database"
+	featurehttp "finscheduler/internal/features/http"
+	"finscheduler/internal/features/services"
 	"finscheduler/internal/health"
 	"finscheduler/internal/infra"
-	"finscheduler/internal/items"
 	"finscheduler/internal/metrics"
+	"finscheduler/internal/persistence"
 	"finscheduler/internal/profiles"
-	"finscheduler/internal/tags"
 	"finscheduler/internal/traces"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/cors"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
 func main() {
@@ -75,17 +77,17 @@ func main() {
 	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	logger := slog.New(stdoutHandler)
 
-	itemsRepository := items.NewItemsRepository(db, logger)
-	itemsService := items.NewItemsService(itemsRepository, logger)
-	itemsHandler := items.NewItemsHandler(itemsService, logger)
+	uow := persistence.NewUnitOfWork(db, logger)
 
-	tagsRepository := tags.NewTagsRepository(db, logger)
-	tagsService := tags.NewTagsService(tagsRepository, logger)
-	tagsHandler := tags.NewTagsHandler(tagsService, logger)
+	itemsService := services.NewItemsService(uow, logger)
+	tagsService := services.NewTagsService(uow, logger)
+
+	tagsHandler := featurehttp.NewTagsHandler(tagsService, logger)
+	itemsHandler := featurehttp.NewItemsHandler(itemsService, logger)
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: false,

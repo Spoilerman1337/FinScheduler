@@ -4,7 +4,7 @@ import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
 export default class ItemsService extends FinschedulerApiClient {
     async getItems(filter?: ItemFilter): Promise<PaginatedList<ItemDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';
-        const response = await fetch(`${this.baseUrl}/items/${queryString}`, {
+        const response = await fetch(`${this.baseUrl}/items${queryString}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -13,21 +13,6 @@ export default class ItemsService extends FinschedulerApiClient {
 
         if (!response.ok) {
             throw new Error(`Failed to fetch items: ${response.statusText}`);
-        }
-
-        return response.json();
-    }
-
-    async getItemById(id: string): Promise<ItemDto> {
-        const response = await fetch(`${this.baseUrl}/items/${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch item: ${response.statusText}`);
         }
 
         return response.json();
@@ -44,6 +29,7 @@ export default class ItemsService extends FinschedulerApiClient {
                 price: item.price,
                 description: item.description,
                 isActive: item.isActive,
+                category: item.category,
                 cashback: item.cashback,
                 tagIds: item.tagIds,
             }),

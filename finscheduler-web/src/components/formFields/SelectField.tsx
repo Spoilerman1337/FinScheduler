@@ -1,0 +1,158 @@
+import {
+    createListCollection,
+    Field,
+    Flex,
+    SelectContent,
+    SelectHiddenSelect,
+    SelectItem,
+    SelectPositioner,
+    SelectRoot,
+    SelectTrigger,
+    SelectValueText,
+    Spinner,
+} from "@chakra-ui/react";
+import {ChevronDownIcon} from "lucide-react";
+import {useMemo} from "react";
+import type {SelectOption} from "./types.ts";
+
+interface BaseSelectFieldProps {
+    label: string;
+    options: SelectOption[];
+    placeholder?: string;
+    loading?: boolean;
+    required?: boolean;
+}
+
+type SingleSelectFieldProps = BaseSelectFieldProps & {
+    multiple?: false;
+    value: string;
+    onChange: (value: string) => void;
+};
+
+type MultipleSelectFieldProps = BaseSelectFieldProps & {
+    multiple: true;
+    value: string[];
+    onChange: (value: string[]) => void;
+};
+
+type SelectFieldProps = SingleSelectFieldProps | MultipleSelectFieldProps;
+
+export default function SelectField(props: SelectFieldProps) {
+    const {
+        label,
+        options,
+        placeholder,
+        loading = false,
+        required = false,
+    } = props;
+
+    const collection = useMemo(() => createListCollection({items: options}), [options]);
+    const value = props.multiple ? props.value : props.value ? [props.value] : [];
+    const hasValue = props.multiple ? props.value.length > 0 : Boolean(props.value);
+
+    return (
+        <Field.Root required={required} gap={0}>
+            <Field.Label color="neon.blue">
+                {label} {loading && <Spinner size="xs" ml={2}/>}
+            </Field.Label>
+            <SelectRoot
+                multiple={props.multiple}
+                collection={collection}
+                value={value}
+                onValueChange={(details) => {
+                    if (props.multiple) {
+                        props.onChange(details.value);
+                    } else {
+                        props.onChange(details.value[0] ?? '');
+                    }
+                }}
+            >
+                <SelectHiddenSelect/>
+                <SelectTrigger asChild>
+                    <Flex
+                        align="center"
+                        justify="space-between"
+                        gap={2}
+                        w="100%"
+                        minH="40px"
+                        px={3}
+                        border="1px solid"
+                        borderRadius="sm"
+                        borderColor="glass.border"
+                        bg="bg.layer2"
+                        color="neon.blue"
+                        transition="all 0.2s"
+                        _hover={{
+                            color: "neon.blue",
+                            bg: "bg.layer2",
+                            borderColor: "glass.border",
+                            cursor: "pointer",
+                        }}
+                    >
+                        <SelectValueText
+                            placeholder={placeholder}
+                            color={hasValue ? "currentColor" : "text.placeholder"}
+                            overflow="hidden"
+                            textOverflow="ellipsis"
+                            whiteSpace="nowrap"
+                            flex="1"
+                        />
+                        <ChevronDownIcon
+                            size={16}
+                            style={{
+                                flexShrink: 0,
+                                color: "currentColor",
+                                stroke: "currentColor",
+                                display: "block",
+                            }}
+                        />
+                    </Flex>
+                </SelectTrigger>
+                <SelectPositioner>
+                    <SelectContent
+                        p="1"
+                        borderRadius="sm"
+                        mt="1"
+                        border="1px solid"
+                        bg="bg.layer1"
+                        borderColor="glass.borderStrong"
+                        backdropFilter="blur(16px)"
+                        boxShadow="lg"
+                        zIndex="popover"
+                        width="--trigger-width"
+                        maxH="200px"
+                        overflowY="auto"
+                        overscrollBehavior="contain"
+                        className="custom-scrollbar"
+                    >
+                        {options.map((option) => (
+                            <SelectItem
+                                item={option}
+                                key={option.value}
+                                px="3"
+                                py="2"
+                                borderRadius="sm"
+                                color="neon.blue"
+                                _highlighted={{
+                                    color: "neon.purple",
+                                    bg: "glass.bgHover",
+                                    filter: "drop-shadow(0 0 12px rgba(212, 0, 255, 0.55))",
+                                    boxShadow: "0 0 12px rgba(212, 0, 255, 0.35)",
+                                }}
+                                _selected={{
+                                    color: "neon.blue",
+                                    bg: "glass.bgHover",
+                                    fontWeight: "semibold",
+                                    filter: "drop-shadow(0 0 10px rgba(0, 212, 255, 0.5))",
+                                    boxShadow: "0 0 10px rgba(0, 212, 255, 0.3)",
+                                }}
+                            >
+                                {option.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </SelectPositioner>
+            </SelectRoot>
+        </Field.Root>
+    );
+}
