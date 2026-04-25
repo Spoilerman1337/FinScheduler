@@ -21,8 +21,7 @@ func Test_TagsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB, "tags")
 	})
 
-	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewTagsService(uow, testLogger)
+	svc := services.NewTagsService(persistence.NewUnitOfWork(testDB, testLogger), testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Tag",
@@ -47,8 +46,7 @@ func Test_TagsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB, "tags")
 	})
 
-	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewTagsService(uow, testLogger)
+	svc := services.NewTagsService(persistence.NewUnitOfWork(testDB, testLogger), testLogger)
 
 	create := &domains.TagCreate{
 		Name: "Ice",
@@ -77,8 +75,7 @@ func Test_TagsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 
 func Test_TagsService_UpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
 	// Arrange
-	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewTagsService(uow, testLogger)
+	svc := services.NewTagsService(persistence.NewUnitOfWork(testDB, testLogger), testLogger)
 
 	update := &domains.TagUpdate{
 		Name: "Missing",
@@ -90,4 +87,33 @@ func Test_TagsService_UpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
 	// Assert
 	require.NoError(t, err)
 	assert.False(t, ok)
+}
+
+func Test_TagsService_GetLookup_ShouldReturnOnlyActiveTagsOrderedByLowerName(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "tags")
+	})
+
+	svc := services.NewTagsService(persistence.NewUnitOfWork(testDB, testLogger), testLogger)
+
+	testFixtures.MustCreateTag(t, &domains.TagCreate{Name: "banana", IsActive: true})
+	testFixtures.MustCreateTag(t, &domains.TagCreate{Name: "Apple", IsActive: true})
+	testFixtures.MustCreateTag(t, &domains.TagCreate{Name: "carrot", IsActive: false})
+
+	page := int32(0)
+	pageSize := int32(10)
+
+	// Act
+	lookups, count, err := svc.GetLookup(testContext, &domains.TagLookupFilter{
+		Page:     &page,
+		PageSize: &pageSize,
+	})
+
+	// Assert
+	require.NoError(t, err)
+	require.Len(t, lookups, 2)
+	assert.Equal(t, int64(2), count)
+	assert.Equal(t, "Apple", *lookups[0].Label)
+	assert.Equal(t, "banana", *lookups[1].Label)
 }

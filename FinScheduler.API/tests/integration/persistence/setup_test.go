@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package services_test
+package persistence_test
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 var testDB *sqlx.DB
 var testLogger *slog.Logger
 var testContext context.Context
-var testFixtures testsupport.Fixtures
 
 func TestMain(m *testing.M) {
 	env, err := testsupport.NewPostgresEnvironment(context.Background())
@@ -30,7 +29,6 @@ func TestMain(m *testing.M) {
 	testDB = env.DB
 	testLogger = env.Logger
 	testContext = env.Context
-	testFixtures = testsupport.NewFixtures(testContext, testDB, testLogger)
 
 	code := m.Run()
 

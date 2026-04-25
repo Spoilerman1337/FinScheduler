@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package services_test
+package httpapi_test
 
 import (
 	"context"
@@ -10,8 +10,12 @@ import (
 	"os"
 	"testing"
 
+	featurehttp "finscheduler/internal/features/http"
+	"finscheduler/internal/features/services"
+	"finscheduler/internal/persistence"
 	"finscheduler/tests/internal/testsupport"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -39,4 +43,20 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(code)
+}
+
+func newTestRouter() *chi.Mux {
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	itemsHandler := featurehttp.NewItemsHandler(services.NewItemsService(uow, testLogger), testLogger)
+	tagsHandler := featurehttp.NewTagsHandler(services.NewTagsService(uow, testLogger), testLogger)
+
+	router := chi.NewRouter()
+	router.Route("/api/items", func(r chi.Router) {
+		itemsHandler.RegisterEndpoints(r)
+	})
+	router.Route("/api/tags", func(r chi.Router) {
+		tagsHandler.RegisterEndpoints(r)
+	})
+
+	return router
 }
