@@ -48,15 +48,6 @@ interface CacheEntry {
     hasMore: boolean;
 }
 
-const PAGE_SIZE_VISIBLE = 5;
-const OPTION_HEIGHT_PX = 40;
-const CONTENT_MAX_HEIGHT = `${PAGE_SIZE_VISIBLE * OPTION_HEIGHT_PX}px`;
-const LOAD_MORE_THRESHOLD_PX = 24;
-const DEFAULT_COLLAPSE_THRESHOLD = 4;
-const CHIP_MAX_WIDTH = "140px";
-const NEON_BLUE = "var(--chakra-colors-neon-blue)";
-const TEXT_MUTED = "var(--chakra-colors-textMuted)";
-
 const globalSearchCache = new Map<string, CacheEntry>();
 const globalRequestCache = new Map<string, Promise<AsyncLoadResult>>();
 
@@ -84,7 +75,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         required = false,
         emptyText = 'Ничего не найдено',
         initialOptions = [],
-        collapseThreshold = DEFAULT_COLLAPSE_THRESHOLD,
+        collapseThreshold = 4,
         cacheKey,
         preloadOnMount = false,
         loadOptions,
@@ -117,7 +108,6 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     );
     const shouldCollapseSelection = props.multiple && selectedOptions.length > collapseThreshold;
     const collection = useMemo(() => createListCollection({items: mergedOptions}), [mergedOptions]);
-    const triggerIconColor = open ? NEON_BLUE : TEXT_MUTED;
 
     const syncFromCache = useCallback((search: string) => {
         const cachedEntry = globalSearchCache.get(getSearchCacheKey(cacheNamespace, search));
@@ -237,7 +227,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
 
         const element = event.currentTarget;
         const isNearBottom =
-            element.scrollHeight - element.scrollTop - element.clientHeight <= LOAD_MORE_THRESHOLD_PX;
+            element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
 
         if (!isNearBottom) {
             return;
@@ -304,7 +294,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                             align="center"
                                             gap="1"
                                             flexShrink={0}
-                                            maxW={CHIP_MAX_WIDTH}
+                                            maxW="140px"
                                             h="20px"
                                             px={2}
                                             borderRadius="sm"
@@ -353,8 +343,8 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                                     size={8}
                                                     strokeWidth={2}
                                                     style={{
-                                                        color: NEON_BLUE,
-                                                        stroke: NEON_BLUE,
+                                                        color: "var(--chakra-colors-neon-blue)",
+                                                        stroke: "var(--chakra-colors-neon-blue)",
                                                         display: "block",
                                                     }}
                                                 />
@@ -409,8 +399,12 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                 size={14}
                                 strokeWidth={1.8}
                                 style={{
-                                    color: triggerIconColor,
-                                    stroke: triggerIconColor,
+                                    color: open
+                                        ? "var(--chakra-colors-neon-blue)"
+                                        : "var(--chakra-colors-textMuted)",
+                                    stroke: open
+                                        ? "var(--chakra-colors-neon-blue)"
+                                        : "var(--chakra-colors-textMuted)",
                                     display: "block",
                                 }}
                             />
@@ -430,7 +424,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                             boxShadow="lg"
                             zIndex="popover"
                             width="var(--reference-width)"
-                            maxH={CONTENT_MAX_HEIGHT}
+                            maxH="200px"
                             overflowY="auto"
                             overscrollBehavior="contain"
                             className="custom-scrollbar"

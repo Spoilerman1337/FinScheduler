@@ -18,11 +18,6 @@ interface FormModalProps {
     loading?: boolean;
 }
 
-const MODAL_MAX_WIDTH = "600px";
-const MODAL_CONTENT_GAP = 4;
-const SUBMIT_TEXT = "Сохранить";
-const CANCEL_TEXT = "Отмена";
-
 export default function FormModal({
     isOpen,
     onClose,
@@ -37,7 +32,7 @@ export default function FormModal({
             <Portal>
                 <Dialog.Backdrop/>
                 <Dialog.Positioner>
-                    <Dialog.Content bg="bg.layer1" border="1px solid" borderColor="glass.border" maxW={MODAL_MAX_WIDTH}>
+                    <Dialog.Content bg="bg.layer1" border="1px solid" borderColor="glass.border" maxW="600px">
                         <Dialog.Header>
                             <Dialog.Title color="neon.blue">
                                 {title}
@@ -74,7 +69,7 @@ export default function FormModal({
                                     {error}
                                 </Text>
                             )}
-                            <Stack gap={MODAL_CONTENT_GAP}>
+                            <Stack gap={4}>
                                 {children}
                             </Stack>
                         </Dialog.Body>
@@ -87,7 +82,7 @@ export default function FormModal({
                                 color="textMuted"
                                 _hover={{bg: 'bg.layer2'}}
                             >
-                                {CANCEL_TEXT}
+                                Отмена
                             </Button>
                             <Button
                                 bg="neon.blue"
@@ -96,7 +91,7 @@ export default function FormModal({
                                 loading={loading}
                                 _hover={{bg: 'neon.blue', opacity: 0.8}}
                             >
-                                {SUBMIT_TEXT}
+                                Сохранить
                             </Button>
                         </Dialog.Footer>
                     </Dialog.Content>

@@ -37,10 +37,6 @@ type MultipleSelectFieldProps = BaseSelectFieldProps & {
 
 type SelectFieldProps = SingleSelectFieldProps | MultipleSelectFieldProps;
 
-const SELECT_MAX_VISIBLE_OPTIONS = 5;
-const SELECT_OPTION_HEIGHT_PX = 40;
-const SELECT_CONTENT_MAX_HEIGHT = `${SELECT_MAX_VISIBLE_OPTIONS * SELECT_OPTION_HEIGHT_PX}px`;
-
 export default function SelectField(props: SelectFieldProps) {
     const {
         label,
@@ -124,7 +120,7 @@ export default function SelectField(props: SelectFieldProps) {
                         boxShadow="lg"
                         zIndex="popover"
                         width="--trigger-width"
-                        maxH={SELECT_CONTENT_MAX_HEIGHT}
+                        maxH="200px"
                         overflowY="auto"
                         overscrollBehavior="contain"
                         className="custom-scrollbar"
