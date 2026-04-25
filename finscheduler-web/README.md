@@ -34,6 +34,18 @@ Build:
 pnpm build
 ```
 
+Build the Docker image:
+
+```bash
+docker build -f finscheduler-web/Dockerfile -t finscheduler-web .
+```
+
+Run the Docker image:
+
+```bash
+docker run --rm -p 8080:80 finscheduler-web
+```
+
 Lint:
 
 ```bash
@@ -60,6 +72,15 @@ Example override:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8081/api pnpm dev
+```
+
+The Docker build uses `VITE_API_BASE_URL=/api` by default and the Nginx runtime proxies `/api/*` to `API_PROXY_PASS`.
+
+Example Docker overrides:
+
+```bash
+docker build -f finscheduler-web/Dockerfile --build-arg VITE_API_BASE_URL=/api -t finscheduler-web .
+docker run --rm -p 8080:80 -e API_PROXY_PASS=http://host.docker.internal:8081/api finscheduler-web
 ```
 
 ## App Routes
