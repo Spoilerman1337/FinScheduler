@@ -52,6 +52,7 @@ export default function SelectField(props: SelectFieldProps) {
 
     const collection = useMemo(() => createListCollection({items: options}), [options]);
     const value = props.multiple ? props.value : props.value ? [props.value] : [];
+    const hasValue = props.multiple ? props.value.length > 0 : Boolean(props.value);
 
     return (
         <Field.Root required={required} gap={0}>
@@ -94,8 +95,7 @@ export default function SelectField(props: SelectFieldProps) {
                     >
                         <SelectValueText
                             placeholder={placeholder}
-                            color="currentColor"
-                            _placeholder={{color: 'textMuted'}}
+                            color={hasValue ? "currentColor" : "text.placeholder"}
                             overflow="hidden"
                             textOverflow="ellipsis"
                             whiteSpace="nowrap"

@@ -30,7 +30,6 @@ export default function NumberField({
                 bg="bg.layer2"
                 borderColor="glass.border"
                 color="neon.blue"
-                _placeholder={{color: 'textMuted'}}
                 defaultValue={defaultValue}
                 step={step}
                 min={min}
@@ -62,7 +61,7 @@ export default function NumberField({
                         -
                     </NumberInput.DecrementTrigger>
                 </NumberInput.Control>
-                <NumberInput.Input/>
+                <NumberInput.Input _placeholder={{color: 'text.placeholder'}}/>
             </NumberInput.Root>
         </Field.Root>
     );

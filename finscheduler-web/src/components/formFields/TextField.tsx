@@ -24,7 +24,7 @@ export default function TextField({
                 bg="bg.layer2"
                 borderColor="glass.border"
                 color="neon.blue"
-                _placeholder={{color: 'textMuted'}}
+                _placeholder={{color: 'text.placeholder'}}
                 placeholder={placeholder}
             />
         </Field.Root>

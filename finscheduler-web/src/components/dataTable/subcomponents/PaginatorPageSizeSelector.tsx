@@ -54,7 +54,7 @@ export default function PaginatorPageSizeSelector(props: PaginatorPageSizeSelect
                         <Select.ValueText
                             placeholder={props.pageSize.toString()}
                             color="currentColor"
-                            _placeholder={{color: 'textMuted'}}
+                            _placeholder={{color: 'text.placeholder'}}
                             fontSize="sm"
                         />
                     </Box>

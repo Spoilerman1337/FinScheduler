@@ -26,7 +26,7 @@ export default function TextAreaField({
                 bg="bg.layer2"
                 borderColor="glass.border"
                 color="neon.blue"
-                _placeholder={{color: 'textMuted'}}
+                _placeholder={{color: 'text.placeholder'}}
                 placeholder={placeholder}
                 rows={rows}
             />

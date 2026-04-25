@@ -393,7 +393,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                 outline="none"
                                 color="neon.blue"
                                 fontSize="sm"
-                                _placeholder={{color: 'textMuted'}}
+                                _placeholder={{color: 'text.placeholder'}}
                                 _focusVisible={{outline: 'none', boxShadow: 'none'}}
                             />
                         </Flex>

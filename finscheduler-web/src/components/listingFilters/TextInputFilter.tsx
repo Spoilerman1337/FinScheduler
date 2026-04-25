@@ -29,7 +29,7 @@ export default function TextInputFilter(props: TextInputFilterProps) {
                 bg="bg.layer1"
                 borderColor="glass.border"
                 color="neon.blue"
-                _placeholder={{color: 'textMuted'}}
+                _placeholder={{color: 'text.placeholder'}}
             />
         </Box>
     );
