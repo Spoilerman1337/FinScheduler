@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import type {TagDto} from "../../../api/types.ts";
 import SwitchField from "../../../components/formFields/SwitchField.tsx";
 import TextField from "../../../components/formFields/TextField.tsx";
-import FormModal from "../../../components/ui/FormModal.tsx";
+import FormModal from "../../../components/formModal/FormModal.tsx";
 
 interface TagModalProps {
     isOpen: boolean;

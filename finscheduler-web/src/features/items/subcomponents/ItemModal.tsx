@@ -8,7 +8,7 @@ import SwitchField from "../../../components/formFields/SwitchField.tsx";
 import TextAreaField from "../../../components/formFields/TextAreaField.tsx";
 import TextField from "../../../components/formFields/TextField.tsx";
 import type {SelectOption} from "../../../components/formFields/types.ts";
-import FormModal from "../../../components/ui/FormModal.tsx";
+import FormModal from "../../../components/formModal/FormModal.tsx";
 import {categoryOptions, categoryTranslations} from "../../../models/items.ts";
 
 interface ItemModalProps {
