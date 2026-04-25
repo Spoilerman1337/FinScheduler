@@ -378,13 +378,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                 )
                             )}
                             <Combobox.Input
-                                placeholder={
-                                    values.length === 0
-                                        ? placeholder
-                                        : open
-                                            ? 'Найти'
-                                            : ''
-                                }
+                                placeholder={values.length === 0 ? placeholder : ''}
                                 flex="1"
                                 minW={values.length === 0 ? "0" : "56px"}
                                 h="24px"
