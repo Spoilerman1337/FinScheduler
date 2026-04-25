@@ -26,11 +26,21 @@ export default function FilterWrapper(props: FilterWrapperProps) {
             <Button
                 {...filterWidthProps}
                 onClick={props.onReset}
-                bg="bg.layer3"
-                color="textMuted"
-                borderColor="glass.border"
+                bg="glass.bgHover"
+                color="neon.purple"
+                borderColor="neon.purple"
+                backdropFilter="blur(12px)"
                 border="1px solid"
-                _hover={{bg: 'neon.pink', color: 'bg.base'}}
+                transition="all 0.3s ease-in-out"
+                _hover={{
+                    filter: "drop-shadow(0 0 16px rgba(212, 0,255,0.9))",
+                    boxShadow: "0 0 20px rgba(212, 0,255,1)",
+                    color: "neon.pink",
+                    bg: "glass.bgHover",
+                    backdropFilter: "blur(12px)",
+                    borderColor: "neon.purple",
+                }}
+                focusRing="none"
             >
                 Сброс
             </Button>

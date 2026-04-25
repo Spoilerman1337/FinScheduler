@@ -12,8 +12,8 @@ export default function DataTableDeleteButton(props: DataTableDeleteButtonProps)
     return (
         <Button
             onClick={onClick}
-            color="neon.blue"
-            borderColor="neon.blue"
+            color="neon.purple"
+            borderColor="neon.purple"
             backdropFilter="blur(12px)"
             bg="glass.bgHover"
             border="1px solid"
