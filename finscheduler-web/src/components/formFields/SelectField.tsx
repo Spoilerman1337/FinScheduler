@@ -43,12 +43,13 @@ const SELECT_CONTENT_MAX_HEIGHT = `${SELECT_MAX_VISIBLE_OPTIONS * SELECT_OPTION_
 
 export default function SelectField(props: SelectFieldProps) {
     const {
-    label,
-    options,
-    placeholder,
-    loading = false,
-    required = false,
+        label,
+        options,
+        placeholder,
+        loading = false,
+        required = false,
     } = props;
+
     const collection = useMemo(() => createListCollection({items: options}), [options]);
     const value = props.multiple ? props.value : props.value ? [props.value] : [];
 
@@ -100,7 +101,15 @@ export default function SelectField(props: SelectFieldProps) {
                             whiteSpace="nowrap"
                             flex="1"
                         />
-                        <ChevronDownIcon size={16} style={{flexShrink: 0}}/>
+                        <ChevronDownIcon
+                            size={16}
+                            style={{
+                                flexShrink: 0,
+                                color: "currentColor",
+                                stroke: "currentColor",
+                                display: "block",
+                            }}
+                        />
                     </Flex>
                 </SelectTrigger>
                 <SelectPositioner>
@@ -120,40 +129,26 @@ export default function SelectField(props: SelectFieldProps) {
                         overscrollBehavior="contain"
                         className="custom-scrollbar"
                     >
-                        {collection.items.map((option) => (
+                        {options.map((option) => (
                             <SelectItem
                                 item={option}
                                 key={option.value}
-                                display="flex"
-                                alignItems="center"
-                                py="1.5"
-                                px="2"
+                                px="3"
+                                py="2"
                                 borderRadius="sm"
                                 color="neon.blue"
-                                fontSize="sm"
-                                transition="all 0.2s"
-                                cursor="pointer"
-                                _hover={{
-                                    color: "neon.purple",
-                                    bg: "glass.bgHover",
-                                    filter: "drop-shadow(0 0 8px rgba(212, 0, 255, 0.45))",
-                                }}
                                 _highlighted={{
                                     color: "neon.purple",
                                     bg: "glass.bgHover",
-                                    filter: "drop-shadow(0 0 8px rgba(212, 0, 255, 0.45))",
+                                    filter: "drop-shadow(0 0 12px rgba(212, 0, 255, 0.55))",
+                                    boxShadow: "0 0 12px rgba(212, 0, 255, 0.35)",
                                 }}
                                 _selected={{
                                     color: "neon.blue",
                                     bg: "glass.bgHover",
-                                    filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
                                     fontWeight: "semibold",
-                                }}
-                                _focus={{
-                                    outline: "none",
-                                    color: "neon.blue",
-                                    bg: "glass.bgHover",
-                                    boxShadow: "0 0 0 1px rgba(0, 212, 255, 0.35)",
+                                    filter: "drop-shadow(0 0 10px rgba(0, 212, 255, 0.5))",
+                                    boxShadow: "0 0 10px rgba(0, 212, 255, 0.3)",
                                 }}
                             >
                                 {option.label}

@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from "react";
-import type {ItemDto, ItemModification, Lookup} from "../../../api/types.ts";
+import type {ItemDto, ItemModification} from "../../../api/types.ts";
 import TagsService from "../../../api/tags.ts";
+import AsyncSelectField from "../../../components/formFields/AsyncSelectField.tsx";
 import NumberField from "../../../components/formFields/NumberField.tsx";
 import SelectField from "../../../components/formFields/SelectField.tsx";
 import SwitchField from "../../../components/formFields/SwitchField.tsx";
@@ -25,10 +26,30 @@ interface ItemModalFormData {
     cashback: string;
     isActive: boolean;
     category: string;
-    tags: Lookup[];
+    tagIds: string[];
 }
 
+const TAGS_PAGE_SIZE = 20;
 const tagsService = new TagsService();
+
+function mapItemTagsToOptions(item?: ItemDto | null): SelectOption[] {
+    if (!item || !Array.isArray(item.tags)) {
+        return [];
+    }
+
+    return item.tags.reduce<SelectOption[]>((result, tag) => {
+        if (!tag?.value) {
+            return result;
+        }
+
+        result.push({
+            label: tag.label ?? tag.value,
+            value: tag.value,
+        });
+
+        return result;
+    }, []);
+}
 
 export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemModalProps) {
     const getDefaultFormData = (): ItemModalFormData => ({
@@ -37,26 +58,15 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
         price: '',
         cashback: '',
         isActive: true,
-        category: 'Не выбрано',
-        tags: [],
+        category: '',
+        tagIds: [],
     });
 
     const [formData, setFormData] = useState<ItemModalFormData>(getDefaultFormData);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [tagsLoading, setTagsLoading] = useState(false);
-    const [tagOptions, setTagOptions] = useState<Lookup[]>([]);
 
-    const tagSelectOptions = useMemo<SelectOption[]>(() => (tagOptions ?? [])
-        .filter((tag): tag is Lookup & { value: string } => Boolean(tag.value))
-        .map((tag) => ({
-            label: tag.label ?? tag.value,
-            value: tag.value,
-        })), [tagOptions]);
-
-    const selectedTagValues = useMemo(() => (formData.tags ?? [])
-        .map((tag) => tag.value)
-        .filter((value): value is string => Boolean(value)), [formData.tags]);
+    const initialTagOptions = useMemo(() => mapItemTagsToOptions(item), [item]);
 
     useEffect(() => {
         if (isOpen && mode === 'edit' && item) {
@@ -67,7 +77,15 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
                 cashback: item.cashback !== undefined && item.cashback !== null ? item.cashback.toString() : '',
                 isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
                 category: typeof item.category === 'string' ? item.category : '',
-                tags: Array.isArray(item.tags) ? item.tags : [],
+                tagIds: Array.isArray(item.tags)
+                    ? item.tags.reduce<string[]>((result, tag) => {
+                        if (tag?.value) {
+                            result.push(tag.value);
+                        }
+
+                        return result;
+                    }, [])
+                    : [],
             });
         }
     }, [isOpen, item, mode]);
@@ -84,32 +102,6 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
             setFormData(getDefaultFormData());
             setError(null);
         }
-    }, [isOpen]);
-
-    useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
-
-        const fetchTags = async () => {
-            setTagsLoading(true);
-            try {
-                const tags = await tagsService.getLookup({
-                    page: 0,
-                    pageSize: 10,
-                });
-
-                if (tags) {
-                    setTagOptions(Array.isArray(tags.data) ? tags.data : []);
-                }
-            } catch (e) {
-                console.error("Ошибка загрузки тегов", e);
-            } finally {
-                setTagsLoading(false);
-            }
-        };
-
-        fetchTags();
     }, [isOpen]);
 
     const updateFormData = <K extends keyof ItemModalFormData>(
@@ -156,7 +148,7 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
                 cashback: formData.cashback ? parseFloat(formData.cashback) : 0,
                 isActive: formData.isActive,
                 category: formData.category,
-                tagIds: (formData.tags ?? []).map((tag) => tag.value ?? '').filter(Boolean),
+                tagIds: formData.tagIds,
             });
             onClose();
         } catch (err) {
@@ -214,19 +206,39 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
                 required
                 onChange={(value) => updateFormData('category', value)}
             />
-            <SelectField
+            <AsyncSelectField
                 multiple
                 label="Теги"
-                value={selectedTagValues}
-                options={tagSelectOptions}
+                value={formData.tagIds}
+                initialOptions={initialTagOptions}
+                cacheKey="item-tags"
                 placeholder="Выберите теги"
-                loading={tagsLoading}
-                onChange={(values) => {
-                    const selectedTags = tagOptions.filter((tag) =>
-                        tag.value ? values.includes(tag.value) : false,
-                    );
-                    updateFormData('tags', selectedTags);
+                emptyText="Теги не найдены"
+                collapseThreshold={4}
+                loadOptions={async ({page, search}) => {
+                    const tags = await tagsService.getLookup({
+                        page,
+                        pageSize: TAGS_PAGE_SIZE,
+                        name: search || undefined,
+                    });
+
+                    return {
+                        options: (tags.data ?? []).reduce<SelectOption[]>((result, tag) => {
+                            if (!tag?.value) {
+                                return result;
+                            }
+
+                            result.push({
+                                label: tag.label ?? tag.value,
+                                value: tag.value,
+                            });
+
+                            return result;
+                        }, []),
+                        hasMore: (page + 1) * TAGS_PAGE_SIZE < tags.count,
+                    };
                 }}
+                onChange={(value) => updateFormData('tagIds', value)}
             />
             <SwitchField
                 label="Активен"
