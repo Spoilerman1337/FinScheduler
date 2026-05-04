@@ -40,6 +40,19 @@ func TestNewTagsFilter_ShouldParseAllSupportedFields(t *testing.T) {
 	assert.Equal(t, int32(25), *filter.PageSize)
 }
 
+func TestNewTagsFilter_ShouldReturnZeroValueWhenQueryIsEmpty(t *testing.T) {
+	// Arrange
+	requestURL := "/tags"
+	request := httptest.NewRequest("GET", requestURL, nil)
+
+	// Act
+	filter, err := NewTagsFilter(request)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, TagFilter{}, filter)
+}
+
 func TestNewTagsFilter_ShouldReturnErrorOnInvalidQueryParam(t *testing.T) {
 	// Arrange
 	requestURL := "/tags?isActive=not-a-bool"
@@ -71,6 +84,19 @@ func TestNewTagLookupFilter_ShouldParseSupportedFields(t *testing.T) {
 	assert.Equal(t, "rec", *filter.Name)
 	assert.Equal(t, int32(1), *filter.Page)
 	assert.Equal(t, int32(10), *filter.PageSize)
+}
+
+func TestNewTagLookupFilter_ShouldReturnZeroValueWhenQueryIsEmpty(t *testing.T) {
+	// Arrange
+	requestURL := "/tags/lookup"
+	request := httptest.NewRequest("GET", requestURL, nil)
+
+	// Act
+	filter, err := NewTagLookupFilter(request)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, TagLookupFilter{}, filter)
 }
 
 func TestNewTagLookupFilter_ShouldReturnErrorOnInvalidQueryParam(t *testing.T) {

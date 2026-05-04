@@ -82,6 +82,19 @@ func TestNewItemFilter_ShouldParseAllSupportedFields(t *testing.T) {
 	assert.Equal(t, updatedTo, filter.UpdatedTo.UTC().Format(time.RFC3339))
 }
 
+func TestNewItemFilter_ShouldReturnZeroValueWhenQueryIsEmpty(t *testing.T) {
+	// Arrange
+	requestURL := "/items"
+	request := httptest.NewRequest("GET", requestURL, nil)
+
+	// Act
+	filter, err := NewItemFilter(request)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, ItemFilter{}, filter)
+}
+
 func TestNewItemFilter_ShouldReturnErrorOnInvalidQueryParam(t *testing.T) {
 	// Arrange
 	requestURL := "/items?page=bad"
