@@ -3,52 +3,83 @@ package services
 import (
 	"context"
 	"finscheduler/internal/features/domains"
+	"finscheduler/internal/persistence"
 	"log/slog"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func Test_TagsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
+func TestTagsServiceGet_ShouldReturnErrorOnNilFilter(t *testing.T) {
 	// Arrange
-	logger := slog.Default()
-	svc := NewTagsService(nil, logger)
 	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	var filter *domains.TagFilter
+	service := NewTagsService(uow, logger)
 
 	// Act
-	_, _, err := svc.Get(ctx, nil)
+	tags, count, err := service.Get(ctx, filter)
 
 	// Assert
-	assert.NotNilf(t, err, "expected to get an error")
+	require.EqualError(t, err, "filter is nil")
+	assert.Nil(t, tags)
+	assert.Zero(t, count)
 }
 
-func Test_TagsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
+func TestTagsServiceGetLookup_ShouldReturnErrorOnNilFilter(t *testing.T) {
 	// Arrange
-	logger := slog.Default()
-	svc := NewTagsService(nil, logger)
 	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	var filter *domains.TagLookupFilter
+	service := NewTagsService(uow, logger)
 
 	// Act
-	_, err := svc.Create(ctx, nil)
+	lookups, count, err := service.GetLookup(ctx, filter)
 
 	// Assert
-	assert.NotNilf(t, err, "expected to get an error")
+	require.EqualError(t, err, "filter is nil")
+	assert.Nil(t, lookups)
+	assert.Zero(t, count)
 }
 
-func Test_TagsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
+func TestTagsServiceCreate_ShouldReturnErrorOnNilCreate(t *testing.T) {
 	// Arrange
-	logger := slog.Default()
-	svc := NewTagsService(nil, logger)
-	nilUUID := uuid.Nil
-	notNilUUID, _ := uuid.NewV7()
 	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	var create *domains.TagCreate
+	service := NewTagsService(uow, logger)
 
 	// Act
-	_, err1 := svc.Update(ctx, nilUUID, &domains.TagUpdate{})
-	_, err2 := svc.Update(ctx, notNilUUID, nil)
+	newID, err := service.Create(ctx, create)
 
 	// Assert
-	assert.NotNilf(t, err1, "expected to get an error")
-	assert.NotNilf(t, err2, "expected to get an error")
+	require.EqualError(t, err, "create is nil")
+	assert.Equal(t, uuid.Nil, newID)
+}
+
+func TestTagsServiceUpdate_ShouldReturnErrorOnInvalidInput(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	nilID := uuid.Nil
+	validID := uuid.New()
+	update := &domains.TagUpdate{}
+	var nilUpdate *domains.TagUpdate
+	service := NewTagsService(uow, logger)
+
+	// Act
+	successOnNilID, errOnNilID := service.Update(ctx, nilID, update)
+	successOnNilUpdate, errOnNilUpdate := service.Update(ctx, validID, nilUpdate)
+
+	// Assert
+	require.EqualError(t, errOnNilID, "tagID is nil")
+	require.EqualError(t, errOnNilUpdate, "update is nil")
+	assert.False(t, successOnNilID)
+	assert.False(t, successOnNilUpdate)
 }
