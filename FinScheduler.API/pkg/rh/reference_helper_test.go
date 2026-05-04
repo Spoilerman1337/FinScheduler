@@ -90,3 +90,23 @@ func TestReferenceSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestReferenceSlice_ShouldCreateDistinctPointersForEachValue(t *testing.T) {
+	// Arrange
+	input := []int{10, 20, 30}
+
+	// Act
+	result := ReferenceSlice(input)
+
+	// Assert
+	require.Len(t, result, len(input))
+	require.NotNil(t, result[0])
+	require.NotNil(t, result[1])
+	require.NotNil(t, result[2])
+	assert.Equal(t, 10, *result[0])
+	assert.Equal(t, 20, *result[1])
+	assert.Equal(t, 30, *result[2])
+	assert.NotSame(t, result[0], result[1])
+	assert.NotSame(t, result[1], result[2])
+	assert.NotSame(t, result[0], result[2])
+}

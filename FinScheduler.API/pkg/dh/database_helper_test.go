@@ -131,3 +131,42 @@ func TestReconcile(t *testing.T) {
 		})
 	}
 }
+
+func TestIsPostgresForeignKeyViolation_ShouldReturnTrueForMatchingCode(t *testing.T) {
+	// Arrange
+	err := &pgconn.PgError{
+		Code:           PostgresForeignKeyViolationCode,
+		ConstraintName: "tag_to_item_tag_id_fkey",
+	}
+
+	// Act
+	result := IsPostgresForeignKeyViolation(err)
+
+	// Assert
+	assert.True(t, result)
+}
+
+func TestIsPostgresForeignKeyViolation_ShouldReturnFalseForOtherCode(t *testing.T) {
+	// Arrange
+	err := &pgconn.PgError{
+		Code:           "23505",
+		ConstraintName: "items_name_key",
+	}
+
+	// Act
+	result := IsPostgresForeignKeyViolation(err)
+
+	// Assert
+	assert.False(t, result)
+}
+
+func TestIsPostgresForeignKeyViolation_ShouldReturnFalseForNonPostgresError(t *testing.T) {
+	// Arrange
+	err := errors.New("plain error")
+
+	// Act
+	result := IsPostgresForeignKeyViolation(err)
+
+	// Assert
+	assert.False(t, result)
+}

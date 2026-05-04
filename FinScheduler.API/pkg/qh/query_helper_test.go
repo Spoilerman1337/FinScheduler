@@ -120,6 +120,23 @@ func TestParseString_ShouldReturnPointerWhenValueIsPresent(t *testing.T) {
 	assert.Equal(t, expectedValue, *result)
 }
 
+func TestParseString_ShouldUseFirstValueWhenMultipleValuesArePresent(t *testing.T) {
+	// Arrange
+	key := "name"
+	firstValue := "coffee"
+	secondValue := "tea"
+	queryParams := url.Values{
+		key: []string{firstValue, secondValue},
+	}
+
+	// Act
+	result := qh.ParseString(queryParams, key)
+
+	// Assert
+	require.NotNil(t, result)
+	assert.Equal(t, firstValue, *result)
+}
+
 func TestParseDecimal_ShouldReturnNilWhenValueIsMissing(t *testing.T) {
 	// Arrange
 	queryParams := url.Values{}
@@ -165,6 +182,25 @@ func TestParseDecimal_ShouldReturnErrorWhenValueIsInvalid(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), `invalid query parameter "price" value "bad-decimal"`)
+}
+
+func TestParseDecimal_ShouldUseFirstValueWhenMultipleValuesArePresent(t *testing.T) {
+	// Arrange
+	key := "price"
+	firstValue := "10.55"
+	secondValue := "99.99"
+	expectedValue := decimal.RequireFromString(firstValue)
+	queryParams := url.Values{
+		key: []string{firstValue, secondValue},
+	}
+
+	// Act
+	result, err := qh.ParseDecimal(queryParams, key)
+
+	// Assert
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, expectedValue.Equal(*result))
 }
 
 func TestParseInt32_ShouldReturnNilWhenValueIsMissing(t *testing.T) {
@@ -214,6 +250,25 @@ func TestParseInt32_ShouldReturnErrorWhenValueIsInvalid(t *testing.T) {
 	assert.Contains(t, err.Error(), `invalid query parameter "page" value "bad-int"`)
 }
 
+func TestParseInt32_ShouldUseFirstValueWhenMultipleValuesArePresent(t *testing.T) {
+	// Arrange
+	key := "page"
+	firstValue := "42"
+	secondValue := "99"
+	expectedValue := int32(42)
+	queryParams := url.Values{
+		key: []string{firstValue, secondValue},
+	}
+
+	// Act
+	result, err := qh.ParseInt32(queryParams, key)
+
+	// Assert
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, expectedValue, *result)
+}
+
 func TestParseBool_ShouldReturnNilWhenValueIsMissing(t *testing.T) {
 	// Arrange
 	queryParams := url.Values{}
@@ -259,6 +314,25 @@ func TestParseBool_ShouldReturnErrorWhenValueIsInvalid(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), `invalid query parameter "isActive" value "not-bool"`)
+}
+
+func TestParseBool_ShouldUseFirstValueWhenMultipleValuesArePresent(t *testing.T) {
+	// Arrange
+	key := "isActive"
+	firstValue := "true"
+	secondValue := "false"
+	expectedValue := true
+	queryParams := url.Values{
+		key: []string{firstValue, secondValue},
+	}
+
+	// Act
+	result, err := qh.ParseBool(queryParams, key)
+
+	// Assert
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, expectedValue, *result)
 }
 
 func TestParseTime_ShouldReturnNilWhenValueIsMissing(t *testing.T) {
@@ -307,6 +381,25 @@ func TestParseTime_ShouldReturnErrorWhenValueIsInvalid(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), `invalid query parameter "createdAt" value "not-time"`)
+}
+
+func TestParseTime_ShouldUseFirstValueWhenMultipleValuesArePresent(t *testing.T) {
+	// Arrange
+	key := "createdAt"
+	expectedValue := time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
+	firstValue := expectedValue.Format(time.RFC3339)
+	secondValue := time.Date(2027, 2, 11, 13, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	queryParams := url.Values{
+		key: []string{firstValue, secondValue},
+	}
+
+	// Act
+	result, err := qh.ParseTime(queryParams, key)
+
+	// Assert
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, expectedValue.Equal(*result))
 }
 
 func TestParseEnums_ShouldReturnNilWhenKeyIsMissing(t *testing.T) {
