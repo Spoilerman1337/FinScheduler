@@ -31,6 +31,9 @@ type testApplication struct {
 	tagsService  *services.TagsService
 }
 
+const closedDBDriverName = "pgx"
+const closedDBConnectionString = "postgres://test:secret@127.0.0.1:1/testdb?sslmode=disable&connect_timeout=1"
+
 func TestMain(m *testing.M) {
 	env, err := testsupport.NewPostgresEnvironment(context.Background())
 	if err != nil {
@@ -52,7 +55,11 @@ func TestMain(m *testing.M) {
 }
 
 func newTestApplication() *testApplication {
-	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	return newTestApplicationWithDB(testDB)
+}
+
+func newTestApplicationWithDB(db *sqlx.DB) *testApplication {
+	uow := persistence.NewUnitOfWork(db, testLogger)
 	itemsService := services.NewItemsService(uow, testLogger)
 	tagsService := services.NewTagsService(uow, testLogger)
 	itemsHandler := featurehttp.NewItemsHandler(itemsService, testLogger)
@@ -70,6 +77,24 @@ func newTestApplication() *testApplication {
 		router:       router,
 		itemsService: itemsService,
 		tagsService:  tagsService,
+	}
+}
+
+func newClosedDB(t testing.TB) *sqlx.DB {
+	t.Helper()
+
+	db := sqlx.MustOpen(closedDBDriverName, closedDBConnectionString)
+	closeErr := db.Close()
+	requireNoError(t, closeErr)
+
+	return db
+}
+
+func requireNoError(t testing.TB, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

@@ -140,6 +140,27 @@ func TestTagsRepositoryGetByIDs_ShouldReturnErrorOnNilIDs(t *testing.T) {
 	assert.Nil(t, tags)
 }
 
+func TestTagsRepositoryGet_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewTagsRepository(closedDB, testLogger)
+	page := int32(0)
+	pageSize := int32(20)
+	filter := &domains.TagFilter{
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	// Act
+	tags, count, err := repo.Get(ctx, filter)
+
+	// Assert
+	require.Error(t, err)
+	assert.Nil(t, tags)
+	assert.Zero(t, count)
+}
+
 func TestTagsRepositoryGetByIDs_ShouldReturnEmptySliceOnEmptyIDs(t *testing.T) {
 	// Arrange
 	ctx := testContext
@@ -153,6 +174,21 @@ func TestTagsRepositoryGetByIDs_ShouldReturnEmptySliceOnEmptyIDs(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tags)
 	assert.Empty(t, tags)
+}
+
+func TestTagsRepositoryGetByIDs_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewTagsRepository(closedDB, testLogger)
+	ids := []uuid.UUID{uuid.New()}
+
+	// Act
+	tags, err := repo.GetByIds(ctx, ids)
+
+	// Assert
+	require.Error(t, err)
+	assert.Nil(t, tags)
 }
 
 func TestTagsRepositoryGetLookup_ShouldReturnActiveMatchesOrderedAndCount(t *testing.T) {
@@ -204,6 +240,54 @@ func TestTagsRepositoryGetLookup_ShouldReturnActiveMatchesOrderedAndCount(t *tes
 	assert.Equal(t, int64(2), count)
 	assert.Equal(t, expectedLabels[0], *lookups[0].Label)
 	assert.Equal(t, expectedLabels[1], *lookups[1].Label)
+}
+
+func TestTagsRepositoryGetLookup_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewTagsRepository(closedDB, testLogger)
+	page := int32(0)
+	pageSize := int32(20)
+	filter := &domains.TagLookupFilter{
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	// Act
+	lookups, count, err := repo.GetLookup(ctx, filter)
+
+	// Assert
+	require.Error(t, err)
+	assert.Nil(t, lookups)
+	assert.Zero(t, count)
+}
+
+func TestTagsRepositoryCreate_ShouldReturnErrorOnDuplicateName(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "tags")
+	})
+
+	ctx := testContext
+	repo := repositories.NewTagsRepository(testDB, testLogger)
+	tagName := "Duplicated"
+	tagIsActive := true
+	create := &domains.TagCreate{
+		Name:     tagName,
+		IsActive: tagIsActive,
+	}
+
+	firstID, firstCreateErr := repo.Create(ctx, create)
+
+	// Act
+	secondID, secondCreateErr := repo.Create(ctx, create)
+
+	// Assert
+	require.NoError(t, firstCreateErr)
+	require.Error(t, secondCreateErr)
+	assert.NotEqual(t, uuid.Nil, firstID)
+	assert.Equal(t, uuid.Nil, secondID)
 }
 
 func TestTagsRepositoryUpdateAndGetByIDs_ShouldNotErr(t *testing.T) {
@@ -263,5 +347,26 @@ func TestTagsRepositoryUpdate_ShouldReturnFalseWhenTagDoesNotExist(t *testing.T)
 
 	// Assert
 	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func TestTagsRepositoryUpdate_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewTagsRepository(closedDB, testLogger)
+	tagID := uuid.New()
+	tagName := "Closed"
+	tagIsActive := true
+	update := &domains.TagUpdate{
+		Name:     tagName,
+		IsActive: tagIsActive,
+	}
+
+	// Act
+	ok, err := repo.Update(ctx, tagID, update)
+
+	// Assert
+	require.Error(t, err)
 	assert.False(t, ok)
 }

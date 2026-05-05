@@ -19,6 +19,9 @@ var testDB *sqlx.DB
 var testLogger *slog.Logger
 var testContext context.Context
 
+const closedDBDriverName = "pgx"
+const closedDBConnectionString = "postgres://test:secret@127.0.0.1:1/testdb?sslmode=disable&connect_timeout=1"
+
 func TestMain(m *testing.M) {
 	env, err := testsupport.NewPostgresEnvironment(context.Background())
 	if err != nil {
@@ -37,4 +40,22 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(code)
+}
+
+func newClosedDB(t testing.TB) *sqlx.DB {
+	t.Helper()
+
+	db := sqlx.MustOpen(closedDBDriverName, closedDBConnectionString)
+	closeErr := db.Close()
+	requireNoError(t, closeErr)
+
+	return db
+}
+
+func requireNoError(t testing.TB, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }

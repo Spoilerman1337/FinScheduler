@@ -135,6 +135,56 @@ func Test_ItemsRepository_GetById_ShouldReturnErrorOnNilID(t *testing.T) {
 	assert.Nil(t, item)
 }
 
+func Test_ItemsRepository_Get_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewItemsRepository(closedDB, testLogger)
+	page := int32(0)
+	pageSize := int32(20)
+	filter := &domains.ItemFilter{
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	// Act
+	items, count, err := repo.Get(ctx, filter)
+
+	// Assert
+	require.Error(t, err)
+	assert.Nil(t, items)
+	assert.Zero(t, count)
+}
+
+func Test_ItemsRepository_Create_ShouldReturnErrorOnDuplicateName(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "items")
+	})
+
+	ctx := testContext
+	repo := repositories.NewItemsRepository(testDB, testLogger)
+	itemName := "Duplicated"
+	itemPrice := decimal.NewFromFloat(10.00)
+	itemCategory := "FoodDrinks"
+	create := &domains.ItemCreate{
+		Name:     itemName,
+		Price:    itemPrice,
+		Category: itemCategory,
+	}
+
+	firstID, firstCreateErr := repo.Create(ctx, create)
+
+	// Act
+	secondID, secondCreateErr := repo.Create(ctx, create)
+
+	// Assert
+	require.NoError(t, firstCreateErr)
+	require.Error(t, secondCreateErr)
+	assert.NotEqual(t, uuid.Nil, firstID)
+	assert.Equal(t, uuid.Nil, secondID)
+}
+
 func Test_ItemsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -199,6 +249,29 @@ func Test_ItemsRepository_Update_ShouldReturnFalseWhenItemDoesNotExist(t *testin
 	assert.False(t, ok)
 }
 
+func Test_ItemsRepository_Update_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewItemsRepository(closedDB, testLogger)
+	itemID := uuid.New()
+	itemName := "Closed"
+	itemPrice := decimal.NewFromFloat(15.50)
+	itemCategory := "FoodDrinks"
+	update := &domains.ItemUpdate{
+		Name:     itemName,
+		Price:    itemPrice,
+		Category: itemCategory,
+	}
+
+	// Act
+	ok, err := repo.Update(ctx, itemID, update)
+
+	// Assert
+	require.Error(t, err)
+	assert.False(t, ok)
+}
+
 func Test_ItemsRepository_DeleteAndGet_ShouldErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -241,6 +314,21 @@ func Test_ItemsRepository_Delete_ShouldReturnFalseWhenItemDoesNotExist(t *testin
 
 	// Assert
 	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func Test_ItemsRepository_Delete_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewItemsRepository(closedDB, testLogger)
+	itemID := uuid.New()
+
+	// Act
+	ok, err := repo.Delete(ctx, itemID)
+
+	// Assert
+	require.Error(t, err)
 	assert.False(t, ok)
 }
 

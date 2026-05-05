@@ -71,6 +71,24 @@ func Test_TagsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
+func Test_TagsHandler_Get_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodGet
+	target := "/api/tags?page=0&pageSize=20"
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
+}
+
 func Test_TagsHandler_GetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -109,6 +127,44 @@ func Test_TagsHandler_GetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	assert.Equal(t, activeName, *actualResponse.Data[0].Label)
 }
 
+func Test_TagsHandler_GetLookup_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodGet
+	target := "/api/tags/lookup?page=bad&pageSize=20"
+	expectedBodyFragment := `invalid query parameter "page"`
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_TagsHandler_GetLookup_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodGet
+	target := "/api/tags/lookup?page=0&pageSize=20"
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
+}
+
 func Test_TagsHandler_Create_ShouldReturnCreatedWithLocationAndBody(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -140,6 +196,27 @@ func Test_TagsHandler_Create_ShouldReturnCreatedWithLocationAndBody(t *testing.T
 	assert.Equal(t, locationPrefix+actualID.String(), actualLocation)
 }
 
+func Test_TagsHandler_Create_ShouldReturnBadRequestOnMalformedJSON(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodPost
+	target := "/api/tags"
+	requestBody := `{"name":`
+	expectedBodyFragment := "unexpected EOF"
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
 func Test_TagsHandler_Create_ShouldReturnBadRequestOnValidationError(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
@@ -159,6 +236,25 @@ func Test_TagsHandler_Create_ShouldReturnBadRequestOnValidationError(t *testing.
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_TagsHandler_Create_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodPost
+	target := "/api/tags"
+	requestBody := `{"name":"Groceries","isActive":true}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
 func Test_TagsHandler_Update_ShouldReturnNoContent(t *testing.T) {
@@ -190,6 +286,28 @@ func Test_TagsHandler_Update_ShouldReturnNoContent(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, response.StatusCode)
 }
 
+func Test_TagsHandler_Update_ShouldReturnBadRequestOnMalformedJSON(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodPut
+	tagID := uuid.New()
+	target := "/api/tags/" + tagID.String()
+	requestBody := `{"name":`
+	expectedBodyFragment := "unexpected EOF"
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
 func Test_TagsHandler_Update_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
@@ -209,6 +327,26 @@ func Test_TagsHandler_Update_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_TagsHandler_Update_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodPut
+	tagID := uuid.New()
+	target := "/api/tags/" + tagID.String()
+	requestBody := `{"name":"Supermarket","isActive":true}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
 func Test_TagsHandler_Update_ShouldReturnNotFoundForMissingTag(t *testing.T) {

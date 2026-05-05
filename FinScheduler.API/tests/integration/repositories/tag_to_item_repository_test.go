@@ -43,6 +43,21 @@ func TestTagToItemsRepositoryGetByItemIDs_ShouldReturnEmptySliceOnEmptyItemIDs(t
 	assert.Empty(t, tagToItems)
 }
 
+func TestTagToItemsRepositoryGetByItemIDs_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewTagToItemsRepository(closedDB, testLogger)
+	itemIDs := []uuid.UUID{uuid.New()}
+
+	// Act
+	tagToItems, err := repo.GetByItemIds(ctx, itemIDs)
+
+	// Assert
+	require.Error(t, err)
+	assert.Nil(t, tagToItems)
+}
+
 func TestTagToItemsRepositoryBulkInsertAndGetByItemIDs_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -179,6 +194,33 @@ func TestTagToItemsRepositoryBulkInsert_ShouldReturnErrorOnInvalidReference(t *t
 	assert.Zero(t, actualCount)
 }
 
+func TestTagToItemsRepositoryBulkInsert_ShouldReturnErrorOnEmptyTagIDs(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	repo := repositories.NewTagToItemsRepository(testDB, testLogger)
+	itemID := uuid.New()
+	itemInsertQuery := `INSERT INTO items (id, name, category) VALUES ($1, $2, $3)`
+	itemInsertArgs := []any{itemID, "Apple", "FoodDrinks"}
+	create := &domains.TagToItemCreate{
+		ItemId: &itemID,
+		TagIds: []*uuid.UUID{},
+	}
+
+	_, itemInsertErr := testDB.Exec(itemInsertQuery, itemInsertArgs...)
+
+	// Act
+	ok, err := repo.BulkInsert(ctx, create)
+
+	// Assert
+	require.NoError(t, itemInsertErr)
+	require.Error(t, err)
+	assert.False(t, ok)
+}
+
 func TestTagToItemsRepositoryBulkDelete_ShouldRemoveOnlySelectedTags(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -267,4 +309,42 @@ func TestTagToItemsRepositoryBulkDelete_ShouldReturnFalseWhenNothingDeleted(t *t
 	require.NoError(t, countErr)
 	assert.False(t, ok)
 	assert.Equal(t, 1, actualCount)
+}
+
+func TestTagToItemsRepositoryBulkDelete_ShouldReturnFalseOnEmptyTagIDs(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	repo := repositories.NewTagToItemsRepository(testDB, testLogger)
+	itemID := uuid.New()
+	deleteInput := &domains.TagToItemDelete{
+		ItemId: &itemID,
+		TagIds: []*uuid.UUID{},
+	}
+
+	// Act
+	ok, err := repo.BulkDelete(ctx, deleteInput)
+
+	// Assert
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func TestTagToItemsRepositoryBulkDelete_ShouldPanicOnNilItemID(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	repo := repositories.NewTagToItemsRepository(testDB, testLogger)
+	tagID := uuid.New()
+	tagIDPointer := &tagID
+	deleteInput := &domains.TagToItemDelete{
+		ItemId: nil,
+		TagIds: []*uuid.UUID{tagIDPointer},
+	}
+
+	// Act
+	action := func() {
+		_, _ = repo.BulkDelete(ctx, deleteInput)
+	}
+
+	// Assert
+	assert.Panics(t, action)
 }

@@ -76,6 +76,24 @@ func Test_ItemsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
+func Test_ItemsHandler_Get_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodGet
+	target := "/api/items?page=0&pageSize=20"
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
+}
+
 func Test_ItemsHandler_Create_ShouldReturnCreatedWithLocationAndBody(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -107,6 +125,27 @@ func Test_ItemsHandler_Create_ShouldReturnCreatedWithLocationAndBody(t *testing.
 	assert.Equal(t, locationPrefix+actualID.String(), actualLocation)
 }
 
+func Test_ItemsHandler_Create_ShouldReturnBadRequestOnMalformedJSON(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodPost
+	target := "/api/items"
+	requestBody := `{"name":`
+	expectedBodyFragment := "unexpected EOF"
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
 func Test_ItemsHandler_Create_ShouldReturnBadRequestOnInvalidReference(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
@@ -131,6 +170,25 @@ func Test_ItemsHandler_Create_ShouldReturnBadRequestOnInvalidReference(t *testin
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_ItemsHandler_Create_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodPost
+	target := "/api/items"
+	requestBody := `{"name":"Coffee","price":15.5,"category":"FoodDrinks"}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
 func Test_ItemsHandler_Update_ShouldReturnNoContent(t *testing.T) {
@@ -164,6 +222,28 @@ func Test_ItemsHandler_Update_ShouldReturnNoContent(t *testing.T) {
 	// Assert
 	require.NoError(t, createErr)
 	assert.Equal(t, http.StatusNoContent, response.StatusCode)
+}
+
+func Test_ItemsHandler_Update_ShouldReturnBadRequestOnMalformedJSON(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodPut
+	itemID := uuid.New()
+	target := "/api/items/" + itemID.String()
+	requestBody := `{"name":`
+	expectedBodyFragment := "unexpected EOF"
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
 func Test_ItemsHandler_Update_ShouldReturnBadRequestOnInvalidReference(t *testing.T) {
@@ -200,6 +280,26 @@ func Test_ItemsHandler_Update_ShouldReturnBadRequestOnInvalidReference(t *testin
 	require.NoError(t, createErr)
 	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_ItemsHandler_Update_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodPut
+	itemID := uuid.New()
+	target := "/api/items/" + itemID.String()
+	requestBody := `{"name":"Coffee updated","price":12.5,"category":"FoodDrinks"}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
 func Test_ItemsHandler_Update_ShouldReturnNotFoundForMissingItem(t *testing.T) {
@@ -273,6 +373,25 @@ func Test_ItemsHandler_Delete_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_ItemsHandler_Delete_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodDelete
+	itemID := uuid.New()
+	target := "/api/items/" + itemID.String()
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
 func Test_ItemsHandler_Delete_ShouldReturnNotFoundForMissingItem(t *testing.T) {
