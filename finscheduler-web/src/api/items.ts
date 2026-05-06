@@ -1,6 +1,48 @@
 import type {ItemDto, PaginatedList, ItemFilter, ItemModification} from './types';
 import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
 
+export type ItemStatusFilter = "All" | "Active" | "Inactive";
+
+export function buildItemFilter(params: {
+    page: number;
+    pageSize: number;
+    searchTerm: string;
+    statusFilter: ItemStatusFilter;
+    priceFrom: string;
+    priceTo: string;
+}): ItemFilter {
+    const filter: ItemFilter = {
+        page: params.page - 1,
+        pageSize: params.pageSize,
+    };
+
+    if (params.searchTerm) {
+        filter.name = params.searchTerm;
+    }
+
+    if (params.statusFilter !== "All") {
+        filter.isActive = params.statusFilter === "Active";
+    }
+
+    if (params.priceFrom) {
+        const price = parseFloat(params.priceFrom);
+
+        if (!Number.isNaN(price)) {
+            filter.priceFrom = price;
+        }
+    }
+
+    if (params.priceTo) {
+        const price = parseFloat(params.priceTo);
+
+        if (!Number.isNaN(price)) {
+            filter.priceTo = price;
+        }
+    }
+
+    return filter;
+}
+
 export default class ItemsService extends FinschedulerApiClient {
     async getItems(filter?: ItemFilter): Promise<PaginatedList<ItemDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';

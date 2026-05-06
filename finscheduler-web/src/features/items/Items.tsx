@@ -4,8 +4,9 @@ import {useState, useEffect, useCallback} from "react";
 import type {ItemDto, ItemFilter, ItemModification} from "../../api/types.ts";
 import ItemModal from "./subcomponents/ItemModal.tsx";
 import {toaster} from "../../components/ui/toaster.tsx";
-import ItemsService from "../../api/items.ts";
+import ItemsService, {buildItemFilter, type ItemStatusFilter} from "../../api/items.ts";
 import ItemsFilters from "./subcomponents/ItemsFilters.tsx";
+import {getCashbackColor} from "./types.ts";
 
 const itemsService = new ItemsService();
 
@@ -21,7 +22,7 @@ export default function Items() {
     const [editingItem, setEditingItem] = useState<ItemDto | null>(null);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('Active');
+    const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>('Active');
     const [priceFrom, setPriceFrom] = useState<string>('');
     const [priceTo, setPriceTo] = useState<string>('');
 
@@ -90,48 +91,19 @@ export default function Items() {
         },
     ];
 
-    const getCashbackColor = (cashback: number | undefined) => {
-        let color = "neon.pink";
-
-        if (cashback) {
-            color = cashback > 1 ? "neon.green" : "neon.yellow";
-        }
-
-        return color;
-    };
-
     const loadItems = useCallback(async () => {
         setLoading(true);
         setError(null);
 
         try {
-            const filter: ItemFilter = {
-                page: page - 1,
+            const filter: ItemFilter = buildItemFilter({
+                page,
                 pageSize,
-            };
-
-            if (searchTerm) {
-                filter.name = searchTerm;
-            }
-
-            if (statusFilter !== 'All') {
-                filter.isActive = statusFilter === 'Active';
-            }
-
-            if (priceFrom) {
-                const price = parseFloat(priceFrom);
-                if (!isNaN(price)) {
-                    filter.priceFrom = price;
-                }
-            }
-
-            if (priceTo) {
-                const price = parseFloat(priceTo);
-                if (!isNaN(price)) {
-                    filter.priceTo = price;
-                }
-            }
-
+                searchTerm,
+                statusFilter,
+                priceFrom,
+                priceTo,
+            });
             const result = await itemsService.getItems(filter);
             setItems(result.data);
             setTotal(result.count);

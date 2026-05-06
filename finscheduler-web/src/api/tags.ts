@@ -1,6 +1,30 @@
 import type {Lookup, PaginatedList, TagDto, TagFilter, TagLookupFilter} from './types';
 import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
 
+export type TagStatusFilter = "All" | "Active" | "Inactive";
+
+export function buildTagFilter(params: {
+    page: number;
+    pageSize: number;
+    searchTerm: string;
+    statusFilter: TagStatusFilter;
+}): TagFilter {
+    const filter: TagFilter = {
+        page: params.page - 1,
+        pageSize: params.pageSize,
+    };
+
+    if (params.searchTerm) {
+        filter.name = params.searchTerm;
+    }
+
+    if (params.statusFilter !== "All") {
+        filter.isActive = params.statusFilter === "Active";
+    }
+
+    return filter;
+}
+
 export default class TagsService extends FinschedulerApiClient {
     async getTags(filter?: TagFilter): Promise<PaginatedList<TagDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';
