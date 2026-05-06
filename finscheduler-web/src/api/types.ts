@@ -68,3 +68,8 @@ export interface ItemModification {
     category: string
     tagIds: string[]
 }
+
+export interface TagModification {
+    name: string
+    isActive: boolean
+}

@@ -1,7 +1,7 @@
 import DataTable, {type TableColumn} from "../../components/dataTable/DataTable.tsx";
 import {Badge, Flex, Spinner, Text} from "@chakra-ui/react";
 import {useState, useEffect, useCallback} from "react";
-import type {TagDto, TagFilter} from "../../api/types.ts";
+import type {TagDto, TagFilter, TagModification} from "../../api/types.ts";
 import {toaster} from "../../components/ui/toaster.tsx";
 import TagModal from "./subcomponents/TagModal.tsx";
 import TagsService, {buildTagFilter, type TagStatusFilter} from "../../api/tags.ts";
@@ -103,7 +103,7 @@ export default function Tags() {
         setSelectedRows(new Set());
     };
 
-    const handleSaveTag = async (tagData: Omit<TagDto, 'id'>) => {
+    const handleSaveTag = async (tagData: TagModification) => {
         try {
             if (modalMode === 'create') {
                 await tagsService.createTag(tagData);

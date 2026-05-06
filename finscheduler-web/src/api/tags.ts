@@ -1,4 +1,4 @@
-import type {Lookup, PaginatedList, TagDto, TagFilter, TagLookupFilter} from './types';
+import type {Lookup, PaginatedList, TagDto, TagFilter, TagLookupFilter, TagModification} from './types';
 import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
 
 export type TagStatusFilter = "All" | "Active" | "Inactive";
@@ -42,7 +42,7 @@ export default class TagsService extends FinschedulerApiClient {
         return response.json();
     }
 
-    async createTag(item: Omit<TagDto, 'id'>): Promise<string> {
+    async createTag(item: TagModification): Promise<string> {
         const response = await fetch(`${this.baseUrl}/tags`, {
             method: 'POST',
             headers: {
@@ -61,7 +61,7 @@ export default class TagsService extends FinschedulerApiClient {
         return response.json();
     }
 
-    async updateTag(id: string, item: Omit<TagDto, 'id'>): Promise<void> {
+    async updateTag(id: string, item: TagModification): Promise<void> {
         const response = await fetch(`${this.baseUrl}/tags/${id}`, {
             method: 'PUT',
             headers: {

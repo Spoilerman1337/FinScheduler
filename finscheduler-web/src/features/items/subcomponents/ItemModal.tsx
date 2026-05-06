@@ -7,9 +7,16 @@ import SelectField from "../../../components/formFields/SelectField.tsx";
 import SwitchField from "../../../components/formFields/SwitchField.tsx";
 import TextAreaField from "../../../components/formFields/TextAreaField.tsx";
 import TextField from "../../../components/formFields/TextField.tsx";
-import type {SelectOption} from "../../../components/formFields/types.ts";
 import FormModal from "../../../components/formModal/FormModal.tsx";
-import {categoryOptions, categoryTranslations} from "../../../models/items.ts";
+import {categoryOptions} from "../../../models/items.ts";
+import {mapLookupsToSelectOptions} from "../../shared.ts";
+import {
+    buildItemModification,
+    createDefaultItemFormData,
+    mapItemToFormData,
+    type ItemModalFormData,
+    validateItemFormData,
+} from "../form.ts";
 
 interface ItemModalProps {
     isOpen: boolean;
@@ -19,87 +26,32 @@ interface ItemModalProps {
     mode: 'create' | 'edit';
 }
 
-interface ItemModalFormData {
-    name: string;
-    description: string;
-    price: string;
-    cashback: string;
-    isActive: boolean;
-    category: string;
-    tagIds: string[];
-}
-
 const TAGS_PAGE_SIZE = 20;
 const tagsService = new TagsService();
 
-function mapItemTagsToOptions(item?: ItemDto | null): SelectOption[] {
-    if (!item || !Array.isArray(item.tags)) {
-        return [];
-    }
-
-    return item.tags.reduce<SelectOption[]>((result, tag) => {
-        if (!tag?.value) {
-            return result;
-        }
-
-        result.push({
-            label: tag.label ?? tag.value,
-            value: tag.value,
-        });
-
-        return result;
-    }, []);
-}
-
 export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemModalProps) {
-    const getDefaultFormData = (): ItemModalFormData => ({
-        name: '',
-        description: '',
-        price: '',
-        cashback: '',
-        isActive: true,
-        category: '',
-        tagIds: [],
-    });
-
-    const [formData, setFormData] = useState<ItemModalFormData>(getDefaultFormData);
+    const [formData, setFormData] = useState<ItemModalFormData>(createDefaultItemFormData);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const initialTagOptions = useMemo(() => mapItemTagsToOptions(item), [item]);
+    const initialTagOptions = useMemo(() => mapLookupsToSelectOptions(item?.tags), [item]);
 
     useEffect(() => {
         if (isOpen && mode === 'edit' && item) {
-            setFormData({
-                name: item.name || '',
-                description: item.description || '',
-                price: item.price !== undefined && item.price !== null ? item.price.toString() : '',
-                cashback: item.cashback !== undefined && item.cashback !== null ? item.cashback.toString() : '',
-                isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
-                category: typeof item.category === 'string' ? item.category : '',
-                tagIds: Array.isArray(item.tags)
-                    ? item.tags.reduce<string[]>((result, tag) => {
-                        if (tag?.value) {
-                            result.push(tag.value);
-                        }
-
-                        return result;
-                    }, [])
-                    : [],
-            });
+            setFormData(mapItemToFormData(item));
         }
     }, [isOpen, item, mode]);
 
     useEffect(() => {
         if (isOpen && mode === 'create') {
-            setFormData(getDefaultFormData());
+            setFormData(createDefaultItemFormData());
             setError(null);
         }
     }, [isOpen, mode]);
 
     useEffect(() => {
         if (!isOpen) {
-            setFormData(getDefaultFormData());
+            setFormData(createDefaultItemFormData());
             setError(null);
         }
     }, [isOpen]);
@@ -114,42 +66,16 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
     const handleSubmit = async () => {
         setError(null);
 
-        if (!formData.name.trim()) {
-            setError('Название обязательно для заполнения');
-            return;
-        }
+        const validationError = validateItemFormData(formData);
 
-        if (formData.price && Number.isNaN(parseFloat(formData.price))) {
-            setError('Цена должна быть числом');
-            return;
-        }
-
-        if (
-            formData.cashback &&
-            (Number.isNaN(parseFloat(formData.cashback)) ||
-                parseFloat(formData.cashback) < 0 ||
-                parseFloat(formData.cashback) > 100)
-        ) {
-            setError('Кэшбэк должен быть числом от 0 до 100');
-            return;
-        }
-
-        if (!formData.category.trim() || !categoryTranslations[formData.category]) {
-            setError('Выберите категорию');
+        if (validationError) {
+            setError(validationError);
             return;
         }
 
         setLoading(true);
         try {
-            await onSave({
-                name: formData.name.trim(),
-                description: formData.description.trim() || undefined,
-                price: formData.price ? parseFloat(formData.price) : 0,
-                cashback: formData.cashback ? parseFloat(formData.cashback) : 0,
-                isActive: formData.isActive,
-                category: formData.category,
-                tagIds: formData.tagIds,
-            });
+            await onSave(buildItemModification(formData));
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Ошибка при сохранении');
@@ -223,18 +149,7 @@ export default function ItemModal({isOpen, onClose, onSave, item, mode}: ItemMod
                     });
 
                     return {
-                        options: (tags.data ?? []).reduce<SelectOption[]>((result, tag) => {
-                            if (!tag?.value) {
-                                return result;
-                            }
-
-                            result.push({
-                                label: tag.label ?? tag.value,
-                                value: tag.value,
-                            });
-
-                            return result;
-                        }, []),
+                        options: mapLookupsToSelectOptions(tags.data),
                         hasMore: (page + 1) * TAGS_PAGE_SIZE < tags.count,
                     };
                 }}
