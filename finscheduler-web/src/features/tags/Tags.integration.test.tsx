@@ -1,7 +1,7 @@
 import {screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {http, HttpResponse} from "msw";
-import {describe, expect, it} from "vitest";
+import {describe, expect, it, vi} from "vitest";
 import type {TagDto, TagModification} from "../../api/types.ts";
 import {renderWithProviders} from "../../test/render.tsx";
 import {server} from "../../test/msw/server.ts";
@@ -170,5 +170,218 @@ describe("Tags integration", () => {
             });
         });
         expect(await screen.findByText("New Tag")).toBeInTheDocument();
+    });
+
+    it("edits an existing tag and reloads the table", async () => {
+        // Arrange
+        const currentTags = [buildTag({name: "Old Tag"})];
+        let updatedPayload: TagModification | null = null;
+
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: currentTags,
+                    count: currentTags.length,
+                });
+            }),
+            http.put(`${API_BASE_URL}/tags/:id`, async ({params, request}) => {
+                updatedPayload = await request.json() as TagModification;
+                currentTags[0] = {
+                    ...currentTags[0],
+                    id: String(params.id),
+                    name: updatedPayload.name,
+                    isActive: updatedPayload.isActive,
+                };
+
+                return new HttpResponse(null, {status: 200});
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Tags/>);
+        await user.click(await screen.findByText("Old Tag"));
+        await user.clear(screen.getByLabelText("Название"));
+        await user.type(screen.getByLabelText("Название"), "Updated Tag");
+        await user.click(screen.getByRole("button", {name: "Сохранить"}));
+
+        // Assert
+        await waitFor(() => {
+            expect(updatedPayload).toEqual({
+                name: "Updated Tag",
+                isActive: true,
+            });
+        });
+        expect(await screen.findByText("Updated Tag")).toBeInTheDocument();
+        expect(screen.queryByText("Old Tag")).not.toBeInTheDocument();
+    });
+
+    it("changes the page when the paginator is used", async () => {
+        // Arrange
+        const requests: URL[] = [];
+
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, ({request}) => {
+                const url = new URL(request.url);
+                const page = url.searchParams.get("page");
+
+                requests.push(url);
+
+                return HttpResponse.json({
+                    data: page === "1"
+                        ? [buildTag({id: "tag-2", name: "Second Page Tag"})]
+                        : [buildTag({name: "First Page Tag"})],
+                    count: 11,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Tags/>);
+        await screen.findByText("First Page Tag");
+        await user.click(screen.getByRole("button", {name: "last page, page 2"}));
+
+        // Assert
+        expect(await screen.findByText("Second Page Tag")).toBeInTheDocument();
+        await waitFor(() => {
+            const lastRequest = requests.at(-1);
+
+            expect(lastRequest?.searchParams.get("page")).toBe("1");
+        });
+    });
+
+    it("changes the page size and reloads the first page", async () => {
+        // Arrange
+        const requests: URL[] = [];
+
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, ({request}) => {
+                const url = new URL(request.url);
+                const page = url.searchParams.get("page");
+                const pageSize = url.searchParams.get("pageSize");
+
+                requests.push(url);
+
+                if (pageSize === "25") {
+                    return HttpResponse.json({
+                        data: [buildTag({id: "tag-3", name: "Twenty Five Per Page"})],
+                        count: 30,
+                    });
+                }
+
+                if (page === "1") {
+                    return HttpResponse.json({
+                        data: [buildTag({id: "tag-2", name: "Second Page Tag"})],
+                        count: 30,
+                    });
+                }
+
+                return HttpResponse.json({
+                    data: [buildTag({name: "First Page Tag"})],
+                    count: 30,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Tags/>);
+        await screen.findByText("First Page Tag");
+        await user.click(screen.getByRole("button", {name: /page 2/i}));
+        await screen.findByText("Second Page Tag");
+        await user.click(screen.getByRole("combobox"));
+        await user.click(await screen.findByRole("option", {name: "25"}));
+
+        // Assert
+        expect(await screen.findByText("Twenty Five Per Page")).toBeInTheDocument();
+        await waitFor(() => {
+            const lastRequest = requests.at(-1);
+
+            expect(lastRequest?.searchParams.get("page")).toBe("0");
+            expect(lastRequest?.searchParams.get("pageSize")).toBe("25");
+        });
+    });
+
+    it("shows an empty state when no tags are returned", async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: [],
+                    count: 0,
+                });
+            }),
+        );
+
+        // Act
+        renderWithProviders(<Tags/>);
+
+        // Assert
+        expect(await screen.findByText("Данные не найдены.")).toBeInTheDocument();
+    });
+
+    it("shows an error state when tags request fails", async () => {
+        // Arrange
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json(
+                    {message: "boom"},
+                    {status: 500, statusText: "Internal Server Error"},
+                );
+            }),
+        );
+
+        try {
+            // Act
+            renderWithProviders(<Tags/>);
+
+            // Assert
+            expect(await screen.findByText("Failed to fetch tags: Internal Server Error")).toBeInTheDocument();
+        } finally {
+            consoleErrorSpy.mockRestore();
+        }
+    });
+
+    it("shows a save error when creating a tag fails", async () => {
+        // Arrange
+        const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: [buildTag({name: "Existing Tag"})],
+                    count: 1,
+                });
+            }),
+            http.post(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json(
+                    {message: "boom"},
+                    {status: 500, statusText: "Internal Server Error"},
+                );
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        try {
+            // Act
+            renderWithProviders(<Tags/>);
+            await screen.findByText("Existing Tag");
+            await user.click(screen.getByRole("button", {name: "Добавить"}));
+            await user.type(screen.getByLabelText("Название"), "Broken Tag");
+            await user.click(screen.getByRole("button", {name: "Сохранить"}));
+
+            // Assert
+            expect(await screen.findByText("Failed to create tag: Internal Server Error")).toBeInTheDocument();
+            expect(screen.getByLabelText("Название")).toHaveValue("Broken Tag");
+        } finally {
+            consoleErrorSpy.mockRestore();
+        }
     });
 });
