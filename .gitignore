@@ -74,3 +74,6 @@ coverage/
 logs
 pnpm-debug.log*
 lerna-debug.log*
+
+# Agents
+.codex/
