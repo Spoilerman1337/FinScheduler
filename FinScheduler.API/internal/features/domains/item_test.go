@@ -183,6 +183,7 @@ func TestNewItemDto_ShouldNilUpdatedAtAndTags(t *testing.T) {
 }
 
 func TestItemCreateValidate(t *testing.T) {
+	duplicateTagID := uuid.New().String()
 	valid := ItemCreate{
 		Name:        "Coffee",
 		Price:       decimal.RequireFromString("10.50"),
@@ -238,6 +239,13 @@ func TestItemCreateValidate(t *testing.T) {
 			},
 			expectedErr: "tagId is invalid: bad-uuid",
 		},
+		{
+			name: "tag ids contain duplicates",
+			mutate: func(item *ItemCreate) {
+				item.TagIds = []string{duplicateTagID, duplicateTagID}
+			},
+			expectedErr: "tagId is duplicated: " + duplicateTagID,
+		},
 	}
 
 	for _, tt := range tests {
@@ -261,6 +269,7 @@ func TestItemCreateValidate(t *testing.T) {
 }
 
 func TestItemUpdateValidate(t *testing.T) {
+	duplicateTagID := uuid.New().String()
 	valid := ItemUpdate{
 		Name:        "Coffee",
 		Price:       decimal.RequireFromString("10.50"),
@@ -315,6 +324,13 @@ func TestItemUpdateValidate(t *testing.T) {
 				item.TagIds = []string{"bad-uuid"}
 			},
 			expectedErr: "tagId is invalid: bad-uuid",
+		},
+		{
+			name: "tag ids contain duplicates",
+			mutate: func(item *ItemUpdate) {
+				item.TagIds = []string{duplicateTagID, duplicateTagID}
+			},
+			expectedErr: "tagId is duplicated: " + duplicateTagID,
 		},
 	}
 
@@ -476,6 +492,19 @@ func TestValidateTagIds(t *testing.T) {
 		// Arrange
 		tagIDs := []string{uuid.New().String(), "broken"}
 		expectedError := "tagId is invalid: broken"
+
+		// Act
+		err := validateTagIds(tagIDs)
+
+		// Assert
+		require.EqualError(t, err, expectedError)
+	})
+
+	t.Run("duplicate id", func(t *testing.T) {
+		// Arrange
+		duplicateTagID := uuid.New().String()
+		tagIDs := []string{duplicateTagID, duplicateTagID}
+		expectedError := "tagId is duplicated: " + duplicateTagID
 
 		// Act
 		err := validateTagIds(tagIDs)

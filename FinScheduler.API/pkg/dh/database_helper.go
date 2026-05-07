@@ -25,15 +25,6 @@ func GetPostgresErrorDetails(err error) (PostgresErrorDetails, bool) {
 	}, true
 }
 
-func IsPostgresForeignKeyViolation(err error) bool {
-	details, ok := GetPostgresErrorDetails(err)
-	if !ok {
-		return false
-	}
-
-	return details.Code == PostgresForeignKeyViolationCode
-}
-
 func Reconcile[T comparable](incoming []T, current []T) (toDelete []T, toInsert []T) {
 	incomingMap := make(map[T]struct{}, len(incoming))
 	for _, id := range incoming {

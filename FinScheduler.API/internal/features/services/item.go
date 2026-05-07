@@ -131,7 +131,15 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		return uuid.Nil, err
 	}
 
+	if err := create.Validate(); err != nil {
+		service.logger.ErrorContext(ctx, "create validation failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Create", err)
+		return uuid.Nil, err
+	}
+
 	var newId uuid.UUID
+	updateTagIds := parseTagIDs(create.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
 		var err error
@@ -156,16 +164,6 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 			}
 		}
 
-		var updateTagIds []uuid.UUID
-		if create.TagIds != nil && len(create.TagIds) > 0 {
-			for _, tagId := range create.TagIds {
-				uuidTagId, err := uuid.Parse(tagId)
-				if err == nil {
-					updateTagIds = append(updateTagIds, uuidTagId)
-				}
-			}
-		}
-
 		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 		if len(toDelete) > 0 {
@@ -181,7 +179,7 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 		if len(toInsert) > 0 {
 			success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
 			if err != nil {
-				if dh.IsPostgresForeignKeyViolation(err) {
+				if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
 					return domains.ErrInvalidReference
 				}
 				return err
@@ -230,7 +228,15 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		return false, err
 	}
 
+	if err := update.Validate(); err != nil {
+		service.logger.ErrorContext(ctx, "update validation failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "Update", err)
+		return false, err
+	}
+
 	var success bool
+	updateTagIds := parseTagIDs(update.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
 		var err error
@@ -255,16 +261,6 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 			}
 		}
 
-		var updateTagIds []uuid.UUID
-		if update.TagIds != nil && len(update.TagIds) > 0 {
-			for _, tagId := range update.TagIds {
-				uuidTagId, err := uuid.Parse(tagId)
-				if err == nil {
-					updateTagIds = append(updateTagIds, uuidTagId)
-				}
-			}
-		}
-
 		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 		if len(toDelete) > 0 {
@@ -280,7 +276,7 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		if len(toInsert) > 0 {
 			tagSuccess, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
 			if err != nil {
-				if dh.IsPostgresForeignKeyViolation(err) {
+				if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
 					return domains.ErrInvalidReference
 				}
 				return err
@@ -340,4 +336,17 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 
 	traces.EnrichSuccessServiceSpan(span)
 	return success, nil
+}
+
+func parseTagIDs(tagIDs []string) []uuid.UUID {
+	if tagIDs == nil {
+		return nil
+	}
+
+	result := make([]uuid.UUID, len(tagIDs))
+	for i, tagID := range tagIDs {
+		result[i] = uuid.MustParse(tagID)
+	}
+
+	return result
 }

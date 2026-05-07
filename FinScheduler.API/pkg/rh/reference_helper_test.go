@@ -17,8 +17,13 @@ func TestDereferenceSlice(t *testing.T) {
 		expected []int
 	}{
 		{
-			name:     "empty input",
+			name:     "nil input returns nil",
 			input:    nil,
+			expected: nil,
+		},
+		{
+			name:     "empty input preserves empty slice",
+			input:    []*int{},
 			expected: []int{},
 		},
 		{
@@ -56,13 +61,19 @@ func TestDereferenceSlice(t *testing.T) {
 
 func TestReferenceSlice(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    []int
-		expected []int
+		name        string
+		input       []int
+		expected    []int
+		expectedNil bool
 	}{
 		{
-			name:     "empty input",
-			input:    nil,
+			name:        "nil input returns nil",
+			input:       nil,
+			expectedNil: true,
+		},
+		{
+			name:     "empty input preserves empty slice",
+			input:    []int{},
 			expected: []int{},
 		},
 		{
@@ -81,6 +92,11 @@ func TestReferenceSlice(t *testing.T) {
 			result := ReferenceSlice(input)
 
 			// Assert
+			if tt.expectedNil {
+				assert.Nil(t, result)
+				return
+			}
+
 			require.Len(t, result, len(tt.expected))
 
 			for index := range tt.expected {

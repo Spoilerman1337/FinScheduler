@@ -45,6 +45,27 @@ func TestItemsServiceCreate_ShouldReturnErrorOnNilCreate(t *testing.T) {
 	assert.Equal(t, uuid.Nil, newID)
 }
 
+func TestItemsServiceCreate_ShouldReturnValidationError(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	duplicateTagID := uuid.New().String()
+	create := &domains.ItemCreate{
+		Name:     "Coffee",
+		Category: "FoodDrinks",
+		TagIds:   []string{duplicateTagID, duplicateTagID},
+	}
+	service := NewItemsService(uow, logger)
+
+	// Act
+	newID, err := service.Create(ctx, create)
+
+	// Assert
+	require.EqualError(t, err, "tagId is duplicated: "+duplicateTagID)
+	assert.Equal(t, uuid.Nil, newID)
+}
+
 func TestItemsServiceUpdate_ShouldReturnErrorOnInvalidInput(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
@@ -65,6 +86,28 @@ func TestItemsServiceUpdate_ShouldReturnErrorOnInvalidInput(t *testing.T) {
 	require.EqualError(t, errOnNilUpdate, "update is nil")
 	assert.False(t, successOnNilID)
 	assert.False(t, successOnNilUpdate)
+}
+
+func TestItemsServiceUpdate_ShouldReturnValidationError(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	itemID := uuid.New()
+	duplicateTagID := uuid.New().String()
+	update := &domains.ItemUpdate{
+		Name:     "Coffee",
+		Category: "FoodDrinks",
+		TagIds:   []string{duplicateTagID, duplicateTagID},
+	}
+	service := NewItemsService(uow, logger)
+
+	// Act
+	success, err := service.Update(ctx, itemID, update)
+
+	// Assert
+	require.EqualError(t, err, "tagId is duplicated: "+duplicateTagID)
+	assert.False(t, success)
 }
 
 func TestItemsServiceDelete_ShouldReturnErrorOnNilItemID(t *testing.T) {

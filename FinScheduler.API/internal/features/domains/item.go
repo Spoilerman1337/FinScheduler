@@ -278,10 +278,19 @@ func (itemCategory ItemCategory) IsValid() bool {
 }
 
 func validateTagIds(tagIds []string) error {
+	seen := make(map[uuid.UUID]struct{}, len(tagIds))
+
 	for _, tagId := range tagIds {
-		if _, err := uuid.Parse(tagId); err != nil {
+		parsedTagID, err := uuid.Parse(tagId)
+		if err != nil {
 			return fmt.Errorf("tagId is invalid: %s", tagId)
 		}
+
+		if _, exists := seen[parsedTagID]; exists {
+			return fmt.Errorf("tagId is duplicated: %s", tagId)
+		}
+
+		seen[parsedTagID] = struct{}{}
 	}
 
 	return nil
