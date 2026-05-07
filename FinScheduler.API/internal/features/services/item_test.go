@@ -3,66 +3,125 @@ package services
 import (
 	"context"
 	"finscheduler/internal/features/domains"
+	"finscheduler/internal/persistence"
 	"log/slog"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func Test_ItemsService_Get_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
+func TestItemsServiceGet_ShouldReturnErrorOnNilFilter(t *testing.T) {
 	// Arrange
-	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
 	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	var filter *domains.ItemFilter
+	service := NewItemsService(uow, logger)
 
 	// Act
-	_, _, err := svc.Get(ctx, nil)
+	items, count, err := service.Get(ctx, filter)
 
 	// Assert
-	assert.NotNilf(t, err, "expected to get an error")
+	require.EqualError(t, err, "filter is nil")
+	assert.Nil(t, items)
+	assert.Zero(t, count)
 }
 
-func Test_ItemsService_Create_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
+func TestItemsServiceCreate_ShouldReturnErrorOnNilCreate(t *testing.T) {
 	// Arrange
-	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
 	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	var create *domains.ItemCreate
+	service := NewItemsService(uow, logger)
 
 	// Act
-	_, err := svc.Create(ctx, nil)
+	newID, err := service.Create(ctx, create)
 
 	// Assert
-	assert.NotNilf(t, err, "expected to get an error")
+	require.EqualError(t, err, "create is nil")
+	assert.Equal(t, uuid.Nil, newID)
 }
 
-func Test_ItemsService_Update_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
+func TestItemsServiceCreate_ShouldReturnValidationError(t *testing.T) {
 	// Arrange
-	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
-	nilUUID := uuid.Nil
-	notNilUUID, _ := uuid.NewV7()
 	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	duplicateTagID := uuid.New().String()
+	create := &domains.ItemCreate{
+		Name:     "Coffee",
+		Category: "FoodDrinks",
+		TagIds:   []string{duplicateTagID, duplicateTagID},
+	}
+	service := NewItemsService(uow, logger)
 
 	// Act
-	_, err1 := svc.Update(ctx, nilUUID, &domains.ItemUpdate{})
-	_, err2 := svc.Update(ctx, notNilUUID, nil)
+	newID, err := service.Create(ctx, create)
 
 	// Assert
-	assert.NotNilf(t, err1, "expected to get an error")
-	assert.NotNilf(t, err2, "expected to get an error")
+	require.EqualError(t, err, "tagId is duplicated: "+duplicateTagID)
+	assert.Equal(t, uuid.Nil, newID)
 }
 
-func Test_ItemsService_Delete_ValidateInputs_ShouldReturnErrorOnNilInput(t *testing.T) {
+func TestItemsServiceUpdate_ShouldReturnErrorOnInvalidInput(t *testing.T) {
 	// Arrange
-	logger := slog.Default()
-	svc := NewItemsService(nil, logger)
-	nilUUID := uuid.Nil
 	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	nilID := uuid.Nil
+	validID := uuid.New()
+	update := &domains.ItemUpdate{}
+	var nilUpdate *domains.ItemUpdate
+	service := NewItemsService(uow, logger)
 
 	// Act
-	_, err := svc.Delete(ctx, nilUUID)
+	successOnNilID, errOnNilID := service.Update(ctx, nilID, update)
+	successOnNilUpdate, errOnNilUpdate := service.Update(ctx, validID, nilUpdate)
 
 	// Assert
-	assert.NotNilf(t, err, "expected to get an error")
+	require.EqualError(t, errOnNilID, "itemID is nil")
+	require.EqualError(t, errOnNilUpdate, "update is nil")
+	assert.False(t, successOnNilID)
+	assert.False(t, successOnNilUpdate)
+}
+
+func TestItemsServiceUpdate_ShouldReturnValidationError(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	itemID := uuid.New()
+	duplicateTagID := uuid.New().String()
+	update := &domains.ItemUpdate{
+		Name:     "Coffee",
+		Category: "FoodDrinks",
+		TagIds:   []string{duplicateTagID, duplicateTagID},
+	}
+	service := NewItemsService(uow, logger)
+
+	// Act
+	success, err := service.Update(ctx, itemID, update)
+
+	// Assert
+	require.EqualError(t, err, "tagId is duplicated: "+duplicateTagID)
+	assert.False(t, success)
+}
+
+func TestItemsServiceDelete_ShouldReturnErrorOnNilItemID(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	itemID := uuid.Nil
+	service := NewItemsService(uow, logger)
+
+	// Act
+	success, err := service.Delete(ctx, itemID)
+
+	// Assert
+	require.EqualError(t, err, "itemID is nil")
+	assert.False(t, success)
 }

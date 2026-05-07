@@ -1,46 +1,45 @@
 import {useEffect, useState} from "react";
-import type {TagDto} from "../../../api/types.ts";
+import type {TagDto, TagModification} from "../../../api/types.ts";
 import SwitchField from "../../../components/formFields/SwitchField.tsx";
 import TextField from "../../../components/formFields/TextField.tsx";
 import FormModal from "../../../components/formModal/FormModal.tsx";
+import {
+    buildTagModification,
+    createDefaultTagFormData,
+    mapTagToFormData,
+    type TagModalFormData,
+    validateTagFormData,
+} from "../form.ts";
 
 interface TagModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (tag: Omit<TagDto, 'id'>) => Promise<void>;
+    onSave: (tag: TagModification) => Promise<void>;
     item?: TagDto | null;
     mode: 'create' | 'edit';
 }
 
 export default function TagModal({isOpen, onClose, onSave, item, mode}: TagModalProps) {
-    const getDefaultFormData = () => ({
-        name: '',
-        isActive: true,
-    });
-
-    const [formData, setFormData] = useState(getDefaultFormData);
+    const [formData, setFormData] = useState<TagModalFormData>(createDefaultTagFormData);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen && mode === 'edit' && item) {
-            setFormData({
-                name: item.name || '',
-                isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
-            });
+            setFormData(mapTagToFormData(item));
         }
     }, [isOpen, item, mode]);
 
     useEffect(() => {
         if (isOpen && mode === 'create') {
-            setFormData(getDefaultFormData());
+            setFormData(createDefaultTagFormData());
             setError(null);
         }
     }, [isOpen, mode]);
 
     useEffect(() => {
         if (!isOpen) {
-            setFormData(getDefaultFormData());
+            setFormData(createDefaultTagFormData());
             setError(null);
         }
     }, [isOpen]);
@@ -48,17 +47,16 @@ export default function TagModal({isOpen, onClose, onSave, item, mode}: TagModal
     const handleSubmit = async () => {
         setError(null);
 
-        if (!formData.name.trim()) {
-            setError('Название обязательно для заполнения');
+        const validationError = validateTagFormData(formData);
+
+        if (validationError) {
+            setError(validationError);
             return;
         }
 
         setLoading(true);
         try {
-            await onSave({
-                name: formData.name.trim(),
-                isActive: formData.isActive,
-            });
+            await onSave(buildTagModification(formData));
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Ошибка при сохранении');

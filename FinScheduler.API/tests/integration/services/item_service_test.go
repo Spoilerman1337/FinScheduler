@@ -23,33 +23,79 @@ func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB)
 	})
 
+	ctx := testContext
 	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewItemsService(uow, testLogger)
+	service := services.NewItemsService(uow, testLogger)
+	expectedName := "Item"
+	page := int32(0)
+	pageSize := int32(20)
 
 	create := &domains.ItemCreate{
-		Name:     "Item",
+		Name:     expectedName,
 		Category: "FoodDrinks",
 	}
 
 	// Act
-	id, err := svc.Create(testContext, create)
-	require.NoError(t, err)
-
-	page := int32(0)
-	pageSize := int32(20)
+	id, createErr := service.Create(ctx, create)
 	filter := domains.ItemFilter{
 		Ids:      []*uuid.UUID{&id},
 		Page:     &page,
 		PageSize: &pageSize,
 	}
 
-	items, count, err := svc.Get(testContext, &filter)
-	require.NoError(t, err)
-	require.Len(t, items, 1)
+	items, count, getErr := service.Get(ctx, &filter)
 
 	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, getErr)
+	require.Len(t, items, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, "Item", *items[0].Name)
+	assert.Equal(t, expectedName, *items[0].Name)
+}
+
+func Test_ItemsService_CreateAndGet_ShouldReturnAssignedTags(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	itemsService := services.NewItemsService(uow, testLogger)
+	tagsService := services.NewTagsService(uow, testLogger)
+	tagName := "Groceries"
+	itemName := "Milk"
+	page := int32(0)
+	pageSize := int32(20)
+	tagCreate := &domains.TagCreate{Name: tagName}
+
+	tagID, tagCreateErr := tagsService.Create(ctx, tagCreate)
+
+	create := &domains.ItemCreate{
+		Name:     itemName,
+		Category: "FoodDrinks",
+		TagIds:   []string{tagID.String()},
+	}
+
+	// Act
+	itemID, itemCreateErr := itemsService.Create(ctx, create)
+	filter := domains.ItemFilter{
+		Ids:      []*uuid.UUID{&itemID},
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	items, count, getErr := itemsService.Get(ctx, &filter)
+
+	// Assert
+	require.NoError(t, tagCreateErr)
+	require.NoError(t, itemCreateErr)
+	require.NoError(t, getErr)
+	require.Len(t, items, 1)
+	require.Len(t, items[0].Tags, 1)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, tagName, *items[0].Tags[0].Label)
+	assert.Equal(t, tagID.String(), *items[0].Tags[0].Value)
 }
 
 func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
@@ -58,45 +104,112 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB)
 	})
 
+	ctx := testContext
 	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewItemsService(uow, testLogger)
+	service := services.NewItemsService(uow, testLogger)
+	originalName := "Ice"
+	updatedName := "Water"
+	updatedPrice := 15.50
+	page := int32(0)
+	pageSize := int32(20)
 
 	create := &domains.ItemCreate{
-		Name:     "Ice",
+		Name:     originalName,
 		Price:    decimal.NewFromFloat(10.00),
 		Category: "FoodDrinks",
 	}
 
 	update := &domains.ItemUpdate{
-		Name:     "Water",
-		Price:    decimal.NewFromFloat(15.50),
+		Name:     updatedName,
+		Price:    decimal.NewFromFloat(updatedPrice),
 		Category: "FoodDrinks",
 	}
 
 	// Act
-	id, err := svc.Create(testContext, create)
-	require.NoError(t, err)
-
-	ok, err := svc.Update(testContext, id, update)
-	require.NoError(t, err)
-	require.True(t, ok)
-
-	page := int32(0)
-	pageSize := int32(20)
+	id, createErr := service.Create(ctx, create)
+	ok, updateErr := service.Update(ctx, id, update)
 	filter := domains.ItemFilter{
 		Ids:      []*uuid.UUID{&id},
 		Page:     &page,
 		PageSize: &pageSize,
 	}
 
-	items, count, err := svc.Get(testContext, &filter)
-	require.NoError(t, err)
-	require.Len(t, items, 1)
+	items, count, getErr := service.Get(ctx, &filter)
 
 	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, getErr)
+	require.True(t, ok)
+	require.Len(t, items, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, "Water", *items[0].Name)
-	assert.Equal(t, 15.50, *items[0].Price)
+	assert.Equal(t, updatedName, *items[0].Name)
+	assert.Equal(t, updatedPrice, *items[0].Price)
+}
+
+func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	itemsService := services.NewItemsService(uow, testLogger)
+	tagsService := services.NewTagsService(uow, testLogger)
+	firstTagName := "Old Tag"
+	secondTagName := "New Tag"
+	itemName := "Tagged item"
+	updatedItemName := "Tagged item updated"
+	page := int32(0)
+	pageSize := int32(20)
+	firstTagCreate := &domains.TagCreate{Name: firstTagName}
+	secondTagCreate := &domains.TagCreate{Name: secondTagName}
+
+	firstTagID, firstTagCreateErr := tagsService.Create(ctx, firstTagCreate)
+	secondTagID, secondTagCreateErr := tagsService.Create(ctx, secondTagCreate)
+
+	itemCreate := &domains.ItemCreate{
+		Name:     itemName,
+		Category: "FoodDrinks",
+		TagIds:   []string{firstTagID.String()},
+	}
+	itemID, itemCreateErr := itemsService.Create(ctx, itemCreate)
+
+	update := &domains.ItemUpdate{
+		Name:     updatedItemName,
+		Category: "FoodDrinks",
+		TagIds:   []string{secondTagID.String()},
+	}
+	query := "SELECT tag_id FROM tag_to_item WHERE item_id = $1 ORDER BY tag_id"
+
+	// Act
+	ok, updateErr := itemsService.Update(ctx, itemID, update)
+	filter := domains.ItemFilter{
+		Ids:      []*uuid.UUID{&itemID},
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	var actualTagIDs []uuid.UUID
+	items, count, getErr := itemsService.Get(ctx, &filter)
+	selectErr := testDB.Select(&actualTagIDs, query, itemID)
+
+	// Assert
+	require.NoError(t, firstTagCreateErr)
+	require.NoError(t, secondTagCreateErr)
+	require.NoError(t, itemCreateErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, getErr)
+	require.NoError(t, selectErr)
+	require.True(t, ok)
+	require.Len(t, items, 1)
+	require.Len(t, items[0].Tags, 1)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, updatedItemName, *items[0].Name)
+	assert.Equal(t, secondTagName, *items[0].Tags[0].Label)
+	assert.Equal(t, secondTagID.String(), *items[0].Tags[0].Value)
+	assert.Equal(t, []uuid.UUID{secondTagID}, actualTagIDs)
 }
 
 func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
@@ -105,43 +218,45 @@ func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 		testsupport.Truncate(t, testDB)
 	})
 
+	ctx := testContext
 	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewItemsService(uow, testLogger)
+	service := services.NewItemsService(uow, testLogger)
+	itemName := "Orange"
+	page := int32(0)
+	pageSize := int32(20)
 
 	create := &domains.ItemCreate{
-		Name:     "Orange",
+		Name:     itemName,
 		Price:    decimal.NewFromFloat(15.50),
 		Category: "FoodDrinks",
 	}
 
 	// Act
-	id, err := svc.Create(testContext, create)
-	require.NoError(t, err)
-
-	ok, err := svc.Delete(testContext, id)
-	require.NoError(t, err)
-	require.True(t, ok)
-
-	page := int32(0)
-	pageSize := int32(20)
+	id, createErr := service.Create(ctx, create)
+	ok, deleteErr := service.Delete(ctx, id)
 	filter := domains.ItemFilter{
 		Ids:      []*uuid.UUID{&id},
 		Page:     &page,
 		PageSize: &pageSize,
 	}
 
-	items, count, err := svc.Get(testContext, &filter)
+	items, count, getErr := service.Get(ctx, &filter)
 
 	// Assert
-	require.NoError(t, err)
+	require.NoError(t, createErr)
+	require.NoError(t, deleteErr)
+	require.NoError(t, getErr)
+	require.True(t, ok)
 	assert.Empty(t, items)
 	assert.Equal(t, int64(0), count)
 }
 
 func Test_ItemsService_UpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
 	// Arrange
+	ctx := testContext
 	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewItemsService(uow, testLogger)
+	service := services.NewItemsService(uow, testLogger)
+	missingID := uuid.New()
 
 	update := &domains.ItemUpdate{
 		Name:     "Missing",
@@ -149,7 +264,7 @@ func Test_ItemsService_UpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
 	}
 
 	// Act
-	ok, err := svc.Update(testContext, uuid.New(), update)
+	ok, err := service.Update(ctx, missingID, update)
 
 	// Assert
 	require.NoError(t, err)
@@ -158,11 +273,13 @@ func Test_ItemsService_UpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
 
 func Test_ItemsService_DeleteMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
 	// Arrange
+	ctx := testContext
 	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewItemsService(uow, testLogger)
+	service := services.NewItemsService(uow, testLogger)
+	missingID := uuid.New()
 
 	// Act
-	ok, err := svc.Delete(testContext, uuid.New())
+	ok, err := service.Delete(ctx, missingID)
 
 	// Assert
 	require.NoError(t, err)
@@ -175,24 +292,29 @@ func Test_ItemsService_Create_ShouldRollbackItemWhenTagInsertFails(t *testing.T)
 		testsupport.Truncate(t, testDB)
 	})
 
+	ctx := testContext
 	uow := persistence.NewUnitOfWork(testDB, testLogger)
-	svc := services.NewItemsService(uow, testLogger)
+	service := services.NewItemsService(uow, testLogger)
+	itemName := "Rollback"
+	expectedCount := 0
+	invalidTagID := uuid.New()
+	countQuery := "SELECT COUNT(*) FROM items WHERE name = $1"
 
 	create := &domains.ItemCreate{
-		Name:     "Rollback",
+		Name:     itemName,
 		Price:    decimal.NewFromFloat(15.50),
 		Category: "FoodDrinks",
-		TagIds:   []string{uuid.New().String()},
+		TagIds:   []string{invalidTagID.String()},
 	}
 
 	// Act
-	id, err := svc.Create(testContext, create)
+	id, createErr := service.Create(ctx, create)
+	var count int
+	countErr := testDB.Get(&count, countQuery, create.Name)
 
 	// Assert
-	require.Error(t, err)
+	require.ErrorIs(t, createErr, domains.ErrInvalidReference)
+	require.NoError(t, countErr)
 	assert.NotEqual(t, uuid.Nil, id)
-
-	var count int
-	require.NoError(t, testDB.Get(&count, "SELECT COUNT(*) FROM items WHERE name = $1", create.Name))
-	assert.Equal(t, 0, count)
+	assert.Equal(t, expectedCount, count)
 }

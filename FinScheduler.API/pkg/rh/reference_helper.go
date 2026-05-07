@@ -1,6 +1,10 @@
 package rh
 
 func DereferenceSlice[T any](input []*T) []T {
+	if input == nil {
+		return nil
+	}
+
 	result := make([]T, len(input))
 	for i, v := range input {
 		if v != nil {
@@ -11,6 +15,10 @@ func DereferenceSlice[T any](input []*T) []T {
 }
 
 func ReferenceSlice[T any](input []T) []*T {
+	if input == nil {
+		return nil
+	}
+
 	result := make([]*T, len(input))
 	for i, v := range input {
 		result[i] = &v

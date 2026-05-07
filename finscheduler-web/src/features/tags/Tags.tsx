@@ -1,10 +1,10 @@
 import DataTable, {type TableColumn} from "../../components/dataTable/DataTable.tsx";
 import {Badge, Flex, Spinner, Text} from "@chakra-ui/react";
 import {useState, useEffect, useCallback} from "react";
-import type {TagDto, TagFilter} from "../../api/types.ts";
+import type {TagDto, TagFilter, TagModification} from "../../api/types.ts";
 import {toaster} from "../../components/ui/toaster.tsx";
 import TagModal from "./subcomponents/TagModal.tsx";
-import TagsService from "../../api/tags.ts";
+import TagsService, {buildTagFilter, type TagStatusFilter} from "../../api/tags.ts";
 import TagsFilters from "./subcomponents/TagsFilters.tsx";
 
 const tagsService = new TagsService();
@@ -21,7 +21,7 @@ export default function Tags() {
     const [editingTag, setEditingTag] = useState<TagDto | null>(null);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('Active');
+    const [statusFilter, setStatusFilter] = useState<TagStatusFilter>('Active');
 
     const itemColumns: TableColumn<TagDto>[] = [
         {
@@ -58,19 +58,12 @@ export default function Tags() {
         setError(null);
 
         try {
-            const filter: TagFilter = {
-                page: page - 1,
+            const filter: TagFilter = buildTagFilter({
+                page,
                 pageSize,
-            };
-
-            if (searchTerm) {
-                filter.name = searchTerm;
-            }
-
-            if (statusFilter !== 'All') {
-                filter.isActive = statusFilter === 'Active';
-            }
-
+                searchTerm,
+                statusFilter,
+            });
             const result = await tagsService.getTags(filter);
             setTags(result.data);
             setTotal(result.count);
@@ -110,7 +103,7 @@ export default function Tags() {
         setSelectedRows(new Set());
     };
 
-    const handleSaveItem = async (tagData: Omit<TagDto, 'id'>) => {
+    const handleSaveTag = async (tagData: TagModification) => {
         try {
             if (modalMode === 'create') {
                 await tagsService.createTag(tagData);
@@ -133,7 +126,7 @@ export default function Tags() {
 
             await loadTags();
         } catch (err) {
-            console.error('Error saving item:', err);
+            console.error('Error saving tag:', err);
             throw err;
         }
     };
@@ -194,7 +187,7 @@ export default function Tags() {
                         key={`${modalMode}-${editingTag?.id || 'new'}`}
                         isOpen={isModalOpen}
                         onClose={handleCloseModal}
-                        onSave={handleSaveItem}
+                        onSave={handleSaveTag}
                         item={editingTag}
                         mode={modalMode}
                     />

@@ -21,26 +21,168 @@ func Test_ItemsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB, "items")
 	})
 
+	ctx := testContext
 	repo := repositories.NewItemsRepository(testDB, testLogger)
+	itemName := "Apple"
+	itemPrice := decimal.NewFromFloat(15.50)
+	itemCategory := "FoodDrinks"
 
 	create := &domains.ItemCreate{
-		Name:     "Apple",
-		Price:    decimal.NewFromFloat(15.50),
-		Category: "FoodDrinks",
+		Name:     itemName,
+		Price:    itemPrice,
+		Category: itemCategory,
 	}
 
 	// Act
-	id, err := repo.Create(testContext, create)
-	require.NoError(t, err)
-	require.NotEqual(t, uuid.Nil, id)
-
-	item, err := repo.GetById(testContext, id)
-	require.NoError(t, err)
+	id, createErr := repo.Create(ctx, create)
+	item, getErr := repo.GetById(ctx, id)
 
 	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, getErr)
+	require.NotEqual(t, uuid.Nil, id)
 	require.NotNil(t, item)
-	assert.Equal(t, "Apple", item.Name)
-	assert.True(t, decimal.NewFromFloat(15.50).Equal(item.Price))
+	assert.Equal(t, itemName, item.Name)
+	assert.True(t, itemPrice.Equal(item.Price))
+}
+
+func Test_ItemsRepository_Get_ShouldFilterAndReturnCount(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	repo := repositories.NewItemsRepository(testDB, testLogger)
+	targetTagID := uuid.New()
+	otherTagID := uuid.New()
+	firstName := "Coffee Beans"
+	secondName := "Coffee Syrup"
+	thirdName := "Coffee Gift"
+	fourthName := "Tea"
+	foodCategory := "FoodDrinks"
+	giftCategory := "Gifts"
+	firstPrice := decimal.NewFromFloat(10.00)
+	secondPrice := decimal.NewFromFloat(20.00)
+	thirdPrice := decimal.NewFromFloat(30.00)
+	fourthPrice := decimal.NewFromFloat(40.00)
+	tagInsertQuery := "INSERT INTO tags (id, name, is_active) VALUES ($1, $2, $3), ($4, $5, $6)"
+	tagInsertArgs := []any{targetTagID, "Target", true, otherTagID, "Other", true}
+	linkInsertQuery := "INSERT INTO tag_to_item (item_id, tag_id) VALUES ($1, $2), ($3, $4), ($5, $6), ($7, $8)"
+	filterName := "Coffee"
+	page := int32(0)
+	pageSize := int32(1)
+	category := domains.FoodDrinks
+	tagIDPointer := uuidPointer(targetTagID)
+	categoryPointerValue := itemCategoryPointer(category)
+
+	firstCreate := &domains.ItemCreate{Name: firstName, Price: firstPrice, Category: foodCategory}
+	secondCreate := &domains.ItemCreate{Name: secondName, Price: secondPrice, Category: foodCategory}
+	thirdCreate := &domains.ItemCreate{Name: thirdName, Price: thirdPrice, Category: giftCategory}
+	fourthCreate := &domains.ItemCreate{Name: fourthName, Price: fourthPrice, Category: foodCategory}
+
+	firstID, firstCreateErr := repo.Create(ctx, firstCreate)
+	secondID, secondCreateErr := repo.Create(ctx, secondCreate)
+	thirdID, thirdCreateErr := repo.Create(ctx, thirdCreate)
+	fourthID, fourthCreateErr := repo.Create(ctx, fourthCreate)
+	_, tagInsertErr := testDB.Exec(tagInsertQuery, tagInsertArgs...)
+	linkInsertArgs := []any{
+		firstID, targetTagID,
+		secondID, targetTagID,
+		thirdID, targetTagID,
+		fourthID, otherTagID,
+	}
+	_, linkInsertErr := testDB.Exec(linkInsertQuery, linkInsertArgs...)
+
+	filter := &domains.ItemFilter{
+		Name:       &filterName,
+		Categories: []*domains.ItemCategory{categoryPointerValue},
+		TagIds:     []*uuid.UUID{tagIDPointer},
+		Page:       &page,
+		PageSize:   &pageSize,
+	}
+
+	expectedNames := []string{firstName, secondName}
+
+	// Act
+	items, count, getErr := repo.Get(ctx, filter)
+
+	// Assert
+	require.NoError(t, firstCreateErr)
+	require.NoError(t, secondCreateErr)
+	require.NoError(t, thirdCreateErr)
+	require.NoError(t, fourthCreateErr)
+	require.NoError(t, tagInsertErr)
+	require.NoError(t, linkInsertErr)
+	require.NoError(t, getErr)
+	require.Len(t, items, 1)
+	assert.Equal(t, int64(2), count)
+	assert.Contains(t, expectedNames, items[0].Name)
+	assert.Equal(t, domains.FoodDrinks, items[0].Category)
+}
+
+func Test_ItemsRepository_GetById_ShouldReturnErrorOnNilID(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	repo := repositories.NewItemsRepository(testDB, testLogger)
+	itemID := uuid.Nil
+
+	// Act
+	item, err := repo.GetById(ctx, itemID)
+
+	// Assert
+	require.EqualError(t, err, "id should not be nil")
+	assert.Nil(t, item)
+}
+
+func Test_ItemsRepository_Get_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewItemsRepository(closedDB, testLogger)
+	page := int32(0)
+	pageSize := int32(20)
+	filter := &domains.ItemFilter{
+		Page:     &page,
+		PageSize: &pageSize,
+	}
+
+	// Act
+	items, count, err := repo.Get(ctx, filter)
+
+	// Assert
+	require.Error(t, err)
+	assert.Nil(t, items)
+	assert.Zero(t, count)
+}
+
+func Test_ItemsRepository_Create_ShouldReturnErrorOnDuplicateName(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "items")
+	})
+
+	ctx := testContext
+	repo := repositories.NewItemsRepository(testDB, testLogger)
+	itemName := "Duplicated"
+	itemPrice := decimal.NewFromFloat(10.00)
+	itemCategory := "FoodDrinks"
+	create := &domains.ItemCreate{
+		Name:     itemName,
+		Price:    itemPrice,
+		Category: itemCategory,
+	}
+
+	firstID, firstCreateErr := repo.Create(ctx, create)
+
+	// Act
+	secondID, secondCreateErr := repo.Create(ctx, create)
+
+	// Assert
+	require.NoError(t, firstCreateErr)
+	require.Error(t, secondCreateErr)
+	assert.NotEqual(t, uuid.Nil, firstID)
+	assert.Equal(t, uuid.Nil, secondID)
 }
 
 func Test_ItemsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
@@ -49,34 +191,85 @@ func Test_ItemsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 		testsupport.Truncate(t, testDB, "items")
 	})
 
+	ctx := testContext
 	repo := repositories.NewItemsRepository(testDB, testLogger)
+	originalName := "Old"
+	updatedName := "New"
+	originalPrice := decimal.NewFromFloat(10.00)
+	updatedPrice := decimal.NewFromFloat(15.50)
+	itemCategory := "FoodDrinks"
 
 	create := &domains.ItemCreate{
-		Name:     "Old",
-		Price:    decimal.NewFromFloat(10.00),
-		Category: "FoodDrinks",
+		Name:     originalName,
+		Price:    originalPrice,
+		Category: itemCategory,
 	}
 
 	update := &domains.ItemUpdate{
-		Name:     "New",
-		Price:    decimal.NewFromFloat(15.50),
-		Category: "FoodDrinks",
+		Name:     updatedName,
+		Price:    updatedPrice,
+		Category: itemCategory,
 	}
 
 	// Act
-	id, err := repo.Create(testContext, create)
-	require.NoError(t, err)
-
-	ok, err := repo.Update(testContext, id, update)
-	require.NoError(t, err)
-	require.True(t, ok)
-
-	item, err := repo.GetById(testContext, id)
-	require.NoError(t, err)
+	id, createErr := repo.Create(ctx, create)
+	ok, updateErr := repo.Update(ctx, id, update)
+	item, getErr := repo.GetById(ctx, id)
 
 	// Assert
-	assert.Equal(t, "New", item.Name)
-	assert.True(t, decimal.NewFromFloat(15.50).Equal(item.Price))
+	require.NoError(t, createErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, getErr)
+	require.True(t, ok)
+	require.NotNil(t, item)
+	assert.Equal(t, updatedName, item.Name)
+	assert.True(t, updatedPrice.Equal(item.Price))
+}
+
+func Test_ItemsRepository_Update_ShouldReturnFalseWhenItemDoesNotExist(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	repo := repositories.NewItemsRepository(testDB, testLogger)
+	itemID := uuid.New()
+	itemName := "Missing"
+	itemPrice := decimal.NewFromFloat(15.50)
+	itemCategory := "FoodDrinks"
+
+	update := &domains.ItemUpdate{
+		Name:     itemName,
+		Price:    itemPrice,
+		Category: itemCategory,
+	}
+
+	// Act
+	ok, err := repo.Update(ctx, itemID, update)
+
+	// Assert
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func Test_ItemsRepository_Update_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewItemsRepository(closedDB, testLogger)
+	itemID := uuid.New()
+	itemName := "Closed"
+	itemPrice := decimal.NewFromFloat(15.50)
+	itemCategory := "FoodDrinks"
+	update := &domains.ItemUpdate{
+		Name:     itemName,
+		Price:    itemPrice,
+		Category: itemCategory,
+	}
+
+	// Act
+	ok, err := repo.Update(ctx, itemID, update)
+
+	// Assert
+	require.Error(t, err)
+	assert.False(t, ok)
 }
 
 func Test_ItemsRepository_DeleteAndGet_ShouldErr(t *testing.T) {
@@ -85,25 +278,64 @@ func Test_ItemsRepository_DeleteAndGet_ShouldErr(t *testing.T) {
 		testsupport.Truncate(t, testDB, "items")
 	})
 
+	ctx := testContext
 	repo := repositories.NewItemsRepository(testDB, testLogger)
+	itemName := "Book"
+	itemPrice := decimal.NewFromFloat(10.00)
+	itemCategory := "Entertainments"
 
 	create := &domains.ItemCreate{
-		Name:     "Book",
-		Price:    decimal.NewFromFloat(10.00),
-		Category: "Entertainments",
+		Name:     itemName,
+		Price:    itemPrice,
+		Category: itemCategory,
 	}
 
 	// Act
-	id, err := repo.Create(testContext, create)
-	require.NoError(t, err)
-
-	ok, err := repo.Delete(testContext, id)
-	require.NoError(t, err)
-	require.True(t, ok)
-
-	item, err := repo.GetById(testContext, id)
+	id, createErr := repo.Create(ctx, create)
+	ok, deleteErr := repo.Delete(ctx, id)
+	item, getErr := repo.GetById(ctx, id)
 
 	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, deleteErr)
+	require.True(t, ok)
 	assert.Nil(t, item)
-	assert.Error(t, err)
+	assert.Error(t, getErr)
+}
+
+func Test_ItemsRepository_Delete_ShouldReturnFalseWhenItemDoesNotExist(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	repo := repositories.NewItemsRepository(testDB, testLogger)
+	itemID := uuid.New()
+
+	// Act
+	ok, err := repo.Delete(ctx, itemID)
+
+	// Assert
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func Test_ItemsRepository_Delete_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+	// Arrange
+	ctx := testContext
+	closedDB := newClosedDB(t)
+	repo := repositories.NewItemsRepository(closedDB, testLogger)
+	itemID := uuid.New()
+
+	// Act
+	ok, err := repo.Delete(ctx, itemID)
+
+	// Assert
+	require.Error(t, err)
+	assert.False(t, ok)
+}
+
+func uuidPointer(value uuid.UUID) *uuid.UUID {
+	return &value
+}
+
+func itemCategoryPointer(value domains.ItemCategory) *domains.ItemCategory {
+	return &value
 }
