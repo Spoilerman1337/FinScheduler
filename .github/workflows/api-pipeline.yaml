@@ -1,0 +1,79 @@
+name: API CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/api-pipeline.yaml
+      - GitVersion.yml
+      - FinScheduler.API/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/api-pipeline.yaml
+      - GitVersion.yml
+      - FinScheduler.API/**
+
+permissions:
+  artifact-metadata: write
+  contents: read
+
+defaults:
+  run:
+    working-directory: FinScheduler.API
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v4.5.0
+        with:
+          versionSpec: "6.7.x"
+
+      - name: Determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4.5.0
+
+      - name: Display version
+        run: echo ApiVersion=${{ steps.gitversion.outputs.semVer }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: FinScheduler.API/go.mod
+          cache-dependency-path: FinScheduler.API/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build application
+        run: go build ./...
+
+      - name: Run unit tests
+        run: go test ./...
+
+      - name: Run integration tests
+        run: go test -tags=integration ./...
+
+      - name: Create artifact directory
+        run: mkdir -p dist
+
+      - name: Build distributable binary
+        run: go build -o dist/finscheduler-api ./cmd/finscheduler
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-bin-${{ steps.gitversion.outputs.semVer }}
+          path: FinScheduler.API/dist
+          if-no-files-found: error

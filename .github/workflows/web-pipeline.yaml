@@ -1,0 +1,76 @@
+name: Web CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/web-pipeline.yaml
+      - GitVersion.yml
+      - finscheduler-web/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/web-pipeline.yaml
+      - GitVersion.yml
+      - finscheduler-web/**
+
+permissions:
+  artifact-metadata: write
+  contents: read
+
+defaults:
+  run:
+    working-directory: finscheduler-web
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v4.5.0
+        with:
+          versionSpec: "6.7.x"
+
+      - name: Determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4.5.0
+
+      - name: Display version
+        run: echo WebVersion=${{ steps.gitversion.outputs.semVer }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: finscheduler-web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist-${{ steps.gitversion.outputs.semVer }}
+          path: finscheduler-web/dist
+          if-no-files-found: error
