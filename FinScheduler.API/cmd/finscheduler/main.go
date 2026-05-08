@@ -87,10 +87,10 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.AllowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: false,
+		AllowedOrigins:   cfg.CORSSettings.AllowedOrigins,
+		AllowedMethods:   cfg.CORSSettings.AllowedMethods,
+		AllowedHeaders:   cfg.CORSSettings.AllowedHeaders,
+		AllowCredentials: cfg.CORSSettings.AllowCredentials,
 	}))
 	health.SetupHealthChecks(r, db)
 	r.Route("/api/items", func(r chi.Router) {

@@ -62,19 +62,13 @@ pnpm preview
 
 The frontend uses `VITE_API_BASE_URL` to choose the backend API base URL.
 
-Default:
-
-```text
-http://localhost:8081/api
-```
-
 Example override:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8081/api pnpm dev
 ```
 
-The Docker build uses `VITE_API_BASE_URL=/api` by default and the Nginx runtime proxies `/api/*` to `API_PROXY_PASS`.
+The Docker build can still override `VITE_API_BASE_URL`, and the Nginx runtime proxies `/api/*` to `API_PROXY_PASS`.
 
 Example Docker overrides:
 
@@ -109,5 +103,5 @@ src/layout/     # App shell, sidebar, routes
 
 ## Notes
 
-- The backend should be running on `localhost:8081` for the default API URL.
+- In development and tests the backend should be running on `localhost:8081` unless `VITE_API_BASE_URL` is overridden.
 - Some existing UI labels appear to have encoding issues and should be normalized to UTF-8.

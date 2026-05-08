@@ -21,11 +21,16 @@ The app reads `configs/config.json` from the API project directory.
   "serverPort": 12345,
   "connectionString": "",
   "serviceName": "fin-scheduler-api",
-  "allowedOrigins": ["*"]
+  "corsSettings": {
+    "allowedOrigins": ["*"],
+    "allowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowedHeaders": ["*"],
+    "allowCredentials": false
+  }
 }
 ```
 
-Viper also enables environment variables. Config keys can be overridden with uppercase names such as `SERVERPORT`, `CONNECTIONSTRING`, `SERVICENAME`, and `ALLOWEDORIGINS`.
+Viper also enables environment variables. Config keys can be overridden with uppercase names such as `SERVER_PORT`, `CONNECTION_STRING`, `SERVICE_NAME`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOWED_METHODS`, `CORS_ALLOWED_HEADERS`, and `CORS_ALLOW_CREDENTIALS`.
 
 ## Run
 

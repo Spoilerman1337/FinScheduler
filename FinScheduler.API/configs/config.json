@@ -1,7 +1,12 @@
 {
   "env": "Local",
   "serverPort": 8081,
-  "connectionString": "postgres://postgres:postgres@localhost:5432/fin_scheduler?sslmode=disable",
+  "connectionString": "",
   "serviceName": "fin-scheduler-api",
-  "allowedOrigins": ["*"]
+  "corsSettings": {
+    "allowedOrigins": ["*"],
+    "allowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowedHeaders": ["*"],
+    "allowCredentials": false
+  }
 }
