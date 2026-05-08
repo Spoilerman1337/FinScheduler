@@ -62,6 +62,8 @@ pnpm preview
 
 The frontend uses `VITE_API_BASE_URL` to choose the backend API base URL.
 
+For tests, the public [finscheduler-web/.env.test](D:/Code/FinScheduler/finscheduler-web/.env.test:1) file provides the minimal required value.
+
 Example override:
 
 ```bash

@@ -44,6 +44,7 @@ go.work.sum
 # env files
 .env
 .env.*
+!finscheduler-web/.env.test
 
 # Editor/IDE
 .idea/
