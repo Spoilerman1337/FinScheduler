@@ -3,6 +3,7 @@ package infra
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -63,7 +64,7 @@ func loadEnvFile(v *viper.Viper) error {
 
 	if err := v.MergeInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFoundError) {
+		if !errors.As(err, &configFileNotFoundError) && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("read .env: %w", err)
 		}
 	}
