@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: finscheduler-web
+spec:
+  selector:
+    app: finscheduler-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

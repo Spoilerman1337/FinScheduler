@@ -78,3 +78,7 @@ lerna-debug.log*
 
 # Agents
 .codex/
+
+# Kubernetes secrets
+k8s/**/secret*.yaml
+k8s/**/*secret*.yaml
