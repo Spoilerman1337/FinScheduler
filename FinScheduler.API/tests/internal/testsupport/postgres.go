@@ -110,7 +110,10 @@ func setupPostgresContainer(ctx context.Context) (testcontainers.Container, *sql
 			"POSTGRES_USER":     "test",
 			"POSTGRES_DB":       "testdb",
 		},
-		WaitingFor: wait.ForListeningPort("5432/tcp").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("5432/tcp"),
+			wait.ForLog("database system is ready to accept connections"),
+		).WithStartupTimeout(60 * time.Second),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -134,13 +137,36 @@ func setupPostgresContainer(ctx context.Context) (testcontainers.Container, *sql
 	}
 
 	dsn := fmt.Sprintf("postgres://test:secret@%s:%s/testdb?sslmode=disable", host, port.Port())
-	db, err := sqlx.Connect("pgx", dsn)
+	db, err := sqlx.Open("pgx", dsn)
 	if err != nil {
 		_ = container.Terminate(ctx)
 		return nil, nil, err
 	}
 
+	if err := waitForDatabase(ctx, db); err != nil {
+		_ = db.Close()
+		_ = container.Terminate(ctx)
+		return nil, nil, err
+	}
+
 	return container, db, nil
+}
+
+func waitForDatabase(ctx context.Context, db *sqlx.DB) error {
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		if err := db.PingContext(ctx); err == nil {
+			return nil
+		} else if time.Now().After(deadline) {
+			return fmt.Errorf("wait for postgres readiness: %w", err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for postgres readiness: %w", ctx.Err())
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
 }
 
 func setupSchema(db *sqlx.DB) error {
