@@ -75,14 +75,9 @@ Integration tests start PostgreSQL through Testcontainers, so Docker must be ava
 
 ## Observability
 
-The backend now supports:
+The backend currently emits structured JSON logs with `service`, `env`, `trace_id`, and `span_id`.
 
-- Prometheus metrics on `/metrics`
-- OTLP/HTTP trace export to Tempo
-- Pyroscope profiling
-- JSON logs with `trace_id` and `span_id`
-
-For Kubernetes deployments, the repository now includes Grafana, Prometheus, Tempo, and Pyroscope manifests under `k8s/base/observability`.
+For Kubernetes deployments, the repository now includes Grafana, Loki, and Alloy manifests under `k8s/base/observability`, plus shared MinIO storage under `k8s/base/storage`.
 
 Apply them together with the existing base manifests from the repository root:
 

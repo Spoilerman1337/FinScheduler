@@ -77,8 +77,21 @@ func main() {
 
 	database.RunMigrations(connectionString)
 
-	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	logger := slog.New(logging.NewCustomLoggingHandler(stdoutHandler))
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+		ReplaceAttr: func(_ []string, attr slog.Attr) slog.Attr {
+			switch attr.Key {
+			case slog.TimeKey:
+				attr.Key = "timestamp"
+			case slog.MessageKey:
+				attr.Key = "message"
+			}
+
+			return attr
+		},
+	})
+	logger := slog.New(logging.NewCustomLoggingHandler(stdoutHandler)).
+		With("service", cfg.Observability.ServiceName, "env", cfg.Env)
 
 	uow := persistence.NewUnitOfWork(db, logger)
 

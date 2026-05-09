@@ -3,4 +3,6 @@ kind: Kustomization
 resources:
   - api
   - web
+  - storage
+  - observability
   - ingress.yaml
