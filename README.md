@@ -95,6 +95,8 @@ That base now includes:
 
 - `FinScheduler.API`
 - MinIO for shared object storage
+- Prometheus for metrics scraping
+- Mimir for long-term metrics storage
 - Loki for logs
 - Grafana Alloy for Kubernetes log collection
 - Grafana with provisioned datasources

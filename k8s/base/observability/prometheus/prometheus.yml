@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: finscheduler-api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - finscheduler-api:80
+
+remote_write:
+  - url: http://mimir:9009/api/v1/push
