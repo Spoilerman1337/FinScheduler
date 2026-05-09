@@ -97,15 +97,11 @@ That base now includes:
 - MinIO for shared object storage
 - Prometheus for metrics scraping
 - Mimir for long-term metrics storage
+- Tempo for traces
+- Pyroscope for continuous profiling
 - Loki for logs
 - Grafana Alloy for Kubernetes log collection
 - Grafana with provisioned datasources
-
-Access Grafana through ingress on `grafana.finscheduler.local` or with:
-
-```bash
-kubectl port-forward svc/grafana 3000:3000
-```
 
 See [`k8s/base/storage`](./k8s/base/storage/README.md) and [`k8s/base/observability`](./k8s/base/observability/README.md) for the manifests that make up the contour.
 

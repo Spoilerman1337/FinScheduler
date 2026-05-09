@@ -15,6 +15,14 @@ datasources:
     access: proxy
     url: http://tempo:3200
     editable: false
+  - name: Pyroscope
+    uid: pyroscope
+    type: grafana-pyroscope-datasource
+    access: proxy
+    url: http://pyroscope:4040
+    editable: false
+    jsonData:
+      minStep: 15s
   - name: Loki
     uid: loki
     type: loki

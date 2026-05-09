@@ -80,8 +80,9 @@ The backend currently:
 - emits structured JSON logs with `service`, `env`, `trace_id`, and `span_id`
 - exposes Prometheus metrics on `/metrics`
 - exports OTLP traces when tracing is enabled
+- pushes profiles to Pyroscope when profiling is enabled
 
-For Kubernetes deployments, the repository now includes Prometheus, Mimir, Tempo, Loki, Alloy, and Grafana manifests under `k8s/base/observability`, plus shared MinIO storage under `k8s/base/storage`.
+For Kubernetes deployments, the repository now includes Prometheus, Mimir, Tempo, Pyroscope, Loki, Alloy, and Grafana manifests under `k8s/base/observability`, plus shared MinIO storage under `k8s/base/storage`.
 
 Apply them together with the existing base manifests from the repository root:
 
