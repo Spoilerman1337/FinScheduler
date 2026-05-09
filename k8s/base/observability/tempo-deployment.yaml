@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tempo
+  template:
+    metadata:
+      labels:
+        app: tempo
+    spec:
+      initContainers:
+        - name: prepare-tempo-bucket
+          image: minio/mc:latest
+          envFrom:
+            - secretRef:
+                name: minio-config
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                echo "Waiting for MinIO"
+                sleep 2
+              done
+              mc mb --ignore-existing local/tempo
+      containers:
+        - name: tempo
+          image: grafana/tempo:2.10.4
+          args:
+            - -config.expand-env=true
+            - -config.file=/etc/tempo/tempo.yaml
+          envFrom:
+            - secretRef:
+                name: minio-config
+          ports:
+            - containerPort: 3200
+              name: http
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 4318
+              name: otlp-http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tempo
+            - name: data
+              mountPath: /var/tempo
+      volumes:
+        - name: config
+          configMap:
+            name: tempo-config
+        - name: data
+          emptyDir: {}

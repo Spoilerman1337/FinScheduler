@@ -75,9 +75,13 @@ Integration tests start PostgreSQL through Testcontainers, so Docker must be ava
 
 ## Observability
 
-The backend currently emits structured JSON logs with `service`, `env`, `trace_id`, and `span_id`, and exposes Prometheus metrics on `/metrics`.
+The backend currently:
 
-For Kubernetes deployments, the repository now includes Prometheus, Mimir, Grafana, Loki, and Alloy manifests under `k8s/base/observability`, plus shared MinIO storage under `k8s/base/storage`.
+- emits structured JSON logs with `service`, `env`, `trace_id`, and `span_id`
+- exposes Prometheus metrics on `/metrics`
+- exports OTLP traces when tracing is enabled
+
+For Kubernetes deployments, the repository now includes Prometheus, Mimir, Tempo, Loki, Alloy, and Grafana manifests under `k8s/base/observability`, plus shared MinIO storage under `k8s/base/storage`.
 
 Apply them together with the existing base manifests from the repository root:
 
@@ -85,11 +89,7 @@ Apply them together with the existing base manifests from the repository root:
 kubectl apply -k k8s/base
 ```
 
-Grafana is available through ingress on `grafana.finscheduler.local` or via port-forward:
-
-```bash
-kubectl port-forward svc/grafana 3000:3000
-```
+Grafana is available through ingress on `grafana.finscheduler.local`.
 
 See [`../k8s/base/observability/README.md`](../k8s/base/observability/README.md) for details.
 

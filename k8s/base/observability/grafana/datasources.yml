@@ -7,6 +7,14 @@ datasources:
     url: http://mimir:9009/prometheus
     isDefault: true
     editable: false
+    jsonData:
+      prometheusType: Mimir
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
   - name: Loki
     uid: loki
     type: loki
@@ -16,3 +24,9 @@ datasources:
     jsonData:
       timeout: 60
       maxLines: 1000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: '"trace_id":"([a-f0-9]+)"'
+          name: TraceID
+          url: '$${__value.raw}'
+          urlDisplayLabel: View Trace

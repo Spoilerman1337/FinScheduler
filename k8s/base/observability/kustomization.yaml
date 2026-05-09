@@ -5,6 +5,8 @@ resources:
   - mimir-service.yaml
   - prometheus-deployment.yaml
   - prometheus-service.yaml
+  - tempo-deployment.yaml
+  - tempo-service.yaml
   - loki-deployment.yaml
   - loki-service.yaml
   - alloy-serviceaccount.yaml
@@ -25,6 +27,9 @@ configMapGenerator:
   - name: mimir-config
     files:
       - mimir.yaml=mimir/mimir.yaml
+  - name: tempo-config
+    files:
+      - tempo.yaml=tempo/tempo.yaml
   - name: loki-config
     files:
       - loki.yml=loki/loki.yml
