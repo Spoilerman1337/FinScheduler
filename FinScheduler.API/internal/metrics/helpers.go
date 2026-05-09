@@ -24,14 +24,14 @@ func RecordHTTPRequest(ctx context.Context, r *http.Request, route string, statu
 	)
 }
 
-func RecordServiceFailure(ctx context.Context, service string, operation string, err error) {
+func RecordServiceFailure(ctx context.Context, domainService string, operation string, err error) {
 	if err == nil || Metrics.ServiceMetrics.Failed == nil {
 		return
 	}
 
 	Metrics.ServiceMetrics.Failed.Add(ctx, 1,
 		metric.WithAttributes(
-			attribute.String("service", service),
+			attribute.String("domain_service", domainService),
 			attribute.String("operation", operation),
 			attribute.String("error_type", fmt.Sprintf("%T", err)),
 		),
