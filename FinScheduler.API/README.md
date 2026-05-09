@@ -6,7 +6,7 @@ The API exposes personal finance resources, stores data in PostgreSQL, and runs 
 
 ## Tech Stack
 
-- Go 1.24.
+- Go 1.25.
 - PostgreSQL via pgx/sqlx
 - OpenTelemetry.
 - testcontainers-go for integration tests.
@@ -20,7 +20,22 @@ The app reads `configs/config.json` from the API project directory.
   "env": "Local",
   "serverPort": 12345,
   "connectionString": "",
-  "serviceName": "fin-scheduler-api",
+  "observability": {
+    "serviceName": "fin-scheduler-api",
+    "metrics": {
+      "enabled": true,
+      "exportEndpoint": "/metrics"
+    },
+    "traces": {
+      "enabled": false,
+      "exportEndpoint": "http://localhost:4318",
+      "rootTraceSamplingRatio": 1
+    },
+    "profiling": {
+      "enabled": false,
+      "pushURL": "http://localhost:4040"
+    }
+  },
   "corsSettings": {
     "allowedOrigins": ["*"],
     "allowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -30,7 +45,7 @@ The app reads `configs/config.json` from the API project directory.
 }
 ```
 
-Viper also enables environment variables. Config keys can be overridden with uppercase names such as `SERVER_PORT`, `CONNECTION_STRING`, `SERVICE_NAME`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOWED_METHODS`, `CORS_ALLOWED_HEADERS`, and `CORS_ALLOW_CREDENTIALS`.
+Viper also enables environment variables. Config keys can be overridden with uppercase names such as `SERVER_PORT`, `CONNECTION_STRING`, `OBSERVABILITY_SERVICE_NAME`, `METRICS_ENABLED`, `METRICS_EXPORT_ENDPOINT`, `TRACES_ENABLED`, `TRACES_EXPORT_ENDPOINT`, `TRACES_ROOT_TRACE_SAMPLING_RATIO`, `PROFILING_ENABLED`, `PROFILING_PUSH_URL`, `CORS_ALLOWED_ORIGINS`, `CORS_ALLOWED_METHODS`, `CORS_ALLOWED_HEADERS`, and `CORS_ALLOW_CREDENTIALS`.
 
 ## Run
 
@@ -41,6 +56,8 @@ go run ./cmd/finscheduler
 ```
 
 The service listens on `http://localhost:8081` with the default config.
+
+When metrics are enabled, Prometheus-compatible metrics are exposed on `http://localhost:8081/metrics`.
 
 ## Build
 
@@ -55,6 +72,31 @@ go test ./...
 ```
 
 Integration tests start PostgreSQL through Testcontainers, so Docker must be available.
+
+## Observability
+
+The backend now supports:
+
+- Prometheus metrics on `/metrics`
+- OTLP/HTTP trace export to Tempo
+- Pyroscope profiling
+- JSON logs with `trace_id` and `span_id`
+
+For Kubernetes deployments, the repository now includes Grafana, Prometheus, Tempo, and Pyroscope manifests under `k8s/base/observability`.
+
+Apply them together with the existing base manifests from the repository root:
+
+```bash
+kubectl apply -k k8s/base
+```
+
+Grafana is available through ingress on `grafana.finscheduler.local` or via port-forward:
+
+```bash
+kubectl port-forward svc/grafana 3000:3000
+```
+
+See [`../k8s/base/observability/README.md`](../k8s/base/observability/README.md) for details.
 
 ## Migrations
 

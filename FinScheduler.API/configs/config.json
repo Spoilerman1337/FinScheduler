@@ -2,7 +2,22 @@
   "env": "Local",
   "serverPort": 8081,
   "connectionString": "",
-  "serviceName": "fin-scheduler-api",
+  "observability": {
+    "serviceName": "fin-scheduler-api",
+    "metrics": {
+      "enabled": true,
+      "exportEndpoint": "/metrics"
+    },
+    "traces": {
+      "enabled": false,
+      "exportEndpoint": "http://localhost:4318",
+      "rootTraceSamplingRatio": 1
+    },
+    "profiling": {
+      "enabled": false,
+      "pushURL": "http://localhost:4040"
+    }
+  },
   "corsSettings": {
     "allowedOrigins": ["*"],
     "allowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

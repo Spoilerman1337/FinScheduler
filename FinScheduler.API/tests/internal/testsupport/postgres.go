@@ -38,7 +38,12 @@ func NewPostgresEnvironment(ctx context.Context) (*Environment, error) {
 		return nil, err
 	}
 
-	mp, err := metrics.InitMetrics(ctx, &infra.Config{Env: "Testing", ServiceName: "fin-scheduler-api"})
+	mp, err := metrics.InitMetrics(ctx, &infra.Config{
+		Env: "Testing",
+		Observability: infra.ObservabilityConfig{
+			ServiceName: "fin-scheduler-api",
+		},
+	})
 	if err != nil {
 		_ = db.Close()
 		_ = container.Terminate(ctx)
