@@ -75,9 +75,9 @@ Integration tests start PostgreSQL through Testcontainers, so Docker must be ava
 
 ## Observability
 
-The backend currently emits structured JSON logs with `service`, `env`, `trace_id`, and `span_id`.
+The backend currently emits structured JSON logs with `service`, `env`, `trace_id`, and `span_id`, and exposes Prometheus metrics on `/metrics`.
 
-For Kubernetes deployments, the repository now includes Grafana, Loki, and Alloy manifests under `k8s/base/observability`, plus shared MinIO storage under `k8s/base/storage`.
+For Kubernetes deployments, the repository now includes Prometheus, Mimir, Grafana, Loki, and Alloy manifests under `k8s/base/observability`, plus shared MinIO storage under `k8s/base/storage`.
 
 Apply them together with the existing base manifests from the repository root:
 
