@@ -1,0 +1,112 @@
+name: Kubernetes CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/k8s-pipeline.yaml
+      - k8s/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/k8s-pipeline.yaml
+      - k8s/**
+
+permissions:
+  contents: read
+
+jobs:
+  validate-kustomize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: latest
+
+      - name: Validate kustomizations
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          secret_files=(
+            "k8s/base/api/secret.yaml"
+            "k8s/base/storage/minio/secret.yaml"
+            "k8s/base/observability/grafana/admin-secret.yaml"
+            "k8s/base/observability/grafana/db-secret.yaml"
+          )
+
+          cleanup() {
+            rm -f "${secret_files[@]}"
+          }
+
+          trap cleanup EXIT
+
+          mkdir -p "k8s/base/api"
+          cat > "k8s/base/api/secret.yaml" <<'EOF'
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: finscheduler-api-secret
+          type: Opaque
+          stringData:
+            CONNECTION_STRING: postgres://TEST_ONLY_NOT_REAL:TEST_ONLY_NOT_REAL@postgres:5432/TEST_ONLY_NOT_REAL?sslmode=disable
+          EOF
+
+          mkdir -p "k8s/base/storage/minio"
+          cat > "k8s/base/storage/minio/secret.yaml" <<'EOF'
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: minio-config
+          type: Opaque
+          stringData:
+            MINIO_ROOT_USER: TEST_ONLY_NOT_A_REAL_USER
+            MINIO_ROOT_PASSWORD: TEST_ONLY_NOT_A_REAL_PASSWORD
+          EOF
+
+          mkdir -p "k8s/base/observability/grafana"
+          cat > "k8s/base/observability/grafana/admin-secret.yaml" <<'EOF'
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: grafana-admin-config
+          type: Opaque
+          stringData:
+            GF_SECURITY_ADMIN_USER: TEST_ONLY_ADMIN_USER
+            GF_SECURITY_ADMIN_PASSWORD: TEST_ONLY_ADMIN_PASSWORD
+          EOF
+
+          cat > "k8s/base/observability/grafana/db-secret.yaml" <<'EOF'
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: grafana-db-config
+          type: Opaque
+          stringData:
+            GF_DATABASE_TYPE: postgres
+            GF_DATABASE_HOST: postgres:5432
+            GF_DATABASE_USER: TEST_ONLY_DB_USER
+            GF_DATABASE_PASSWORD: TEST_ONLY_DB_PASSWORD
+            GF_DATABASE_SSL_MODE: disable
+          EOF
+
+          mapfile -t kustomization_dirs < <(find k8s -name kustomization.yaml -printf '%h\n' | sort)
+
+          if (( ${#kustomization_dirs[@]} == 0 )); then
+            echo "No kustomization.yaml files found under k8s/"
+            exit 1
+          fi
+
+          for dir in "${kustomization_dirs[@]}"; do
+            echo "Validating ${dir}"
+            kubectl kustomize "${dir}" >/dev/null
+          done

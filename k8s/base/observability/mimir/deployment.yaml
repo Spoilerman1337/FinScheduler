@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mimir
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mimir
+  template:
+    metadata:
+      labels:
+        app: mimir
+    spec:
+      initContainers:
+        - name: prepare-mimir-bucket
+          image: minio/mc:latest
+          envFrom:
+            - secretRef:
+                name: minio-config
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                echo "Waiting for MinIO"
+                sleep 2
+              done
+              mc mb --ignore-existing local/mimir-blocks
+      containers:
+        - name: mimir
+          image: grafana/mimir:latest
+          args:
+            - -config.expand-env=true
+            - -config.file=/etc/mimir/mimir.yaml
+          envFrom:
+            - secretRef:
+                name: minio-config
+          ports:
+            - containerPort: 9009
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mimir
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          configMap:
+            name: mimir-config
+        - name: data
+          emptyDir: {}

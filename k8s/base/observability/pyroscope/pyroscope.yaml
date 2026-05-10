@@ -1,0 +1,23 @@
+target: all
+
+server:
+  http_listen_port: 4040
+
+pyroscopedb:
+  data_path: /var/lib/pyroscope
+
+storage:
+  backend: s3
+  s3:
+    bucket_name: pyroscope
+    endpoint: minio:9000
+    access_key_id: ${MINIO_ROOT_USER}
+    secret_access_key: ${MINIO_ROOT_PASSWORD}
+    insecure: true
+    force_path_style: true
+
+compactor:
+  data_dir: /var/lib/pyroscope-compactor
+
+limits:
+  compactor_blocks_retention_period: 168h

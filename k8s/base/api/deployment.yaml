@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finscheduler-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: finscheduler-api
+  template:
+    metadata:
+      labels:
+        app: finscheduler-api
+    spec:
+      containers:
+        - name: api
+          image: finscheduler-api:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: finscheduler-api-config
+            - secretRef:
+                name: finscheduler-api-secret
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyroscope
+  template:
+    metadata:
+      labels:
+        app: pyroscope
+    spec:
+      initContainers:
+        - name: prepare-pyroscope-bucket
+          image: minio/mc:latest
+          envFrom:
+            - secretRef:
+                name: minio-config
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                echo "Waiting for MinIO"
+                sleep 2
+              done
+              mc mb --ignore-existing local/pyroscope
+      containers:
+        - name: pyroscope
+          image: grafana/pyroscope:latest
+          args:
+            - -config.expand-env=true
+            - -config.file=/etc/pyroscope/pyroscope.yaml
+          envFrom:
+            - secretRef:
+                name: minio-config
+          ports:
+            - containerPort: 4040
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pyroscope
+            - name: data
+              mountPath: /var/lib/pyroscope
+      volumes:
+        - name: config
+          configMap:
+            name: pyroscope-config
+        - name: data
+          emptyDir: {}

@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS build
+FROM golang:1.25-alpine AS build
 
 WORKDIR /app
 
@@ -16,5 +16,6 @@ FROM alpine:latest AS run
 WORKDIR /app
 COPY --from=build /app/finscheduler .
 COPY configs ./configs
+COPY database ./database
 EXPOSE 8080
 CMD ["./finscheduler"]

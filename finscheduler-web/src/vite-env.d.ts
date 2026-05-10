@@ -1,0 +1,9 @@
+interface ImportMetaEnv {
+    readonly VITE_API_BASE_URL: string;
+    readonly VITE_FARO_COLLECT_URL?: string;
+    readonly VITE_APP_ENVIRONMENT?: string;
+}
+
+interface ImportMeta {
+    readonly env: ImportMetaEnv;
+}

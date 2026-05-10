@@ -44,6 +44,7 @@ go.work.sum
 # env files
 .env
 .env.*
+!finscheduler-web/.env.test
 
 # Editor/IDE
 .idea/
@@ -74,3 +75,10 @@ coverage/
 logs
 pnpm-debug.log*
 lerna-debug.log*
+
+# Agents
+.codex/
+
+# Kubernetes secrets
+k8s/**/secret*.yaml
+k8s/**/*secret*.yaml

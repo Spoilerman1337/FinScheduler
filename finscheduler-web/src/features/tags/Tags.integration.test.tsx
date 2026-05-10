@@ -2,12 +2,11 @@ import {screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {http, HttpResponse} from "msw";
 import {describe, expect, it, vi} from "vitest";
+import {API_BASE_URL} from "../../config/api.ts";
 import type {TagDto, TagModification} from "../../api/types.ts";
 import {renderWithProviders} from "../../test/render.tsx";
 import {server} from "../../test/msw/server.ts";
 import Tags from "./Tags.tsx";
-
-const API_BASE_URL = "http://localhost:8081/api";
 
 function buildTag(overrides: Partial<TagDto> = {}): TagDto {
     return {

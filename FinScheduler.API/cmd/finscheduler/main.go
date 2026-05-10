@@ -7,6 +7,7 @@ import (
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/health"
 	"finscheduler/internal/infra"
+	"finscheduler/internal/logging"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/persistence"
 	"finscheduler/internal/profiles"
@@ -44,7 +45,7 @@ func main() {
 	}()
 	metrics.InitInstruments()
 
-	tp, err := traces.InitTracer(cfg)
+	tp, err := traces.InitTracer(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,16 +56,18 @@ func main() {
 		}
 	}()
 
-	prof, err := profiles.InitProfiler()
+	prof, err := profiles.InitProfiler(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		err = prof.Stop()
-		if err != nil {
-			log.Fatalf("failed to shutdown profiler: %v", err)
-		}
-	}()
+	if prof != nil {
+		defer func() {
+			err = prof.Stop()
+			if err != nil {
+				log.Fatalf("failed to shutdown profiler: %v", err)
+			}
+		}()
+	}
 
 	db, err := sqlx.Open("pgx", connectionString)
 	if err != nil {
@@ -74,8 +77,21 @@ func main() {
 
 	database.RunMigrations(connectionString)
 
-	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	logger := slog.New(stdoutHandler)
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+		ReplaceAttr: func(_ []string, attr slog.Attr) slog.Attr {
+			switch attr.Key {
+			case slog.TimeKey:
+				attr.Key = "timestamp"
+			case slog.MessageKey:
+				attr.Key = "message"
+			}
+
+			return attr
+		},
+	})
+	logger := slog.New(logging.NewCustomLoggingHandler(stdoutHandler)).
+		With("service", cfg.Observability.ServiceName, "env", cfg.Env)
 
 	uow := persistence.NewUnitOfWork(db, logger)
 
@@ -87,11 +103,15 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.AllowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: false,
+		AllowedOrigins:   cfg.CORSSettings.AllowedOrigins,
+		AllowedMethods:   cfg.CORSSettings.AllowedMethods,
+		AllowedHeaders:   cfg.CORSSettings.AllowedHeaders,
+		AllowCredentials: cfg.CORSSettings.AllowCredentials,
 	}))
+	r.Use(traces.TraceParentPropagationMiddleware)
+	if cfg.Observability.Metrics.Enabled {
+		r.Handle(cfg.Observability.Metrics.ExportEndpoint, metrics.Handler())
+	}
 	health.SetupHealthChecks(r, db)
 	r.Route("/api/items", func(r chi.Router) {
 		itemsHandler.RegisterEndpoints(r)
@@ -100,7 +120,15 @@ func main() {
 		tagsHandler.RegisterEndpoints(r)
 	})
 
-	log.Printf("Listening at :%d", cfg.ServerPort)
+	logger.Info("starting http server",
+		"port", cfg.ServerPort,
+		"observability_service_name", cfg.Observability.ServiceName,
+		"metrics_enabled", cfg.Observability.Metrics.Enabled,
+		"metrics_export_endpoint", cfg.Observability.Metrics.ExportEndpoint,
+		"traces_enabled", cfg.Observability.Traces.Enabled,
+		"trace_export_endpoint", cfg.Observability.Traces.ExportEndpoint,
+		"profiling_enabled", cfg.Observability.Profiling.Enabled,
+	)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.ServerPort), r)
 	if err != nil {
 		log.Fatal(err)

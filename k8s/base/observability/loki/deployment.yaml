@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+    spec:
+      initContainers:
+        - name: prepare-loki-bucket
+          image: minio/mc:latest
+          envFrom:
+            - secretRef:
+                name: minio-config
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                echo "Waiting for MinIO"
+                sleep 2
+              done
+              mc mb --ignore-existing local/loki
+      containers:
+        - name: loki
+          image: grafana/loki:latest
+          args:
+            - -config.expand-env=true
+            - -config.file=/etc/loki/loki.yml
+          envFrom:
+            - secretRef:
+                name: minio-config
+          ports:
+            - containerPort: 3100
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki
+            - name: data
+              mountPath: /loki
+      volumes:
+        - name: config
+          configMap:
+            name: loki-config
+        - name: data
+          emptyDir: {}
