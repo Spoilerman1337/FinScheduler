@@ -3,6 +3,15 @@ logging {
   format = "logfmt"
 }
 
+otelcol.exporter.otlphttp "tempo" {
+  client {
+    endpoint = "http://tempo:4318"
+    tls {
+      insecure = true
+    }
+  }
+}
+
 discovery.kubernetes "pods" {
   role = "pod"
 }
@@ -69,6 +78,26 @@ loki.process "pod_logs" {
   }
 
   forward_to = [loki.write.default.receiver]
+}
+
+faro.receiver "web" {
+  extra_log_labels = {
+    cluster = "local-kubernetes",
+    env = "LocalKubernetes",
+    service = "finscheduler-web",
+    source = "faro",
+  }
+  log_format = "json"
+
+  server {
+    listen_address = "0.0.0.0"
+    listen_port = 12347
+  }
+
+  output {
+    logs = [loki.write.default.receiver]
+    traces = [otelcol.exporter.otlphttp.tempo.input]
+  }
 }
 
 loki.write "default" {

@@ -108,6 +108,7 @@ func main() {
 		AllowedHeaders:   cfg.CORSSettings.AllowedHeaders,
 		AllowCredentials: cfg.CORSSettings.AllowCredentials,
 	}))
+	r.Use(traces.TraceParentPropagationMiddleware)
 	if cfg.Observability.Metrics.Enabled {
 		r.Handle(cfg.Observability.Metrics.ExportEndpoint, metrics.Handler())
 	}

@@ -22,6 +22,8 @@ spec:
           ports:
             - containerPort: 12345
               name: http
+            - containerPort: 12347
+              name: faro
           volumeMounts:
             - name: config
               mountPath: /etc/alloy

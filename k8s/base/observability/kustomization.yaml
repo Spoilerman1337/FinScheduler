@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - alloy
   - grafana
+  - ingress.yaml
   - loki
   - mimir
   - prometheus

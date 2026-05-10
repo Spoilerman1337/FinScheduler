@@ -5,6 +5,7 @@ resources:
   - clusterrole.yaml
   - clusterrolebinding.yaml
   - deployment.yaml
+  - service.yaml
 configMapGenerator:
   - name: alloy-logs-config
     files:
