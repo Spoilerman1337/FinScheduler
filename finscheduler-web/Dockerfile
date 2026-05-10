@@ -2,7 +2,7 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.18.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.0.8 --activate
 
 COPY finscheduler-web/package.json finscheduler-web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
