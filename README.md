@@ -85,7 +85,7 @@ See [`FinScheduler.API/README.md`](./FinScheduler.API/README.md) for config, rou
 
 A local Grafana-based logging stack is available for the Go backend.
 
-The repository now includes Kubernetes manifests for the current observability contour. Apply everything from the repository root:
+The repository now includes Kubernetes manifests for the current local contour. Apply everything from the repository root:
 
 ```bash
 kubectl apply -k k8s/base
@@ -105,7 +105,15 @@ That base now includes:
 
 See [`k8s/base/storage`](./k8s/base/storage/README.md) and [`k8s/base/observability`](./k8s/base/observability/README.md) for the manifests that make up the contour.
 
-For local test contour deployment, helper scripts live in [`scripts`](./scripts):
+For local test contour deployment, helper scripts live in [`scripts`](./scripts). The layers can be rolled out independently:
+
+```bash
+./scripts/deploy-storage.sh
+./scripts/deploy-observability.sh
+./scripts/deploy-app.sh
+```
+
+Or as one combined flow:
 
 ```bash
 ./scripts/deploy-test-contour.sh
