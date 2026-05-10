@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/subosito/gotenv"
 )
 
 func LoadConfig() (*Config, error) {
@@ -15,7 +16,7 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	if err := loadEnvFile(v); err != nil {
+	if err := loadDotEnv(); err != nil {
 		return nil, err
 	}
 
@@ -43,13 +44,9 @@ func loadJSONConfig(v *viper.Viper) error {
 	return nil
 }
 
-func loadEnvFile(v *viper.Viper) error {
-	v.SetConfigFile(".env")
-	v.SetConfigType("env")
-
-	if err := v.MergeInConfig(); err != nil {
-		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFoundError) && !errors.Is(err, os.ErrNotExist) {
+func loadDotEnv() error {
+	if err := gotenv.Load(".env"); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("read .env: %w", err)
 		}
 	}
