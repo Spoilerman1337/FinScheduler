@@ -7,4 +7,4 @@ source "${SCRIPT_DIR}/common.sh"
 
 relaunch_in_wsl_if_needed "$0" "$@"
 init_script
-build_images
+deploy_app
