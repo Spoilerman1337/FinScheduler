@@ -5,12 +5,17 @@ import {
   ColorModeProvider,
   type ColorModeProviderProps,
 } from "./color-mode"
-import {system} from "../../system.ts";
+import { system } from "../../system.ts"
 
 export function Provider(props: ColorModeProviderProps) {
   return (
     <ChakraProvider value={system}>
-      <ColorModeProvider {...props} />
+      <ColorModeProvider
+        enableSystem={false}
+        defaultTheme="dark"
+        forcedTheme="dark"
+        {...props}
+      />
     </ChakraProvider>
   )
 }
