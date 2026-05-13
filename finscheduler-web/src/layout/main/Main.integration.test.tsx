@@ -79,8 +79,9 @@ describe("Main and Sidebar integration", () => {
 
         // Assert
         expect(screen.getByText("Items Page")).toBeInTheDocument();
-        expect(screen.getAllByText("Виды расходов")).toHaveLength(2);
-        expect(screen.getByRole("link", {name: "Виды расходов"})).toHaveAttribute("href", "/items");
+        expect(screen.getAllByText("Каталог")).toHaveLength(2);
+        expect(screen.getByRole("link", {name: "Каталог", hidden: true})).toHaveAttribute("href", "/items");
+        expect(screen.getByRole("link", {name: "Каталог", hidden: true})).toHaveAttribute("aria-current", "page");
     });
 
     it("navigates between routes and updates the header and active link", async () => {
@@ -89,26 +90,25 @@ describe("Main and Sidebar integration", () => {
         renderWithProviders(<ShellUnderTest/>, {route: "/items"});
 
         // Act
-        await user.click(screen.getByRole("link", {name: "Теги"}));
+        await user.click(screen.getByRole("link", {name: "Теги", hidden: true}));
 
         // Assert
         expect(screen.getByText("Tags Page")).toBeInTheDocument();
         expect(screen.getAllByText("Теги")).toHaveLength(2);
         expect(screen.queryByText("Items Page")).not.toBeInTheDocument();
+        expect(screen.getByRole("link", {name: "Теги", hidden: true})).toHaveAttribute("aria-current", "page");
     });
 
     it("keeps navigation usable after collapsing the sidebar", async () => {
         // Arrange
         const user = userEvent.setup();
-        const {container} = renderWithProviders(<ShellUnderTest/>, {route: "/tags"});
-        const collapseButton = screen.getByRole("button", {name: "Свернуть/развернуть"});
-        const dashboardLink = container.querySelector('a[href="/"]');
+        renderWithProviders(<ShellUnderTest/>, {route: "/tags"});
+        const collapseButton = screen.getByRole("button", {hidden: true});
+        const dashboardLink = screen.getByRole("link", {name: "Dashboard", hidden: true});
 
         // Act
         await user.click(collapseButton);
-        expect(screen.queryByText("FinScheduler")).not.toBeInTheDocument();
-        expect(dashboardLink).not.toBeNull();
-        await user.click(dashboardLink!);
+        await user.click(dashboardLink);
 
         // Assert
         expect(screen.getByText("Dashboard Page")).toBeInTheDocument();

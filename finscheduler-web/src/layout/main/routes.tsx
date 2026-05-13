@@ -10,7 +10,7 @@ export const routes = [
     },
     {
         path: "/items",
-        title: "Виды расходов",
+        title: "Каталог",
         element: <Items/>,
     },
     {
