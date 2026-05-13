@@ -8,7 +8,7 @@ const MotionFlex = motion.create(Flex)
 
 export default function App() {
     return (<Provider>
-        <Theme>
+        <Theme appearance="dark">
             <MotionFlex layout w="100vw" h="100vh" bg={"background"} minHeight={0}>
                 <Sidebar/>
                 <Main/>
