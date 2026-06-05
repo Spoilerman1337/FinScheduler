@@ -3,7 +3,7 @@ import {Badge, Flex, Spinner, Text} from "@chakra-ui/react";
 import {useCallback, useEffect, useState} from "react";
 import type {TagDto, TagFilter, TagModification} from "../../api/types.ts";
 import TagsService, {buildTagFilter, type TagStatusFilter} from "../../api/tags.ts";
-import {toaster} from "../../components/ui/toaster.tsx";
+import {toaster} from "../../components/ui/toaster-instance.ts";
 import TagModal from "./subcomponents/TagModal.tsx";
 import TagsFilters from "./subcomponents/TagsFilters.tsx";
 

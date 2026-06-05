@@ -3,7 +3,7 @@ import {Badge, Flex, Spinner, Text} from "@chakra-ui/react";
 import {useCallback, useEffect, useState} from "react";
 import type {ItemDto, ItemFilter, ItemModification} from "../../api/types.ts";
 import ItemsService, {buildItemFilter, type ItemStatusFilter} from "../../api/items.ts";
-import {toaster} from "../../components/ui/toaster.tsx";
+import {toaster} from "../../components/ui/toaster-instance.ts";
 import ItemModal from "./subcomponents/ItemModal.tsx";
 import ItemsFilters from "./subcomponents/ItemsFilters.tsx";
 import {getCashbackColor} from "./types.ts";
