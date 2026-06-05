@@ -1,16 +1,16 @@
-import {describe, expect, it} from "vitest";
+import {describe, expect, it} from 'vitest';
 import {
     buildTagModification,
     createDefaultTagFormData,
     mapTagToFormData,
     validateTagFormData,
-} from "./form.ts";
+} from './form.ts';
 
-describe("tags form", () => {
-    it("creates the default tag form data", () => {
+describe('tags form', () => {
+    it('creates the default tag form data', () => {
         // Arrange
         const expectedFormData = {
-            name: "",
+            name: '',
             isActive: true,
         };
 
@@ -21,10 +21,10 @@ describe("tags form", () => {
         expect(formData).toEqual(expectedFormData);
     });
 
-    it("maps a tag dto into edit form state", () => {
+    it('maps a tag dto into edit form state', () => {
         // Arrange
         const item = {
-            name: "Transport",
+            name: 'Transport',
             isActive: false,
         };
 
@@ -33,29 +33,29 @@ describe("tags form", () => {
 
         // Assert
         expect(formData).toEqual({
-            name: "Transport",
+            name: 'Transport',
             isActive: false,
         });
     });
 
-    it("returns an error when the name is blank", () => {
+    it('returns an error when the name is blank', () => {
         // Arrange
         const formData = {
             ...createDefaultTagFormData(),
-            name: "   ",
+            name: '   ',
         };
 
         // Act
         const error = validateTagFormData(formData);
 
         // Assert
-        expect(error).toBe("Название обязательно для заполнения");
+        expect(error).toBe('Название обязательно для заполнения');
     });
 
-    it("builds a normalized tag modification from valid form data", () => {
+    it('builds a normalized tag modification from valid form data', () => {
         // Arrange
         const formData = {
-            name: " Transport ",
+            name: ' Transport ',
             isActive: false,
         };
 
@@ -64,7 +64,7 @@ describe("tags form", () => {
 
         // Assert
         expect(payload).toEqual({
-            name: "Transport",
+            name: 'Transport',
             isActive: false,
         });
     });

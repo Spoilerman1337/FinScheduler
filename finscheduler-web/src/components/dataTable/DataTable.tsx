@@ -1,11 +1,11 @@
-import {Flex} from "@chakra-ui/react";
-import ListingActionButtons from "../dataListing/actionButtons/ListingActionButtons.tsx";
-import ListingPaginator from "../dataListing/paginator/ListingPaginator.tsx";
-import type {DataListingColumn} from "../dataListing/types.ts";
-import DataTableHeader from "./subcomponents/DataTableHeader.tsx";
-import DataTableRows from "./subcomponents/DataTableRows.tsx";
+import {Flex} from '@chakra-ui/react';
+import ListingActionButtons from '../dataListing/actionButtons/ListingActionButtons.tsx';
+import ListingPaginator from '../dataListing/paginator/ListingPaginator.tsx';
+import type {DataListingColumn} from '../dataListing/types.ts';
+import DataTableHeader from './subcomponents/DataTableHeader.tsx';
+import DataTableRows from './subcomponents/DataTableRows.tsx';
 
-export type {DataListingColumn} from "../dataListing/types.ts";
+export type {DataListingColumn} from '../dataListing/types.ts';
 
 interface DataTableProps<T> {
     data: T[];
@@ -41,7 +41,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
             return getRowId(row);
         }
 
-        const fallbackId = row["id" as keyof T];
+        const fallbackId = row['id' as keyof T];
         return fallbackId ? String(fallbackId) : `row-${index}`;
     };
 
@@ -77,9 +77,10 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     };
 
     const selectedIds = Array.from(selectedRows);
-    const selectedRow = selectedIds.length === 1
-        ? data.find((row, index) => resolveRowId(row, index) === selectedIds[0])
-        : undefined;
+    const selectedRow =
+        selectedIds.length === 1
+            ? data.find((row, index) => resolveRowId(row, index) === selectedIds[0])
+            : undefined;
 
     const handleEditSelected = () => {
         if (selectedRow) {
@@ -93,7 +94,9 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
         }
     };
 
-    const allSelected = selectable && data.length > 0 &&
+    const allSelected =
+        selectable &&
+        data.length > 0 &&
         data.every((row, index) => selectedRows.has(resolveRowId(row, index)));
 
     return (

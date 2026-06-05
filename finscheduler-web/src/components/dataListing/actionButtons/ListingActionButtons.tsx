@@ -1,7 +1,7 @@
-import {Flex} from "@chakra-ui/react";
-import ListingAddButton from "./ListingAddButton.tsx";
-import ListingDeleteButton from "./ListingDeleteButton.tsx";
-import ListingEditButton from "./ListingEditButton.tsx";
+import {Flex} from '@chakra-ui/react';
+import ListingAddButton from './ListingAddButton.tsx';
+import ListingDeleteButton from './ListingDeleteButton.tsx';
+import ListingEditButton from './ListingEditButton.tsx';
 
 interface ListingActionButtonsProps {
     selectedCount: number;
@@ -25,13 +25,12 @@ export default function ListingActionButtons(props: ListingActionButtonsProps) {
             justify="flex-end"
             gap={2}
         >
-            {onAdd && !hasSelection && <ListingAddButton onClick={onAdd}/>}
-            {onEditSelected && selectedCount === 1 && <ListingEditButton onClick={onEditSelected}/>}
+            {onAdd && !hasSelection && <ListingAddButton onClick={onAdd} />}
+            {onEditSelected && selectedCount === 1 && (
+                <ListingEditButton onClick={onEditSelected} />
+            )}
             {onDeleteSelected && selectedCount > 0 && (
-                <ListingDeleteButton
-                    selectedCount={selectedCount}
-                    onClick={onDeleteSelected}
-                />
+                <ListingDeleteButton selectedCount={selectedCount} onClick={onDeleteSelected} />
             )}
         </Flex>
     );

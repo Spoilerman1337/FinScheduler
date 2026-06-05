@@ -1,15 +1,15 @@
-import {useEffect, useState} from "react";
-import type {TagDto, TagModification} from "../../../api/types.ts";
-import SwitchField from "../../../components/formFields/SwitchField.tsx";
-import TextField from "../../../components/formFields/TextField.tsx";
-import FormModal from "../../../components/formModal/FormModal.tsx";
+import {useEffect, useState} from 'react';
+import type {TagDto, TagModification} from '../../../api/types.ts';
+import SwitchField from '../../../components/formFields/SwitchField.tsx';
+import TextField from '../../../components/formFields/TextField.tsx';
+import FormModal from '../../../components/formModal/FormModal.tsx';
 import {
     buildTagModification,
     createDefaultTagFormData,
     mapTagToFormData,
     type TagModalFormData,
     validateTagFormData,
-} from "../form.ts";
+} from '../form.ts';
 
 interface TagModalProps {
     isOpen: boolean;

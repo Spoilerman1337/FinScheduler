@@ -60,16 +60,16 @@ export interface TagLookupFilter {
 }
 
 export interface ItemModification {
-    name: string
-    price: number
-    description?: string
-    isActive: boolean
-    cashback: number
-    category: string
-    tagIds: string[]
+    name: string;
+    price: number;
+    description?: string;
+    isActive: boolean;
+    cashback: number;
+    category: string;
+    tagIds: string[];
 }
 
 export interface TagModification {
-    name: string
-    isActive: boolean
+    name: string;
+    isActive: boolean;
 }

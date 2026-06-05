@@ -1,6 +1,6 @@
-import {Flex, Stack, Text} from "@chakra-ui/react";
-import type {ReactNode} from "react";
-import type {DataListingColumn} from "../../dataListing/types.ts";
+import {Flex, Stack, Text} from '@chakra-ui/react';
+import type {ReactNode} from 'react';
+import type {DataListingColumn} from '../../dataListing/types.ts';
 
 interface DataShowcaseFieldProps<T> {
     row: T;
@@ -9,12 +9,9 @@ interface DataShowcaseFieldProps<T> {
 }
 
 function renderFieldLabel(header: string | ReactNode) {
-    if (typeof header === "string") {
+    if (typeof header === 'string') {
         return (
-            <Text
-                textStyle="eyebrow"
-                color="fg.muted"
-            >
+            <Text textStyle="eyebrow" color="fg.muted">
                 {header}
             </Text>
         );

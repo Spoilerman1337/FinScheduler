@@ -1,7 +1,14 @@
-import type {Lookup, PaginatedList, TagDto, TagFilter, TagLookupFilter, TagModification} from './types';
-import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
+import type {
+    Lookup,
+    PaginatedList,
+    TagDto,
+    TagFilter,
+    TagLookupFilter,
+    TagModification,
+} from './types';
+import {FinschedulerApiClient} from './finscheduler-api-client.ts';
 
-export type TagStatusFilter = "All" | "Active" | "Inactive";
+export type TagStatusFilter = 'All' | 'Active' | 'Inactive';
 
 export function buildTagFilter(params: {
     page: number;
@@ -18,8 +25,8 @@ export function buildTagFilter(params: {
         filter.name = params.searchTerm;
     }
 
-    if (params.statusFilter !== "All") {
-        filter.isActive = params.statusFilter === "Active";
+    if (params.statusFilter !== 'All') {
+        filter.isActive = params.statusFilter === 'Active';
     }
 
     return filter;
@@ -93,5 +100,4 @@ export default class TagsService extends FinschedulerApiClient {
 
         return response.json();
     }
-};
-
+}

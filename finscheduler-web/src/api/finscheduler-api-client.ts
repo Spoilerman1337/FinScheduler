@@ -1,4 +1,4 @@
-import {API_BASE_URL} from "../config/api.ts";
+import {API_BASE_URL} from '../config/api.ts';
 
 type QueryParamPrimitive = string | number | boolean;
 type QueryParamValue = QueryParamPrimitive | null | undefined | readonly QueryParamPrimitive[];
@@ -12,11 +12,11 @@ export class FinschedulerApiClient {
 
     protected buildQueryString<T extends object>(params: T): string {
         const searchParams = new URLSearchParams();
-        
+
         (Object.entries(params) as [string, QueryParamValue][]).forEach(([key, value]) => {
             if (value !== undefined && value !== null) {
                 if (Array.isArray(value)) {
-                    value.forEach(v => searchParams.append(key, String(v)));
+                    value.forEach((v) => searchParams.append(key, String(v)));
                 } else {
                     searchParams.append(key, String(value));
                 }
@@ -27,4 +27,3 @@ export class FinschedulerApiClient {
         return queryString ? `?${queryString}` : '';
     }
 }
-

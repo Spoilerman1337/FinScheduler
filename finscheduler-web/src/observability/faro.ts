@@ -3,17 +3,17 @@ import {
     getWebInstrumentations,
     initializeFaro,
     ReactIntegration,
-} from "@grafana/faro-react";
-import {TracingInstrumentation} from "@grafana/faro-web-tracing";
+} from '@grafana/faro-react';
+import {TracingInstrumentation} from '@grafana/faro-web-tracing';
 import {
     createRoutesFromChildren,
     matchRoutes,
     Routes,
     useLocation,
     useNavigationType,
-} from "react-router-dom";
+} from 'react-router-dom';
 
-const faroCollectUrl = import.meta.env.VITE_FARO_COLLECT_URL?.trim() ?? "";
+const faroCollectUrl = import.meta.env.VITE_FARO_COLLECT_URL?.trim() ?? '';
 const appEnvironment = import.meta.env.VITE_APP_ENVIRONMENT?.trim() ?? import.meta.env.MODE;
 
 export const isFaroEnabled = faroCollectUrl.length > 0;
@@ -21,7 +21,7 @@ export const isFaroEnabled = faroCollectUrl.length > 0;
 let isFaroInitialized = false;
 
 function escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function createApiTraceTargets() {
@@ -36,7 +36,7 @@ export function initializeFaroSdk() {
     initializeFaro({
         url: faroCollectUrl,
         app: {
-            name: "finscheduler-web",
+            name: 'finscheduler-web',
             environment: appEnvironment,
         },
         instrumentations: [

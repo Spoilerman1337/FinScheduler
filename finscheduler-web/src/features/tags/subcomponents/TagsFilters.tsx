@@ -1,7 +1,7 @@
-import ActivityFilter from "../../../components/listingFilters/ActivityFilter.tsx";
-import FilterWrapper from "../../../components/listingFilters/FilterWrapper.tsx";
-import TextInputFilter from "../../../components/listingFilters/TextInputFilter.tsx";
-import type {ActivityFilterValue} from "../../../components/listingFilters/shared.ts";
+import ActivityFilter from '../../../components/listingFilters/ActivityFilter.tsx';
+import FilterWrapper from '../../../components/listingFilters/FilterWrapper.tsx';
+import TextInputFilter from '../../../components/listingFilters/TextInputFilter.tsx';
+import type {ActivityFilterValue} from '../../../components/listingFilters/shared.ts';
 
 type TagsFiltersProps = {
     searchTerm: string;
@@ -21,7 +21,7 @@ export default function TagsFilters(props: TagsFiltersProps) {
                 onChange={props.onSearchTermChange}
                 onApply={props.onApply}
             />
-            <ActivityFilter value={props.statusFilter} onChange={props.onStatusFilterChange}/>
+            <ActivityFilter value={props.statusFilter} onChange={props.onStatusFilterChange} />
         </FilterWrapper>
     );
 }

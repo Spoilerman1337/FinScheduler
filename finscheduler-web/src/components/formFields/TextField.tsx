@@ -1,4 +1,4 @@
-import {Field, Input} from "@chakra-ui/react";
+import {Field, Input} from '@chakra-ui/react';
 
 interface TextFieldProps {
     label: string;

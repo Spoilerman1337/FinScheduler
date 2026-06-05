@@ -1,7 +1,7 @@
 import type {ItemDto, PaginatedList, ItemFilter, ItemModification} from './types';
-import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
+import {FinschedulerApiClient} from './finscheduler-api-client.ts';
 
-export type ItemStatusFilter = "All" | "Active" | "Inactive";
+export type ItemStatusFilter = 'All' | 'Active' | 'Inactive';
 
 export function buildItemFilter(params: {
     page: number;
@@ -20,8 +20,8 @@ export function buildItemFilter(params: {
         filter.name = params.searchTerm;
     }
 
-    if (params.statusFilter !== "All") {
-        filter.isActive = params.statusFilter === "Active";
+    if (params.statusFilter !== 'All') {
+        filter.isActive = params.statusFilter === 'Active';
     }
 
     if (params.priceFrom) {
@@ -115,5 +115,4 @@ export default class ItemsService extends FinschedulerApiClient {
             throw new Error(`Failed to delete item: ${response.statusText}`);
         }
     }
-};
-
+}

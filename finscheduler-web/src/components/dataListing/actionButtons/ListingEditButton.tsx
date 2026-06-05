@@ -1,5 +1,5 @@
-import {Button} from "@chakra-ui/react";
-import {PencilIcon} from "lucide-react";
+import {Button} from '@chakra-ui/react';
+import {PencilIcon} from 'lucide-react';
 
 interface ListingEditButtonProps {
     onClick: () => void;
@@ -13,9 +13,9 @@ export default function ListingEditButton(props: ListingEditButtonProps) {
             onClick={onClick}
             bg="neon.green"
             color="bg.base"
-            _hover={{bg: "neon.green", opacity: 0.8}}
+            _hover={{bg: 'neon.green', opacity: 0.8}}
         >
-            <PencilIcon size={18} style={{marginRight: "8px"}}/>
+            <PencilIcon size={18} style={{marginRight: '8px'}} />
             Редактировать
         </Button>
     );

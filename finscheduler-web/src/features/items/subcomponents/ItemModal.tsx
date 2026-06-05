@@ -1,22 +1,22 @@
-import {useEffect, useMemo, useState} from "react";
-import type {ItemDto, ItemModification} from "../../../api/types.ts";
-import TagsService from "../../../api/tags.ts";
-import AsyncSelectField from "../../../components/formFields/AsyncSelectField.tsx";
-import NumberField from "../../../components/formFields/NumberField.tsx";
-import SelectField from "../../../components/formFields/SelectField.tsx";
-import SwitchField from "../../../components/formFields/SwitchField.tsx";
-import TextAreaField from "../../../components/formFields/TextAreaField.tsx";
-import TextField from "../../../components/formFields/TextField.tsx";
-import FormModal from "../../../components/formModal/FormModal.tsx";
-import {categoryOptions} from "../../../models/items.ts";
-import {mapLookupsToSelectOptions} from "../../shared.ts";
+import {useEffect, useMemo, useState} from 'react';
+import type {ItemDto, ItemModification} from '../../../api/types.ts';
+import TagsService from '../../../api/tags.ts';
+import AsyncSelectField from '../../../components/formFields/AsyncSelectField.tsx';
+import NumberField from '../../../components/formFields/NumberField.tsx';
+import SelectField from '../../../components/formFields/SelectField.tsx';
+import SwitchField from '../../../components/formFields/SwitchField.tsx';
+import TextAreaField from '../../../components/formFields/TextAreaField.tsx';
+import TextField from '../../../components/formFields/TextField.tsx';
+import FormModal from '../../../components/formModal/FormModal.tsx';
+import {categoryOptions} from '../../../models/items.ts';
+import {mapLookupsToSelectOptions} from '../../shared.ts';
 import {
     buildItemModification,
     createDefaultItemFormData,
     mapItemToFormData,
     type ItemModalFormData,
     validateItemFormData,
-} from "../form.ts";
+} from '../form.ts';
 
 interface ItemModalProps {
     isOpen: boolean;

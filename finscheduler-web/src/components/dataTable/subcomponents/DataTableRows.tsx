@@ -1,7 +1,7 @@
-import {Flex, Text} from "@chakra-ui/react";
-import type {DataListingColumn} from "../../dataListing/types.ts";
-import DataTableCell from "./DataTableCell.tsx";
-import DataTableRow from "./DataTableRow.tsx";
+import {Flex, Text} from '@chakra-ui/react';
+import type {DataListingColumn} from '../../dataListing/types.ts';
+import DataTableCell from './DataTableCell.tsx';
+import DataTableRow from './DataTableRow.tsx';
 
 interface DataTableRowsProps<T> {
     data: T[];
@@ -15,24 +15,11 @@ interface DataTableRowsProps<T> {
 }
 
 export default function DataTableRows<T extends object>(props: DataTableRowsProps<T>) {
-    const {
-        data,
-        columns,
-        selectable,
-        selectedRows,
-        getRowId,
-        onSelectRow,
-        onEdit,
-        onRowEdit,
-    } = props;
+    const {data, columns, selectable, selectedRows, getRowId, onSelectRow, onEdit, onRowEdit} =
+        props;
 
     return (
-        <Flex
-            as="tbody"
-            flexDirection="column"
-            overflowY="visible"
-            overflowX="hidden"
-        >
+        <Flex as="tbody" flexDirection="column" overflowY="visible" overflowX="hidden">
             {data.length === 0 && (
                 <Flex
                     as="tr"
@@ -41,14 +28,10 @@ export default function DataTableRows<T extends object>(props: DataTableRowsProp
                     borderBottom="1px solid"
                     borderColor="glass.border"
                 >
-                    <DataTableCell
-                        as="td"
-                        flex="1 0 100%"
-                        minWidth="100%"
-                        justify="center"
-                        py={10}
-                    >
-                        <Text color="neon.purple" fontSize="xl">Данные не найдены.</Text>
+                    <DataTableCell as="td" flex="1 0 100%" minWidth="100%" justify="center" py={10}>
+                        <Text color="neon.purple" fontSize="xl">
+                            Данные не найдены.
+                        </Text>
                     </DataTableCell>
                 </Flex>
             )}

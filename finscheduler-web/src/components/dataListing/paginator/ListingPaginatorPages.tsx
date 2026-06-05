@@ -1,7 +1,7 @@
-import {ButtonGroup, Pagination} from "@chakra-ui/react";
-import ListingPaginatorArrowButton from "./ListingPaginatorArrowButton.tsx";
-import ListingPaginatorEllipsisButton from "./ListingPaginatorEllipsisButton.tsx";
-import ListingPaginatorPageButton from "./ListingPaginatorPageButton.tsx";
+import {ButtonGroup, Pagination} from '@chakra-ui/react';
+import ListingPaginatorArrowButton from './ListingPaginatorArrowButton.tsx';
+import ListingPaginatorEllipsisButton from './ListingPaginatorEllipsisButton.tsx';
+import ListingPaginatorPageButton from './ListingPaginatorPageButton.tsx';
 
 interface ListingPaginatorPagesProps {
     totalPages?: number;
@@ -20,16 +20,16 @@ export default function ListingPaginatorPages(props: ListingPaginatorPagesProps)
         >
             <ButtonGroup variant="ghost" size="lg" my={-5}>
                 <Pagination.PrevTrigger asChild>
-                    <ListingPaginatorArrowButton direction="previous"/>
+                    <ListingPaginatorArrowButton direction="previous" />
                 </Pagination.PrevTrigger>
 
                 <Pagination.Items
-                    render={(page) => <ListingPaginatorPageButton value={page.value}/>}
-                    ellipsis={<ListingPaginatorEllipsisButton/>}
+                    render={(page) => <ListingPaginatorPageButton value={page.value} />}
+                    ellipsis={<ListingPaginatorEllipsisButton />}
                 />
 
                 <Pagination.NextTrigger asChild>
-                    <ListingPaginatorArrowButton direction="next"/>
+                    <ListingPaginatorArrowButton direction="next" />
                 </Pagination.NextTrigger>
             </ButtonGroup>
         </Pagination.Root>

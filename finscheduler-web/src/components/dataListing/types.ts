@@ -1,6 +1,6 @@
-import {createListCollection} from "@chakra-ui/react";
-import type {Flex} from "@chakra-ui/react";
-import type React from "react";
+import {createListCollection} from '@chakra-ui/react';
+import type {Flex} from '@chakra-ui/react';
+import type React from 'react';
 
 export const defaultPageSizeOptions = [10, 25, 50, 100] as const;
 export const showcasePageSizeOptions = [12, 24, 48, 96] as const;

@@ -1,5 +1,5 @@
-import type {Lookup} from "../api/types.ts";
-import type {SelectOption} from "../components/formFields/types.ts";
+import type {Lookup} from '../api/types.ts';
+import type {SelectOption} from '../components/formFields/types.ts';
 
 export function mapLookupsToSelectOptions(lookups?: Lookup[] | null): SelectOption[] {
     if (!Array.isArray(lookups)) {

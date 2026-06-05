@@ -1,8 +1,8 @@
-import ActivityFilter from "../../../components/listingFilters/ActivityFilter.tsx";
-import FilterWrapper from "../../../components/listingFilters/FilterWrapper.tsx";
-import NumberInputFilter from "../../../components/listingFilters/NumberInputFilter.tsx";
-import TextInputFilter from "../../../components/listingFilters/TextInputFilter.tsx";
-import type {ActivityFilterValue} from "../../../components/listingFilters/shared.ts";
+import ActivityFilter from '../../../components/listingFilters/ActivityFilter.tsx';
+import FilterWrapper from '../../../components/listingFilters/FilterWrapper.tsx';
+import NumberInputFilter from '../../../components/listingFilters/NumberInputFilter.tsx';
+import TextInputFilter from '../../../components/listingFilters/TextInputFilter.tsx';
+import type {ActivityFilterValue} from '../../../components/listingFilters/shared.ts';
 
 type ItemsFiltersProps = {
     searchTerm: string;
@@ -26,7 +26,7 @@ export default function ItemsFilters(props: ItemsFiltersProps) {
                 onChange={props.onSearchTermChange}
                 onApply={props.onApply}
             />
-            <ActivityFilter value={props.statusFilter} onChange={props.onStatusFilterChange}/>
+            <ActivityFilter value={props.statusFilter} onChange={props.onStatusFilterChange} />
             <NumberInputFilter
                 value={props.priceFrom}
                 placeholder="Цена от"

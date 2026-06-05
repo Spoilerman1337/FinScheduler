@@ -1,5 +1,5 @@
-import type {ItemDto, ItemModification} from "../../api/types.ts";
-import {categoryTranslations} from "../../models/items.ts";
+import type {ItemDto, ItemModification} from '../../api/types.ts';
+import {categoryTranslations} from '../../models/items.ts';
 
 export interface ItemModalFormData {
     name: string;
@@ -13,12 +13,12 @@ export interface ItemModalFormData {
 
 export function createDefaultItemFormData(): ItemModalFormData {
     return {
-        name: "",
-        description: "",
-        price: "",
-        cashback: "",
+        name: '',
+        description: '',
+        price: '',
+        cashback: '',
         isActive: true,
-        category: "",
+        category: '',
         tagIds: [],
     };
 }
@@ -29,31 +29,32 @@ export function mapItemToFormData(item?: ItemDto | null): ItemModalFormData {
     }
 
     return {
-        name: item.name || "",
-        description: item.description || "",
-        price: item.price !== undefined && item.price !== null ? item.price.toString() : "",
-        cashback: item.cashback !== undefined && item.cashback !== null ? item.cashback.toString() : "",
-        isActive: typeof item.isActive === "boolean" ? item.isActive : true,
-        category: typeof item.category === "string" ? item.category : "",
+        name: item.name || '',
+        description: item.description || '',
+        price: item.price !== undefined && item.price !== null ? item.price.toString() : '',
+        cashback:
+            item.cashback !== undefined && item.cashback !== null ? item.cashback.toString() : '',
+        isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
+        category: typeof item.category === 'string' ? item.category : '',
         tagIds: Array.isArray(item.tags)
             ? item.tags.reduce<string[]>((result, tag) => {
-                if (tag?.value) {
-                    result.push(tag.value);
-                }
+                  if (tag?.value) {
+                      result.push(tag.value);
+                  }
 
-                return result;
-            }, [])
+                  return result;
+              }, [])
             : [],
     };
 }
 
 export function validateItemFormData(formData: ItemModalFormData): string | null {
     if (!formData.name.trim()) {
-        return "Название обязательно для заполнения";
+        return 'Название обязательно для заполнения';
     }
 
     if (formData.price && Number.isNaN(parseFloat(formData.price))) {
-        return "Цена должна быть числом";
+        return 'Цена должна быть числом';
     }
 
     if (
@@ -62,11 +63,11 @@ export function validateItemFormData(formData: ItemModalFormData): string | null
             parseFloat(formData.cashback) < 0 ||
             parseFloat(formData.cashback) > 100)
     ) {
-        return "Кэшбэк должен быть числом от 0 до 100";
+        return 'Кэшбэк должен быть числом от 0 до 100';
     }
 
     if (!formData.category.trim() || !categoryTranslations[formData.category]) {
-        return "Выберите категорию";
+        return 'Выберите категорию';
     }
 
     return null;

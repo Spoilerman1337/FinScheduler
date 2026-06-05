@@ -1,5 +1,5 @@
-import {Checkbox, Flex} from "@chakra-ui/react";
-import type {ComponentProps, MouseEventHandler} from "react";
+import {Checkbox, Flex} from '@chakra-ui/react';
+import type {ComponentProps, MouseEventHandler} from 'react';
 
 interface ListingSelectionCheckboxProps {
     checked: boolean;
@@ -14,7 +14,7 @@ export default function ListingSelectionCheckbox(props: ListingSelectionCheckbox
 
     return (
         <Flex
-            as={isHeader ? "th" : "td"}
+            as={isHeader ? 'th' : 'td'}
             py={isHeader ? 4 : 3}
             px={5}
             flexBasis="50px"
@@ -31,18 +31,18 @@ export default function ListingSelectionCheckbox(props: ListingSelectionCheckbox
                     onCheckedChange(details.checked === true);
                 }}
             >
-                <Checkbox.HiddenInput/>
+                <Checkbox.HiddenInput />
                 <Checkbox.Control
                     filter="drop-shadow(0 0 8px rgba(0, 212, 255, 0.9))"
                     transition="all 0.3s ease-in-out"
                     color="neon.blue"
                     borderColor="neon.blue"
                     _hover={{
-                        boxShadow: "0 0 12px rgba(0, 212, 255, 0.9)",
-                        filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.9))",
+                        boxShadow: '0 0 12px rgba(0, 212, 255, 0.9)',
+                        filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.9))',
                     }}
                 >
-                    <Checkbox.Indicator/>
+                    <Checkbox.Indicator />
                 </Checkbox.Control>
             </Checkbox.Root>
         </Flex>

@@ -1,4 +1,4 @@
-import type {TagDto, TagModification} from "../../api/types.ts";
+import type {TagDto, TagModification} from '../../api/types.ts';
 
 export interface TagModalFormData {
     name: string;
@@ -7,7 +7,7 @@ export interface TagModalFormData {
 
 export function createDefaultTagFormData(): TagModalFormData {
     return {
-        name: "",
+        name: '',
         isActive: true,
     };
 }
@@ -18,14 +18,14 @@ export function mapTagToFormData(item?: TagDto | null): TagModalFormData {
     }
 
     return {
-        name: item.name || "",
-        isActive: typeof item.isActive === "boolean" ? item.isActive : true,
+        name: item.name || '',
+        isActive: typeof item.isActive === 'boolean' ? item.isActive : true,
     };
 }
 
 export function validateTagFormData(formData: TagModalFormData): string | null {
     if (!formData.name.trim()) {
-        return "Название обязательно для заполнения";
+        return 'Название обязательно для заполнения';
     }
 
     return null;

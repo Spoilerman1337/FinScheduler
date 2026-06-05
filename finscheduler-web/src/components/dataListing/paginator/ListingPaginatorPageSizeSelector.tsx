@@ -1,6 +1,6 @@
-import {Box, Flex, Select, Text} from "@chakra-ui/react";
-import {CheckIcon, ChevronDownIcon} from "lucide-react";
-import {createPageSizeCollection, defaultPageSizeOptions} from "../types.ts";
+import {Box, Flex, Select, Text} from '@chakra-ui/react';
+import {CheckIcon, ChevronDownIcon} from 'lucide-react';
+import {createPageSizeCollection, defaultPageSizeOptions} from '../types.ts';
 
 interface ListingPaginatorPageSizeSelectorProps {
     pageSize: number;
@@ -8,7 +8,9 @@ interface ListingPaginatorPageSizeSelectorProps {
     onPageSizeChange: (pageSize: number) => void;
 }
 
-export default function ListingPaginatorPageSizeSelector(props: ListingPaginatorPageSizeSelectorProps) {
+export default function ListingPaginatorPageSizeSelector(
+    props: ListingPaginatorPageSizeSelectorProps,
+) {
     const pageSizeOptions = props.pageSizeOptions ?? defaultPageSizeOptions;
     const pageSizeCollection = createPageSizeCollection(pageSizeOptions);
     const fallbackPageSize = pageSizeOptions[0] ?? defaultPageSizeOptions[0];
@@ -24,13 +26,8 @@ export default function ListingPaginatorPageSizeSelector(props: ListingPaginator
                 props.onPageSizeChange(newPageSize);
             }}
         >
-            <Select.HiddenSelect/>
-            <Select.Label
-                color="neon.blue"
-                mb="2"
-                fontWeight="medium"
-                _empty={{display: "none"}}
-            />
+            <Select.HiddenSelect />
+            <Select.Label color="neon.blue" mb="2" fontWeight="medium" _empty={{display: 'none'}} />
 
             <Select.Control asChild>
                 <Flex align="center" justify="space-between">
@@ -48,18 +45,18 @@ export default function ListingPaginatorPageSizeSelector(props: ListingPaginator
                             h="36px"
                             focusRing="none"
                             _hover={{
-                                filter: "drop-shadow(0 0 16px rgba(212, 0,255,0.9))",
-                                boxShadow: "0 0 20px rgba(212, 0,255,1)",
-                                color: "neon.purple",
-                                bg: "glass.bgHover",
-                                borderColor: "neon.purple",
-                                cursor: "pointer",
+                                filter: 'drop-shadow(0 0 16px rgba(212, 0,255,0.9))',
+                                boxShadow: '0 0 20px rgba(212, 0,255,1)',
+                                color: 'neon.purple',
+                                bg: 'glass.bgHover',
+                                borderColor: 'neon.purple',
+                                cursor: 'pointer',
                             }}
                         >
                             <Select.ValueText
                                 placeholder={props.pageSize.toString()}
                                 color="currentColor"
-                                _placeholder={{color: "text.placeholder"}}
+                                _placeholder={{color: 'text.placeholder'}}
                                 fontSize="sm"
                             />
                         </Box>
@@ -68,7 +65,7 @@ export default function ListingPaginatorPageSizeSelector(props: ListingPaginator
                     <Select.IndicatorGroup asChild>
                         <Flex align="center">
                             <Select.Indicator asChild>
-                                <ChevronDownIcon/>
+                                <ChevronDownIcon />
                             </Select.Indicator>
                         </Flex>
                     </Select.IndicatorGroup>
@@ -105,37 +102,39 @@ export default function ListingPaginatorPageSizeSelector(props: ListingPaginator
                                 px="2"
                                 borderRadius="sm"
                                 color="neon.blue"
-                                bg={isSelected ? "glass.bgHover" : "transparent"}
-                                filter={isSelected ? "drop-shadow(0 0 8px rgba(0,212,255,0.9))" : "none"}
+                                bg={isSelected ? 'glass.bgHover' : 'transparent'}
+                                filter={
+                                    isSelected ? 'drop-shadow(0 0 8px rgba(0,212,255,0.9))' : 'none'
+                                }
                                 fontSize="sm"
-                                fontWeight={isSelected ? "semibold" : "normal"}
+                                fontWeight={isSelected ? 'semibold' : 'normal'}
                                 transition="all 0.2s"
                                 cursor="pointer"
                                 _hover={{
-                                    filter: "drop-shadow(0 0 8px rgba(212, 0,255,0.9))",
-                                    color: "neon.purple",
-                                    bg: "glass.bgHover",
+                                    filter: 'drop-shadow(0 0 8px rgba(212, 0,255,0.9))',
+                                    color: 'neon.purple',
+                                    bg: 'glass.bgHover',
                                 }}
                                 _highlighted={{
-                                    filter: "drop-shadow(0 0 8px rgba(212, 0,255,0.9))",
-                                    color: "neon.purple",
-                                    bg: "glass.bgHover",
+                                    filter: 'drop-shadow(0 0 8px rgba(212, 0,255,0.9))',
+                                    color: 'neon.purple',
+                                    bg: 'glass.bgHover',
                                 }}
                                 _selected={{
-                                    filter: "drop-shadow(0 0 8px rgba(0,212,255,0.9))",
-                                    color: "neon.blue",
-                                    bg: "glass.bgHover",
-                                    fontWeight: "semibold",
+                                    filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.9))',
+                                    color: 'neon.blue',
+                                    bg: 'glass.bgHover',
+                                    fontWeight: 'semibold',
                                 }}
                                 _focus={{
-                                    outline: "none",
-                                    bg: "glass.bgHover",
-                                    boxShadow: "0 0 0 2px rgba(0, 212, 255, 0.5)",
+                                    outline: 'none',
+                                    bg: 'glass.bgHover',
+                                    boxShadow: '0 0 0 2px rgba(0, 212, 255, 0.5)',
                                 }}
                             >
                                 <Text color="currentColor">{item.label}</Text>
                                 <Select.ItemIndicator asChild>
-                                    <CheckIcon/>
+                                    <CheckIcon />
                                 </Select.ItemIndicator>
                             </Select.Item>
                         );

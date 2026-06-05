@@ -1,11 +1,11 @@
-import {Card, Flex, Stack, Text} from "@chakra-ui/react";
-import ListingActionButtons from "../dataListing/actionButtons/ListingActionButtons.tsx";
-import ListingPaginator from "../dataListing/paginator/ListingPaginator.tsx";
-import ListingSelectionCheckbox from "../dataListing/selectionCheckbox/ListingSelectionCheckbox.tsx";
-import {showcasePageSizeOptions, type DataListingColumn} from "../dataListing/types.ts";
-import DataShowcaseGrid from "./subcomponents/DataShowcaseGrid.tsx";
+import {Card, Flex, Stack, Text} from '@chakra-ui/react';
+import ListingActionButtons from '../dataListing/actionButtons/ListingActionButtons.tsx';
+import ListingPaginator from '../dataListing/paginator/ListingPaginator.tsx';
+import ListingSelectionCheckbox from '../dataListing/selectionCheckbox/ListingSelectionCheckbox.tsx';
+import {showcasePageSizeOptions, type DataListingColumn} from '../dataListing/types.ts';
+import DataShowcaseGrid from './subcomponents/DataShowcaseGrid.tsx';
 
-export type {DataListingColumn} from "../dataListing/types.ts";
+export type {DataListingColumn} from '../dataListing/types.ts';
 
 interface DataShowcaseProps<T> {
     data: T[];
@@ -41,7 +41,7 @@ export default function DataShowcase<T extends object>(props: DataShowcaseProps<
             return getRowId(row);
         }
 
-        const fallbackId = row["id" as keyof T];
+        const fallbackId = row['id' as keyof T];
         return fallbackId ? String(fallbackId) : `row-${index}`;
     };
 
@@ -83,7 +83,9 @@ export default function DataShowcase<T extends object>(props: DataShowcaseProps<
         }
     };
 
-    const allSelected = selectable && data.length > 0 &&
+    const allSelected =
+        selectable &&
+        data.length > 0 &&
         data.every((row, index) => selectedRows.has(resolveRowId(row, index)));
 
     return (
@@ -96,17 +98,19 @@ export default function DataShowcase<T extends object>(props: DataShowcaseProps<
                                 checked={allSelected}
                                 onCheckedChange={handleSelectAll}
                                 containerProps={{
-                                    as: "div",
+                                    as: 'div',
                                     py: 0,
                                     px: 0,
-                                    flexBasis: "auto",
-                                    minWidth: "auto",
-                                    maxWidth: "none",
+                                    flexBasis: 'auto',
+                                    minWidth: 'auto',
+                                    maxWidth: 'none',
                                 }}
                             />
                             <Stack gap={0}>
                                 <Text color="app.accent" fontWeight="semibold">
-                                    {allSelected ? "Все карточки на странице выбраны" : "Выделить все карточки на странице"}
+                                    {allSelected
+                                        ? 'Все карточки на странице выбраны'
+                                        : 'Выделить все карточки на странице'}
                                 </Text>
                                 <Text color="fg.muted" fontSize="sm">
                                     Выбрано: {selectedIds.length} из {data.length}

@@ -1,8 +1,8 @@
-import {describe, expect, it} from "vitest";
-import {categoryOptions, categoryTranslations} from "./items.ts";
+import {describe, expect, it} from 'vitest';
+import {categoryOptions, categoryTranslations} from './items.ts';
 
-describe("items model", () => {
-    it("creates one value-label option for every category translation in the same order", () => {
+describe('items model', () => {
+    it('creates one value-label option for every category translation in the same order', () => {
         // Arrange
         const expectedOptions = Object.entries(categoryTranslations).map(([value, label]) => ({
             label,
@@ -16,7 +16,7 @@ describe("items model", () => {
         expect(actualOptions).toEqual(expectedOptions);
     });
 
-    it("contains only unique and non-empty option values and labels", () => {
+    it('contains only unique and non-empty option values and labels', () => {
         // Arrange
         const optionValues = categoryOptions.map((option) => option.value);
         const optionLabels = categoryOptions.map((option) => option.label);

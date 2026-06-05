@@ -1,4 +1,4 @@
-import {Field, NumberInput} from "@chakra-ui/react";
+import {Field, NumberInput} from '@chakra-ui/react';
 
 interface NumberFieldProps {
     label: string;
@@ -43,8 +43,8 @@ export default function NumberField({
                         color="neon.blue"
                         p={0}
                         _hover={{
-                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
-                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                            filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))',
+                            boxShadow: '0 0 12px rgba(0, 212, 255, 0.45)',
                         }}
                     >
                         +
@@ -54,14 +54,14 @@ export default function NumberField({
                         color="neon.blue"
                         p={0}
                         _hover={{
-                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
-                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                            filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))',
+                            boxShadow: '0 0 12px rgba(0, 212, 255, 0.45)',
                         }}
                     >
                         -
                     </NumberInput.DecrementTrigger>
                 </NumberInput.Control>
-                <NumberInput.Input _placeholder={{color: 'text.placeholder'}}/>
+                <NumberInput.Input _placeholder={{color: 'text.placeholder'}} />
             </NumberInput.Root>
         </Field.Root>
     );

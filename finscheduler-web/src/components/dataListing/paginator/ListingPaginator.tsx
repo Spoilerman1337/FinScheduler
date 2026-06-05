@@ -1,6 +1,6 @@
-import {Flex, Text} from "@chakra-ui/react";
-import ListingPaginatorPages from "./ListingPaginatorPages.tsx";
-import ListingPaginatorPageSizeSelector from "./ListingPaginatorPageSizeSelector.tsx";
+import {Flex, Text} from '@chakra-ui/react';
+import ListingPaginatorPages from './ListingPaginatorPages.tsx';
+import ListingPaginatorPageSizeSelector from './ListingPaginatorPageSizeSelector.tsx';
 
 export interface ListingPaginatorProps {
     total: number;
