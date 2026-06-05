@@ -1,12 +1,12 @@
 import {Button} from "@chakra-ui/react";
 import {TrashIcon} from "lucide-react";
 
-interface DataTableDeleteButtonProps {
+interface ListingDeleteButtonProps {
     selectedCount: number;
     onClick: () => void;
 }
 
-export default function DataTableDeleteButton(props: DataTableDeleteButtonProps) {
+export default function ListingDeleteButton(props: ListingDeleteButtonProps) {
     const {selectedCount, onClick} = props;
 
     return (

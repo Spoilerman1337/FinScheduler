@@ -46,7 +46,7 @@ describe("Items integration", () => {
         expect(await screen.findByText("Utility Bill")).toBeInTheDocument();
         await waitFor(() => expect(requests).toHaveLength(1));
         expect(requests[0].searchParams.get("page")).toBe("0");
-        expect(requests[0].searchParams.get("pageSize")).toBe("10");
+        expect(requests[0].searchParams.get("pageSize")).toBe("12");
         expect(requests[0].searchParams.get("isActive")).toBe("true");
     });
 
@@ -233,7 +233,7 @@ describe("Items integration", () => {
         expect(await screen.findByText("New Item")).toBeInTheDocument();
     });
 
-    it("edits an existing item and reloads the table", async () => {
+    it("edits an existing item after a double click and reloads the showcase", async () => {
         // Arrange
         const currentItems = [buildItem({name: "Old Item"})];
         let updatedPayload: ItemModification | null = null;
@@ -266,7 +266,7 @@ describe("Items integration", () => {
 
         // Act
         renderWithProviders(<Items/>);
-        await user.click(await screen.findByText("Old Item"));
+        await user.dblClick(await screen.findByText("Old Item"));
         await user.clear(screen.getByLabelText("Название"));
         await user.type(screen.getByLabelText("Название"), "Updated Item");
         await user.click(screen.getByRole("button", {name: "Сохранить"}));
@@ -285,6 +285,56 @@ describe("Items integration", () => {
         });
         expect(await screen.findByText("Updated Item")).toBeInTheDocument();
         expect(screen.queryByText("Old Item")).not.toBeInTheDocument();
+    });
+
+    it("opens the edit modal from the showcase action button", async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/items`, () => {
+                return HttpResponse.json({
+                    data: [buildItem({name: "Coffee"})],
+                    count: 1,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Items/>);
+        await user.click((await screen.findAllByRole("button", {name: "Открыть карточку"}))[0]);
+        expect(await screen.findByText("Редактировать элемент")).toBeInTheDocument();
+    });
+
+    it("allows reopening the edit modal after closing it", async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/items`, () => {
+                return HttpResponse.json({
+                    data: [buildItem({name: "Coffee"})],
+                    count: 1,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Items/>);
+        await user.dblClick(await screen.findByText("Coffee"));
+        expect(await screen.findByText("Редактировать элемент")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Отмена"}));
+
+        // Assert
+        await waitFor(() => {
+            expect(screen.queryByText("Редактировать элемент")).not.toBeInTheDocument();
+        });
+
+        // Act
+        await user.click(screen.getByRole("button", {name: "Открыть карточку"}));
+
+        // Assert
+        expect(await screen.findByText("Редактировать элемент")).toBeInTheDocument();
     });
 
     it("deletes selected items and reloads the table", async () => {
@@ -324,6 +374,12 @@ describe("Items integration", () => {
         const checkboxes = await screen.findAllByRole("checkbox");
 
         await user.click(checkboxes[1]);
+
+        // Assert
+        expect(screen.queryByRole("button", {name: "Добавить"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Редактировать"})).not.toBeInTheDocument();
+
+        // Act
         await user.click(screen.getByRole("button", {name: "Удалить (1)"}));
 
         // Assert
@@ -349,7 +405,7 @@ describe("Items integration", () => {
                     data: page === "1"
                         ? [buildItem({id: "item-2", name: "Second Page Item"})]
                         : [buildItem({name: "First Page Item"})],
-                    count: 11,
+                    count: 13,
                 });
             }),
         );
@@ -382,9 +438,9 @@ describe("Items integration", () => {
 
                 requests.push(url);
 
-                if (pageSize === "25") {
+                if (pageSize === "24") {
                     return HttpResponse.json({
-                        data: [buildItem({id: "item-3", name: "Twenty Five Per Page"})],
+                        data: [buildItem({id: "item-3", name: "Twenty Four Per Page"})],
                         count: 30,
                     });
                 }
@@ -411,15 +467,15 @@ describe("Items integration", () => {
         await user.click(screen.getByRole("button", {name: /page 2/i}));
         await screen.findByText("Second Page Item");
         await user.click(screen.getByRole("combobox"));
-        await user.click(await screen.findByRole("option", {name: "25"}));
+        await user.click(await screen.findByRole("option", {name: "24"}));
 
         // Assert
-        expect(await screen.findByText("Twenty Five Per Page")).toBeInTheDocument();
+        expect(await screen.findByText("Twenty Four Per Page")).toBeInTheDocument();
         await waitFor(() => {
             const lastRequest = requests.at(-1);
 
             expect(lastRequest?.searchParams.get("page")).toBe("0");
-            expect(lastRequest?.searchParams.get("pageSize")).toBe("25");
+            expect(lastRequest?.searchParams.get("pageSize")).toBe("24");
         });
     });
 
@@ -481,6 +537,27 @@ describe("Items integration", () => {
 
         // Assert
         expect(await screen.findByText("Данные не найдены.")).toBeInTheDocument();
+    });
+
+    it("renders ruble prices with the currency sign as a suffix", async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/items`, () => {
+                return HttpResponse.json({
+                    data: [buildItem({price: 1234.5})],
+                    count: 1,
+                });
+            }),
+        );
+
+        // Act
+        renderWithProviders(<Items/>);
+
+        // Assert
+        expect((await screen.findAllByText((_, element) => {
+            const normalizedText = element?.textContent?.replace(/\s+/g, " ").trim();
+            return normalizedText === "1 234,50 ₽";
+        })).length).toBeGreaterThan(0);
     });
 
     it("shows an error state when items request fails", async () => {

@@ -28,7 +28,13 @@ export default function FormModal({
     loading = false,
 }: FormModalProps) {
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(details) => !details.open && onClose()} placement="center">
+        <Dialog.Root
+            open={isOpen}
+            onOpenChange={(details) => !details.open && onClose()}
+            placement="center"
+            lazyMount
+            unmountOnExit
+        >
             <Portal>
                 <Dialog.Backdrop/>
                 <Dialog.Positioner>

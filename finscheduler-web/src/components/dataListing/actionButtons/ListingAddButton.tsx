@@ -1,11 +1,11 @@
 import {Button} from "@chakra-ui/react";
 import {PlusIcon} from "lucide-react";
 
-interface DataTableAddButtonProps {
+interface ListingAddButtonProps {
     onClick: () => void;
 }
 
-export default function DataTableAddButton(props: DataTableAddButtonProps) {
+export default function ListingAddButton(props: ListingAddButtonProps) {
     const {onClick} = props;
 
     return (

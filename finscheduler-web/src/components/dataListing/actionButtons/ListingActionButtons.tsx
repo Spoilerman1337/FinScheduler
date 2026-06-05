@@ -1,17 +1,18 @@
 import {Flex} from "@chakra-ui/react";
-import DataTableAddButton from "./DataTableAddButton.tsx";
-import DataTableDeleteButton from "./DataTableDeleteButton.tsx";
-import DataTableEditButton from "./DataTableEditButton.tsx";
+import ListingAddButton from "./ListingAddButton.tsx";
+import ListingDeleteButton from "./ListingDeleteButton.tsx";
+import ListingEditButton from "./ListingEditButton.tsx";
 
-interface DataTableActionButtonsProps {
+interface ListingActionButtonsProps {
     selectedCount: number;
     onAdd?: () => void;
     onEditSelected?: () => void;
     onDeleteSelected?: () => void;
 }
 
-export default function DataTableActionButtons(props: DataTableActionButtonsProps) {
+export default function ListingActionButtons(props: ListingActionButtonsProps) {
     const {selectedCount, onAdd, onEditSelected, onDeleteSelected} = props;
+    const hasSelection = selectedCount > 0;
 
     return (
         <Flex
@@ -24,10 +25,10 @@ export default function DataTableActionButtons(props: DataTableActionButtonsProp
             justify="flex-end"
             gap={2}
         >
-            {onAdd && <DataTableAddButton onClick={onAdd}/>}
-            {onEditSelected && selectedCount === 1 && <DataTableEditButton onClick={onEditSelected}/>}
-            {onDeleteSelected && selectedCount > 0 &&  (
-                <DataTableDeleteButton
+            {onAdd && !hasSelection && <ListingAddButton onClick={onAdd}/>}
+            {onEditSelected && selectedCount === 1 && <ListingEditButton onClick={onEditSelected}/>}
+            {onDeleteSelected && selectedCount > 0 && (
+                <ListingDeleteButton
                     selectedCount={selectedCount}
                     onClick={onDeleteSelected}
                 />

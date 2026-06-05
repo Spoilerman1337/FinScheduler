@@ -1,15 +1,16 @@
 import {Checkbox, Flex} from "@chakra-ui/react";
-import type {MouseEventHandler} from "react";
+import type {ComponentProps, MouseEventHandler} from "react";
 
-interface DataTableSelectionCheckboxProps {
+interface ListingSelectionCheckboxProps {
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
     isHeader?: boolean;
-    onClick?: MouseEventHandler<HTMLDivElement>;
+    onClick?: MouseEventHandler<HTMLElement>;
+    containerProps?: ComponentProps<typeof Flex>;
 }
 
-export default function DataTableSelectionCheckbox(props: DataTableSelectionCheckboxProps) {
-    const {checked, onCheckedChange, isHeader = false, onClick} = props;
+export default function ListingSelectionCheckbox(props: ListingSelectionCheckboxProps) {
+    const {checked, onCheckedChange, isHeader = false, onClick, containerProps} = props;
 
     return (
         <Flex
@@ -21,7 +22,8 @@ export default function DataTableSelectionCheckbox(props: DataTableSelectionChec
             maxWidth="50px"
             align="center"
             justify="center"
-            onClick={onClick}
+            {...containerProps}
+            onClick={onClick ?? containerProps?.onClick}
         >
             <Checkbox.Root
                 checked={checked}

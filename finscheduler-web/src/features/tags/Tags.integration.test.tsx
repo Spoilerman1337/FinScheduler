@@ -216,6 +216,65 @@ describe("Tags integration", () => {
         expect(screen.queryByText("Old Tag")).not.toBeInTheDocument();
     });
 
+    it("allows reopening the edit modal after closing it", async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: [buildTag({name: "Food"})],
+                    count: 1,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Tags/>);
+        await user.click(await screen.findByText("Food"));
+        expect(await screen.findByText("Редактировать элемент")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Отмена"}));
+
+        // Assert
+        await waitFor(() => {
+            expect(screen.queryByText("Редактировать элемент")).not.toBeInTheDocument();
+        });
+
+        // Act
+        await user.click(screen.getByText("Food"));
+
+        // Assert
+        expect(await screen.findByText("Редактировать элемент")).toBeInTheDocument();
+    });
+
+    it("hides the add button when a tag is selected", async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: [
+                        buildTag({id: "tag-1", name: "Food"}),
+                        buildTag({id: "tag-2", name: "Travel"}),
+                    ],
+                    count: 2,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Tags/>);
+        await screen.findByText("Food");
+        const checkboxes = await screen.findAllByRole("checkbox");
+
+        await user.click(checkboxes[1]);
+
+        // Assert
+        expect(screen.queryByRole("button", {name: "Добавить"})).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Редактировать"})).toBeInTheDocument();
+    });
+
     it("changes the page when the paginator is used", async () => {
         // Arrange
         const requests: URL[] = [];

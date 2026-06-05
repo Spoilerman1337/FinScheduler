@@ -1,10 +1,10 @@
 import {Flex, Text} from "@chakra-ui/react";
+import type {DataListingColumn} from "../../dataListing/types.ts";
+import ListingSelectionCheckbox from "../../dataListing/selectionCheckbox/ListingSelectionCheckbox.tsx";
 import DataTableCell from "./DataTableCell.tsx";
-import DataTableSelectionCheckbox from "./DataTableSelectionCheckbox.tsx";
-import type {TableColumn} from "../models.ts";
 
 interface DataTableHeaderProps<T> {
-    columns: TableColumn<T>[];
+    columns: DataListingColumn<T>[];
     selectable: boolean;
     allSelected: boolean;
     onSelectAll: (checked: boolean) => void;
@@ -30,7 +30,7 @@ export default function DataTableHeader<T>(props: DataTableHeaderProps<T>) {
                 display="flex"
             >
                 {selectable && (
-                    <DataTableSelectionCheckbox
+                    <ListingSelectionCheckbox
                         checked={allSelected}
                         onCheckedChange={onSelectAll}
                         isHeader

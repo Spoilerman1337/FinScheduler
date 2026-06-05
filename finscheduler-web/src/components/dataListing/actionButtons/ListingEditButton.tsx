@@ -1,11 +1,11 @@
 import {Button} from "@chakra-ui/react";
 import {PencilIcon} from "lucide-react";
 
-interface DataTableEditButtonProps {
+interface ListingEditButtonProps {
     onClick: () => void;
 }
 
-export default function DataTableEditButton(props: DataTableEditButtonProps) {
+export default function ListingEditButton(props: ListingEditButtonProps) {
     const {onClick} = props;
 
     return (

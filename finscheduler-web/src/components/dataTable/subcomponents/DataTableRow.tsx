@@ -1,12 +1,12 @@
 import {Flex} from "@chakra-ui/react";
+import type {DataListingColumn} from "../../dataListing/types.ts";
+import ListingSelectionCheckbox from "../../dataListing/selectionCheckbox/ListingSelectionCheckbox.tsx";
 import DataTableCell from "./DataTableCell.tsx";
-import DataTableSelectionCheckbox from "./DataTableSelectionCheckbox.tsx";
-import type {TableColumn} from "../models.ts";
 
 interface DataTableRowProps<T> {
     row: T;
     rowId: string;
-    columns: TableColumn<T>[];
+    columns: DataListingColumn<T>[];
     selectable: boolean;
     isSelected: boolean;
     onSelectRow: (rowId: string, checked: boolean) => void;
@@ -36,7 +36,7 @@ export default function DataTableRow<T extends object>(props: DataTableRowProps<
             }}
         >
             {selectable && (
-                <DataTableSelectionCheckbox
+                <ListingSelectionCheckbox
                     checked={isSelected}
                     onCheckedChange={(checked) => onSelectRow(rowId, checked)}
                     onClick={(event) => event.stopPropagation()}

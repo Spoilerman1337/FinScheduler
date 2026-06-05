@@ -2,21 +2,21 @@ import {forwardRef} from "react";
 import {IconButton, Text} from "@chakra-ui/react";
 import type {ComponentProps} from "react";
 
-interface PaginatorPageButtonProps extends ComponentProps<typeof IconButton> {
+interface ListingPaginatorPageButtonProps extends ComponentProps<typeof IconButton> {
     value: number;
 }
 
-const PaginatorPageButton = forwardRef<HTMLButtonElement, PaginatorPageButtonProps>((props, ref) => {
+const ListingPaginatorPageButton = forwardRef<HTMLButtonElement, ListingPaginatorPageButtonProps>((props, ref) => {
     const {value, ...restProps} = props;
 
     return (
         <IconButton
             ref={ref}
-            color={"neon.blue"}
-            borderColor={"neon.blue"}
-            backdropFilter={"blur(12px)"}
-            bg={"glass.bgHover"}
-            border={"1px solid"}
+            color="neon.blue"
+            borderColor="neon.blue"
+            backdropFilter="blur(12px)"
+            bg="glass.bgHover"
+            border="1px solid"
             transition="all 0.3s ease-in-out"
             _selected={{
                 filter: "drop-shadow(0 0 16px rgba(0,212,255,0.9))",
@@ -34,7 +34,7 @@ const PaginatorPageButton = forwardRef<HTMLButtonElement, PaginatorPageButtonPro
                 backdropFilter: "blur(12px)",
                 borderColor: "neon.purple",
             }}
-            focusRing={"none"}
+            focusRing="none"
             {...restProps}
         >
             <Text color="currentColor">{value}</Text>
@@ -42,6 +42,6 @@ const PaginatorPageButton = forwardRef<HTMLButtonElement, PaginatorPageButtonPro
     );
 });
 
-PaginatorPageButton.displayName = "PaginatorPageButton";
+ListingPaginatorPageButton.displayName = "ListingPaginatorPageButton";
 
-export default PaginatorPageButton;
+export default ListingPaginatorPageButton;

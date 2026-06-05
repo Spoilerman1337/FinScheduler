@@ -1,9 +1,8 @@
-import {Flex, Text} from "@chakra-ui/react";
+import {Card, SimpleGrid, Text} from "@chakra-ui/react";
 import type {DataListingColumn} from "../../dataListing/types.ts";
-import DataTableCell from "./DataTableCell.tsx";
-import DataTableRow from "./DataTableRow.tsx";
+import DataShowcaseCard from "./DataShowcaseCard.tsx";
 
-interface DataTableRowsProps<T> {
+interface DataShowcaseGridProps<T> {
     data: T[];
     columns: DataListingColumn<T>[];
     selectable: boolean;
@@ -14,7 +13,7 @@ interface DataTableRowsProps<T> {
     onRowEdit: (row: T) => void;
 }
 
-export default function DataTableRows<T extends object>(props: DataTableRowsProps<T>) {
+export default function DataShowcaseGrid<T extends object>(props: DataShowcaseGridProps<T>) {
     const {
         data,
         columns,
@@ -26,38 +25,28 @@ export default function DataTableRows<T extends object>(props: DataTableRowsProp
         onRowEdit,
     } = props;
 
+    if (data.length === 0) {
+        return (
+            <Card.Root>
+                <Card.Body minH="16rem" justifyContent="center" alignItems="center">
+                    <Text color="app.accentViolet" fontSize="xl">Данные не найдены.</Text>
+                </Card.Body>
+            </Card.Root>
+        );
+    }
+
     return (
-        <Flex
-            as="tbody"
-            flexDirection="column"
-            overflowY="visible"
-            overflowX="hidden"
+        <SimpleGrid
+            columns={{base: 1, md: 2, xl: 3, "2xl": 4}}
+            gap={4}
+            alignItems="stretch"
         >
-            {data.length === 0 && (
-                <Flex
-                    as="tr"
-                    width="100%"
-                    bg="bg.layer1"
-                    borderBottom="1px solid"
-                    borderColor="glass.border"
-                >
-                    <DataTableCell
-                        as="td"
-                        flex="1 0 100%"
-                        minWidth="100%"
-                        justify="center"
-                        py={10}
-                    >
-                        <Text color="neon.purple" fontSize="xl">Данные не найдены.</Text>
-                    </DataTableCell>
-                </Flex>
-            )}
             {data.map((row, index) => {
                 const rowId = getRowId(row, index);
                 const isSelected = selectable && selectedRows.has(rowId);
 
                 return (
-                    <DataTableRow
+                    <DataShowcaseCard
                         key={rowId}
                         row={row}
                         rowId={rowId}
@@ -70,6 +59,6 @@ export default function DataTableRows<T extends object>(props: DataTableRowsProp
                     />
                 );
             })}
-        </Flex>
+        </SimpleGrid>
     );
 }

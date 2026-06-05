@@ -1,10 +1,10 @@
-import DataTable, {type TableColumn} from "../../components/dataTable/DataTable.tsx";
+import DataTable, {type DataListingColumn} from "../../components/dataTable/DataTable.tsx";
 import {Badge, Flex, Spinner, Text} from "@chakra-ui/react";
-import {useState, useEffect, useCallback} from "react";
+import {useCallback, useEffect, useState} from "react";
 import type {TagDto, TagFilter, TagModification} from "../../api/types.ts";
+import TagsService, {buildTagFilter, type TagStatusFilter} from "../../api/tags.ts";
 import {toaster} from "../../components/ui/toaster.tsx";
 import TagModal from "./subcomponents/TagModal.tsx";
-import TagsService, {buildTagFilter, type TagStatusFilter} from "../../api/tags.ts";
 import TagsFilters from "./subcomponents/TagsFilters.tsx";
 
 const tagsService = new TagsService();
@@ -19,24 +19,24 @@ export default function Tags() {
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTag, setEditingTag] = useState<TagDto | null>(null);
-    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<TagStatusFilter>('Active');
+    const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<TagStatusFilter>("Active");
 
-    const itemColumns: TableColumn<TagDto>[] = [
+    const tagColumns: DataListingColumn<TagDto>[] = [
         {
-            header: 'Название',
-            key: 'name',
+            header: "Название",
+            key: "name",
             render: (row: TagDto) => (
                 <Text fontWeight="semibold" color="neon.blue">
-                    {row.name || '-'}
+                    {row.name || "-"}
                 </Text>
             ),
-            headerProps: {textAlign: 'left'},
+            headerProps: {textAlign: "left"},
         },
         {
-            header: 'Статус',
-            key: 'isActive',
+            header: "Статус",
+            key: "isActive",
             render: (row: TagDto) => (
                 <Badge
                     fontSize="sm"
@@ -49,7 +49,7 @@ export default function Tags() {
                     {row.isActive ? "Активен" : "Неактивен"}
                 </Badge>
             ),
-            headerProps: {textAlign: 'left'},
+            headerProps: {textAlign: "left"},
         },
     ];
 
@@ -68,8 +68,8 @@ export default function Tags() {
             setTags(result.data);
             setTotal(result.count);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
-            console.error('Failed to load tags:', err);
+            setError(err instanceof Error ? err.message : "Ошибка загрузки данных");
+            console.error("Failed to load tags:", err);
         } finally {
             setLoading(false);
         }
@@ -80,20 +80,20 @@ export default function Tags() {
     }, [loadTags]);
 
     const handleReset = () => {
-        setSearchTerm('');
-        setStatusFilter('All');
+        setSearchTerm("");
+        setStatusFilter("All");
         setPage(1);
     };
 
     const handleOpenAddModal = () => {
         setEditingTag(null);
-        setModalMode('create');
+        setModalMode("create");
         setIsModalOpen(true);
     };
 
     const handleOpenEditModal = (tag: TagDto) => {
         setEditingTag(tag);
-        setModalMode('edit');
+        setModalMode("edit");
         setIsModalOpen(true);
     };
 
@@ -105,34 +105,34 @@ export default function Tags() {
 
     const handleSaveTag = async (tagData: TagModification) => {
         try {
-            if (modalMode === 'create') {
+            if (modalMode === "create") {
                 await tagsService.createTag(tagData);
                 toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно добавлен',
-                    type: 'success',
+                    title: "Успешно",
+                    description: "Элемент успешно добавлен",
+                    type: "success",
                 });
-            } else if (modalMode === 'edit' && editingTag?.id) {
+            } else if (modalMode === "edit" && editingTag?.id) {
                 await tagsService.updateTag(editingTag.id, tagData);
                 toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно обновлен',
-                    type: 'success',
+                    title: "Успешно",
+                    description: "Элемент успешно обновлен",
+                    type: "success",
                 });
             } else {
-                console.error('Cannot save: missing id for edit mode', {modalMode, editingItem: editingTag});
-                throw new Error('Не удалось определить режим сохранения');
+                console.error("Cannot save: missing id for edit mode", {modalMode, editingItem: editingTag});
+                throw new Error("Не удалось определить режим сохранения");
             }
 
             await loadTags();
         } catch (err) {
-            console.error('Error saving tag:', err);
+            console.error("Error saving tag:", err);
             throw err;
         }
     };
 
     const getRowId = (row: TagDto): string => {
-        return row.id ?? '';
+        return row.id ?? "";
     };
 
     return (
@@ -167,7 +167,7 @@ export default function Tags() {
                 <>
                     <DataTable
                         data={tags}
-                        columns={itemColumns}
+                        columns={tagColumns}
                         total={total}
                         page={page}
                         pageSize={pageSize}
@@ -184,7 +184,6 @@ export default function Tags() {
                         getRowId={getRowId}
                     />
                     <TagModal
-                        key={`${modalMode}-${editingTag?.id || 'new'}`}
                         isOpen={isModalOpen}
                         onClose={handleCloseModal}
                         onSave={handleSaveTag}

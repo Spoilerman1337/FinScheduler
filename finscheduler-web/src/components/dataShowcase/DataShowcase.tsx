@@ -1,13 +1,13 @@
-import {Flex} from "@chakra-ui/react";
+import {Card, Flex, Stack, Text} from "@chakra-ui/react";
 import ListingActionButtons from "../dataListing/actionButtons/ListingActionButtons.tsx";
 import ListingPaginator from "../dataListing/paginator/ListingPaginator.tsx";
-import type {DataListingColumn} from "../dataListing/types.ts";
-import DataTableHeader from "./subcomponents/DataTableHeader.tsx";
-import DataTableRows from "./subcomponents/DataTableRows.tsx";
+import ListingSelectionCheckbox from "../dataListing/selectionCheckbox/ListingSelectionCheckbox.tsx";
+import {showcasePageSizeOptions, type DataListingColumn} from "../dataListing/types.ts";
+import DataShowcaseGrid from "./subcomponents/DataShowcaseGrid.tsx";
 
 export type {DataListingColumn} from "../dataListing/types.ts";
 
-interface DataTableProps<T> {
+interface DataShowcaseProps<T> {
     data: T[];
     columns: DataListingColumn<T>[];
     total: number;
@@ -24,7 +24,7 @@ interface DataTableProps<T> {
     getRowId?: (row: T) => string;
 }
 
-export default function DataTable<T extends object>(props: DataTableProps<T>) {
+export default function DataShowcase<T extends object>(props: DataShowcaseProps<T>) {
     const {
         data = [],
         selectable = false,
@@ -77,16 +77,6 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     };
 
     const selectedIds = Array.from(selectedRows);
-    const selectedRow = selectedIds.length === 1
-        ? data.find((row, index) => resolveRowId(row, index) === selectedIds[0])
-        : undefined;
-
-    const handleEditSelected = () => {
-        if (selectedRow) {
-            handleEdit(selectedRow);
-        }
-    };
-
     const handleDeleteSelected = () => {
         if (onDelete && selectedIds.length > 0) {
             onDelete(selectedIds);
@@ -97,50 +87,53 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
         data.every((row, index) => selectedRows.has(resolveRowId(row, index)));
 
     return (
-        <Flex direction="column" width="100%">
-            <Flex
-                width="100%"
-                bg="bg.layer1"
-                borderColor="borderStrong"
-                boxShadow="card"
-                p={0}
-                background="gradients.cosmic"
-                flexDirection="column"
-                borderRadius="xl"
-                border="1px solid rgba(255,255,255,0.2)"
-                overflow="hidden"
-            >
-                <Flex
-                    as="table"
-                    width="100%"
-                    minWidth="min-content"
-                    borderCollapse="collapse"
-                    flexDirection="column"
-                >
-                    <DataTableHeader
-                        columns={props.columns}
-                        selectable={selectable}
-                        allSelected={allSelected}
-                        onSelectAll={handleSelectAll}
-                    />
-                    <DataTableRows
-                        data={data}
-                        columns={props.columns}
-                        selectable={selectable}
-                        selectedRows={selectedRows}
-                        getRowId={resolveRowId}
-                        onSelectRow={handleSelectRow}
-                        onEdit={onEdit}
-                        onRowEdit={handleEdit}
-                    />
-                </Flex>
-            </Flex>
+        <Stack width="100%" gap={4}>
+            {selectable && data.length > 0 && (
+                <Card.Root>
+                    <Card.Body py="4">
+                        <Flex align="center" gap={3}>
+                            <ListingSelectionCheckbox
+                                checked={allSelected}
+                                onCheckedChange={handleSelectAll}
+                                containerProps={{
+                                    as: "div",
+                                    py: 0,
+                                    px: 0,
+                                    flexBasis: "auto",
+                                    minWidth: "auto",
+                                    maxWidth: "none",
+                                }}
+                            />
+                            <Stack gap={0}>
+                                <Text color="app.accent" fontWeight="semibold">
+                                    {allSelected ? "Все карточки на странице выбраны" : "Выделить все карточки на странице"}
+                                </Text>
+                                <Text color="fg.muted" fontSize="sm">
+                                    Выбрано: {selectedIds.length} из {data.length}
+                                </Text>
+                            </Stack>
+                        </Flex>
+                    </Card.Body>
+                </Card.Root>
+            )}
+
+            <DataShowcaseGrid
+                data={data}
+                columns={props.columns}
+                selectable={selectable}
+                selectedRows={selectedRows}
+                getRowId={resolveRowId}
+                onSelectRow={handleSelectRow}
+                onEdit={onEdit}
+                onRowEdit={handleEdit}
+            />
 
             {props.total > 0 && (
                 <ListingPaginator
                     total={props.total}
                     page={props.page || 1}
-                    pageSize={props.pageSize || 10}
+                    pageSize={props.pageSize || showcasePageSizeOptions[0]}
+                    pageSizeOptions={showcasePageSizeOptions}
                     onPageChange={props.onPageChange || (() => {})}
                     onPageSizeChange={props.onPageSizeChange || (() => {})}
                 />
@@ -148,9 +141,8 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
             <ListingActionButtons
                 selectedCount={selectedIds.length}
                 onAdd={onAdd}
-                onEditSelected={onEdit && selectedRow ? handleEditSelected : undefined}
                 onDeleteSelected={onDelete ? handleDeleteSelected : undefined}
             />
-        </Flex>
+        </Stack>
     );
 }

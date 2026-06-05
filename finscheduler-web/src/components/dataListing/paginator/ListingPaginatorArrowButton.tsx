@@ -3,21 +3,21 @@ import {IconButton} from "@chakra-ui/react";
 import {ChevronLeftIcon, ChevronRightIcon} from "lucide-react";
 import type {ComponentProps} from "react";
 
-interface PaginatorArrowButtonProps extends ComponentProps<typeof IconButton> {
+interface ListingPaginatorArrowButtonProps extends ComponentProps<typeof IconButton> {
     direction: "previous" | "next";
 }
 
-const PaginatorArrowButton = forwardRef<HTMLButtonElement, PaginatorArrowButtonProps>((props, ref) => {
+const ListingPaginatorArrowButton = forwardRef<HTMLButtonElement, ListingPaginatorArrowButtonProps>((props, ref) => {
     const {direction, ...restProps} = props;
 
     return (
         <IconButton
             ref={ref}
-            color={"neon.blue"}
-            borderColor={"neon.blue"}
-            backdropFilter={"blur(12px)"}
-            bg={"glass.bgHover"}
-            border={"1px solid"}
+            color="neon.blue"
+            borderColor="neon.blue"
+            backdropFilter="blur(12px)"
+            bg="glass.bgHover"
+            border="1px solid"
             _hover={{
                 filter: "drop-shadow(0 0 16px rgba(212, 0,255,0.9))",
                 boxShadow: "0 0 20px rgba(212, 0,255,1)",
@@ -36,7 +36,7 @@ const PaginatorArrowButton = forwardRef<HTMLButtonElement, PaginatorArrowButtonP
                 cursor: "default",
             }}
             transition="all 0.3s ease-in-out"
-            focusRing={"none"}
+            focusRing="none"
             {...restProps}
         >
             {direction === "previous" ? <ChevronLeftIcon/> : <ChevronRightIcon/>}
@@ -44,6 +44,6 @@ const PaginatorArrowButton = forwardRef<HTMLButtonElement, PaginatorArrowButtonP
     );
 });
 
-PaginatorArrowButton.displayName = "PaginatorArrowButton";
+ListingPaginatorArrowButton.displayName = "ListingPaginatorArrowButton";
 
-export default PaginatorArrowButton;
+export default ListingPaginatorArrowButton;
