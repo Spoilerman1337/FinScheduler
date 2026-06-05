@@ -63,6 +63,14 @@ vi.mock('../../features/tags/Tags.tsx', () => ({
     },
 }));
 
+vi.mock('../../components/ui/toaster.tsx', () => {
+    const ToasterMock: typeof import('../../components/ui/toaster.tsx').Toaster = () => <></>;
+
+    return {
+        Toaster: ToasterMock,
+    };
+});
+
 function ShellUnderTest() {
     return (
         <Flex w="100vw" h="100vh">
