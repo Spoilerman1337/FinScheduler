@@ -1,6 +1,6 @@
 import {Box, HStack, Icon, Text} from '@chakra-ui/react';
 import type {LucideIcon} from 'lucide-react';
-import {NavLink, useLocation} from 'react-router-dom';
+import {matchPath, NavLink, useLocation} from 'react-router-dom';
 
 export interface SidebarItemProps {
     icon: LucideIcon;
@@ -62,7 +62,6 @@ function SidebarItemContent(props: SidebarItemProps & {isActive: boolean}) {
 
 export default function SidebarItem(props: SidebarItemProps) {
     const location = useLocation();
-    const isActive = Boolean(props.path) && location.pathname === props.path;
 
     if (!props.path || props.disabled) {
         return (
@@ -72,8 +71,19 @@ export default function SidebarItem(props: SidebarItemProps) {
         );
     }
 
+    const path = props.path;
+    const isActive = Boolean(
+        matchPath(
+            {
+                path,
+                end: path === '/',
+            },
+            location.pathname,
+        ),
+    );
+
     return (
-        <NavLink to={props.path} aria-label={props.label}>
+        <NavLink to={path} aria-label={props.label}>
             <SidebarItemContent {...props} isActive={isActive} />
         </NavLink>
     );

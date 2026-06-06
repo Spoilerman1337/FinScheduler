@@ -57,6 +57,12 @@ vi.mock('../../features/items/Items.tsx', () => ({
     },
 }));
 
+vi.mock('../../features/items/ItemDetailsPage.tsx', () => ({
+    default: function ItemDetailsPageMock() {
+        return <div>Item Details Page</div>;
+    },
+}));
+
 vi.mock('../../features/tags/Tags.tsx', () => ({
     default: function TagsPageMock() {
         return <div>Tags Page</div>;
@@ -111,6 +117,19 @@ describe('Main and Sidebar integration', () => {
         expect(screen.getAllByText('Теги')).toHaveLength(2);
         expect(screen.queryByText('Items Page')).not.toBeInTheDocument();
         expect(screen.getByRole('link', {name: 'Теги', hidden: true})).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
+    it('keeps catalog route active for nested item detail pages', () => {
+        // Arrange
+        renderWithProviders(<ShellUnderTest />, {route: '/items/item-1/edit'});
+
+        // Assert
+        expect(screen.getByText('Item Details Page')).toBeInTheDocument();
+        expect(screen.getAllByText('Каталог')).toHaveLength(2);
+        expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
             'aria-current',
             'page',
         );

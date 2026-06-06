@@ -2,11 +2,14 @@ import {screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import {describe, expect, it, vi} from 'vitest';
+import {Route, Routes} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api.ts';
-import type {ItemDto, ItemModification} from '../../api/types.ts';
+import type {ItemDto} from '../../api/types.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';
+import ItemDetailsPage from './ItemDetailsPage.tsx';
 import Items from './Items.tsx';
+import {itemsListPath, newItemPath} from './routes.ts';
 
 function buildItem(overrides: Partial<ItemDto> = {}): ItemDto {
     return {
@@ -21,6 +24,17 @@ function buildItem(overrides: Partial<ItemDto> = {}): ItemDto {
         tags: [],
         ...overrides,
     };
+}
+
+function renderItemsRoutes(initialEntries: string[] = [itemsListPath]) {
+    return renderWithProviders(
+        <Routes>
+            <Route path={itemsListPath} element={<Items />} />
+            <Route path={newItemPath} element={<ItemDetailsPage mode="create" />} />
+            <Route path="/items/:itemId/edit" element={<ItemDetailsPage mode="edit" />} />
+        </Routes>,
+        {initialEntries},
+    );
 }
 
 describe('Items integration', () => {
@@ -175,122 +189,55 @@ describe('Items integration', () => {
         });
     });
 
-    it('creates a new item and reloads the table', async () => {
+    it('navigates to the create page from the add button', async () => {
         // Arrange
-        const currentItems = [buildItem({name: 'Existing Item'})];
-        let createdPayload: ItemModification | null = null;
-
         server.use(
-            http.get(`${API_BASE_URL}/items`, ({request}) => {
-                const isActive = new URL(request.url).searchParams.get('isActive');
-
+            http.get(`${API_BASE_URL}/items`, () => {
                 return HttpResponse.json({
-                    data:
-                        isActive === 'true'
-                            ? currentItems.filter((item) => item.isActive)
-                            : currentItems,
-                    count: currentItems.length,
+                    data: [buildItem({name: 'Existing Item'})],
+                    count: 1,
                 });
-            }),
-            http.post(`${API_BASE_URL}/items`, async ({request}) => {
-                createdPayload = (await request.json()) as ItemModification;
-                currentItems.push(
-                    buildItem({
-                        id: 'item-2',
-                        name: createdPayload.name,
-                        description: createdPayload.description,
-                        price: createdPayload.price,
-                        cashback: createdPayload.cashback,
-                        isActive: createdPayload.isActive,
-                        category: createdPayload.category,
-                    }),
-                );
-
-                return HttpResponse.json('item-2');
             }),
         );
 
         const user = userEvent.setup();
 
         // Act
-        renderWithProviders(<Items />);
+        renderItemsRoutes();
         await screen.findByText('Existing Item');
         await user.click(screen.getByRole('button', {name: 'Добавить'}));
-        await user.type(screen.getByLabelText('Название'), 'New Item');
-        await user.click(screen.getByText('Выберите категорию'));
-        await user.click(await screen.findByRole('option', {name: 'Еда и напитки'}));
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
 
         // Assert
-        await waitFor(() => {
-            expect(createdPayload).toEqual({
-                name: 'New Item',
-                description: undefined,
-                price: 0,
-                cashback: 0,
-                isActive: true,
-                category: 'FoodDrinks',
-                tagIds: [],
-            });
-        });
-        expect(await screen.findByText('New Item')).toBeInTheDocument();
+        expect(await screen.findByText('Новый предмет')).toBeInTheDocument();
+        expect(screen.getByText('Создание')).toBeInTheDocument();
     });
 
-    it('edits an existing item after a double click and reloads the showcase', async () => {
+    it('navigates to the edit page after a double click', async () => {
         // Arrange
-        const currentItems = [buildItem({name: 'Old Item'})];
-        let updatedPayload: ItemModification | null = null;
-
         server.use(
             http.get(`${API_BASE_URL}/items`, () => {
                 return HttpResponse.json({
-                    data: currentItems,
-                    count: currentItems.length,
+                    data: [buildItem({name: 'Old Item'})],
+                    count: 1,
                 });
             }),
-            http.put(`${API_BASE_URL}/items/:id`, async ({params, request}) => {
-                updatedPayload = (await request.json()) as ItemModification;
-                currentItems[0] = {
-                    ...currentItems[0],
-                    id: String(params.id),
-                    name: updatedPayload.name,
-                    description: updatedPayload.description,
-                    price: updatedPayload.price,
-                    cashback: updatedPayload.cashback,
-                    isActive: updatedPayload.isActive,
-                    category: updatedPayload.category,
-                };
-
-                return new HttpResponse(null, {status: 200});
+            http.get(`${API_BASE_URL}/items/item-1`, () => {
+                return HttpResponse.json(buildItem({name: 'Old Item'}));
             }),
         );
 
         const user = userEvent.setup();
 
         // Act
-        renderWithProviders(<Items />);
+        renderItemsRoutes();
         await user.dblClick(await screen.findByText('Old Item'));
-        await user.clear(screen.getByLabelText('Название'));
-        await user.type(screen.getByLabelText('Название'), 'Updated Item');
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
 
         // Assert
-        await waitFor(() => {
-            expect(updatedPayload).toEqual({
-                name: 'Updated Item',
-                description: 'Morning drink',
-                price: 199.5,
-                cashback: 5,
-                isActive: true,
-                category: 'FoodDrinks',
-                tagIds: [],
-            });
-        });
-        expect(await screen.findByText('Updated Item')).toBeInTheDocument();
-        expect(screen.queryByText('Old Item')).not.toBeInTheDocument();
+        expect(await screen.findByText('Редактирование предмета')).toBeInTheDocument();
+        expect(screen.getByLabelText('Название')).toHaveValue('Old Item');
     });
 
-    it('opens the edit modal from the showcase action button', async () => {
+    it('opens the edit page from the showcase action button', async () => {
         // Arrange
         server.use(
             http.get(`${API_BASE_URL}/items`, () => {
@@ -299,17 +246,23 @@ describe('Items integration', () => {
                     count: 1,
                 });
             }),
+            http.get(`${API_BASE_URL}/items/item-1`, () => {
+                return HttpResponse.json(buildItem({name: 'Coffee'}));
+            }),
         );
 
         const user = userEvent.setup();
 
         // Act
-        renderWithProviders(<Items />);
+        renderItemsRoutes();
         await user.click((await screen.findAllByRole('button', {name: 'Открыть карточку'}))[0]);
-        expect(await screen.findByText('Редактировать элемент')).toBeInTheDocument();
+
+        // Assert
+        expect(await screen.findByText('Редактирование предмета')).toBeInTheDocument();
+        expect(screen.getByLabelText('Название')).toHaveValue('Coffee');
     });
 
-    it('allows reopening the edit modal after closing it', async () => {
+    it('returns to the list after cancelling from the edit page', async () => {
         // Arrange
         server.use(
             http.get(`${API_BASE_URL}/items`, () => {
@@ -318,26 +271,22 @@ describe('Items integration', () => {
                     count: 1,
                 });
             }),
+            http.get(`${API_BASE_URL}/items/item-1`, () => {
+                return HttpResponse.json(buildItem({name: 'Coffee'}));
+            }),
         );
 
         const user = userEvent.setup();
 
         // Act
-        renderWithProviders(<Items />);
+        renderItemsRoutes();
         await user.dblClick(await screen.findByText('Coffee'));
-        expect(await screen.findByText('Редактировать элемент')).toBeInTheDocument();
+        expect(await screen.findByText('Редактирование предмета')).toBeInTheDocument();
         await user.click(screen.getByRole('button', {name: 'Отмена'}));
 
         // Assert
-        await waitFor(() => {
-            expect(screen.queryByText('Редактировать элемент')).not.toBeInTheDocument();
-        });
-
-        // Act
-        await user.click(screen.getByRole('button', {name: 'Открыть карточку'}));
-
-        // Assert
-        expect(await screen.findByText('Редактировать элемент')).toBeInTheDocument();
+        expect(await screen.findByText('Coffee')).toBeInTheDocument();
+        expect(screen.queryByText('Редактирование предмета')).not.toBeInTheDocument();
     });
 
     it('deletes selected items and reloads the table', async () => {
@@ -510,7 +459,7 @@ describe('Items integration', () => {
         const user = userEvent.setup();
 
         // Act
-        renderWithProviders(<Items />);
+        renderItemsRoutes();
         await screen.findByText('Existing Item');
         await user.click(screen.getByRole('button', {name: 'Добавить'}));
         await user.click(screen.getByPlaceholderText('Выберите теги'));
@@ -617,7 +566,7 @@ describe('Items integration', () => {
 
         try {
             // Act
-            renderWithProviders(<Items />);
+            renderItemsRoutes();
             await screen.findByText('Existing Item');
             await user.click(screen.getByRole('button', {name: 'Добавить'}));
             await user.type(screen.getByLabelText('Название'), 'Broken Item');

@@ -60,6 +60,25 @@ export default class ItemsService extends FinschedulerApiClient {
         return response.json();
     }
 
+    async getItem(id: string): Promise<ItemDto | null> {
+        const response = await fetch(`${this.baseUrl}/items/${id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.status === 404) {
+            return null;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch item: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
     async createItem(item: ItemModification): Promise<string> {
         const response = await fetch(`${this.baseUrl}/items`, {
             method: 'POST',

@@ -1,16 +1,18 @@
 import DataShowcase, {type DataListingColumn} from '../../components/dataShowcase/DataShowcase.tsx';
 import {Badge, Flex, Spinner, Text} from '@chakra-ui/react';
 import {useCallback, useEffect, useState} from 'react';
-import type {ItemDto, ItemFilter, ItemModification} from '../../api/types.ts';
+import {useNavigate} from 'react-router-dom';
+import type {ItemDto, ItemFilter} from '../../api/types.ts';
 import ItemsService, {buildItemFilter, type ItemStatusFilter} from '../../api/items.ts';
 import {toaster} from '../../components/ui/toaster-instance.ts';
-import ItemModal from './subcomponents/ItemModal.tsx';
 import ItemsFilters from './subcomponents/ItemsFilters.tsx';
 import {getCashbackColor} from './types.ts';
+import {buildEditItemPath, newItemPath} from './routes.ts';
 
 const itemsService = new ItemsService();
 
 export default function Items() {
+    const navigate = useNavigate();
     const [items, setItems] = useState<ItemDto[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
@@ -18,9 +20,6 @@ export default function Items() {
     const [page, setPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(12);
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<ItemDto | null>(null);
-    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>('Active');
     const [priceFrom, setPriceFrom] = useState<string>('');
@@ -130,49 +129,20 @@ export default function Items() {
     };
 
     const handleOpenAddModal = () => {
-        setEditingItem(null);
-        setModalMode('create');
-        setIsModalOpen(true);
+        navigate(newItemPath);
     };
 
     const handleOpenEditModal = (item: ItemDto) => {
-        setEditingItem(item);
-        setModalMode('edit');
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setEditingItem(null);
-        setSelectedRows(new Set());
-    };
-
-    const handleSaveItem = async (itemData: ItemModification) => {
-        try {
-            if (modalMode === 'create') {
-                await itemsService.createItem(itemData);
-                toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно добавлен',
-                    type: 'success',
-                });
-            } else if (modalMode === 'edit' && editingItem?.id) {
-                await itemsService.updateItem(editingItem.id, itemData);
-                toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно обновлен',
-                    type: 'success',
-                });
-            } else {
-                console.error('Cannot save: missing id for edit mode', {modalMode, editingItem});
-                throw new Error('Не удалось определить режим сохранения');
-            }
-
-            await loadItems();
-        } catch (err) {
-            console.error('Error saving item:', err);
-            throw err;
+        if (!item.id) {
+            toaster.create({
+                title: 'Ошибка',
+                description: 'Не удалось открыть карточку предмета',
+                type: 'error',
+            });
+            return;
         }
+
+        navigate(buildEditItemPath(item.id));
     };
 
     const handleDeleteItems = async (ids: string[]) => {
@@ -252,13 +222,6 @@ export default function Items() {
                         onEdit={handleOpenEditModal}
                         onDelete={handleDeleteItems}
                         getRowId={getRowId}
-                    />
-                    <ItemModal
-                        isOpen={isModalOpen}
-                        onClose={handleCloseModal}
-                        onSave={handleSaveItem}
-                        item={editingItem}
-                        mode={modalMode}
                     />
                 </>
             )}
