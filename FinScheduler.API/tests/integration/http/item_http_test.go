@@ -56,6 +56,86 @@ func Test_ItemsHandler_Get_ShouldReturnPaginatedItems(t *testing.T) {
 	assert.Equal(t, expectedName, *actualResponse.Data[0].Name)
 }
 
+func Test_ItemsHandler_GetById_ShouldReturnItem(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	app := newTestApplication()
+	ctx := testContext
+	method := http.MethodGet
+	expectedName := "Milk"
+	create := &domains.ItemCreate{
+		Name:     expectedName,
+		Price:    decimal.NewFromFloat(12.50),
+		Category: "FoodDrinks",
+	}
+
+	itemID, createErr := app.itemsService.Create(ctx, create)
+	target := "/api/items/" + itemID.String()
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	var actualResponse domains.ItemDto
+	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
+
+	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, decodeErr)
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	require.NotNil(t, actualResponse.Id)
+	require.NotNil(t, actualResponse.Name)
+	assert.Equal(t, itemID, *actualResponse.Id)
+	assert.Equal(t, expectedName, *actualResponse.Name)
+}
+
+func Test_ItemsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodGet
+	target := "/api/items/bad-id"
+	expectedBodyFragment := "invalid UUID length"
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_ItemsHandler_GetById_ShouldReturnNotFoundForMissingItem(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodGet
+	missingID := uuid.New()
+	target := "/api/items/" + missingID.String()
+	expectedBodyFragment := "item not found"
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusNotFound, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
 func Test_ItemsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
