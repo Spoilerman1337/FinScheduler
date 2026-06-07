@@ -89,11 +89,11 @@ export default function Items() {
             headerProps: {textAlign: 'left'},
         },
         {
-            header: 'Создан',
-            key: 'createdAt',
+            header: 'Обновлён',
+            key: 'updatedAt',
             render: (row: ItemDto) => (
                 <Text color="neon.blue" fontSize="sm">
-                    {row.createdAt ? new Date(row.createdAt).toLocaleDateString('ru-RU') : '-'}
+                    {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString('ru-RU') : '-'}
                 </Text>
             ),
             headerProps: {textAlign: 'left'},
@@ -143,7 +143,7 @@ export default function Items() {
 
     const handleReset = () => {
         setSearchTerm('');
-        setStatusFilter('All');
+        setStatusFilter('Active');
         setDateFilter(createDefaultItemDateFilter());
         setPriceRange({from: '', to: ''});
         setCashbackRange({from: '', to: ''});

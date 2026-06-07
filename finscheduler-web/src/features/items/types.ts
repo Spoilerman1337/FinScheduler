@@ -9,24 +9,24 @@ export const itemDateModes: readonly [
     ...DateRangeFilterMode<ItemDateFilterMode>[],
 ] = [
     {
-        value: 'created',
-        label: 'Создан',
-        description: 'Показывать предметы, созданные в выбранный период.',
-        fromInputLabel: 'Дата создания от',
-        toInputLabel: 'Дата создания до',
-    },
-    {
         value: 'updated',
         label: 'Обновлён',
         description: 'Показывать предметы, обновлённые в выбранный период.',
         fromInputLabel: 'Дата обновления от',
         toInputLabel: 'Дата обновления до',
     },
+    {
+        value: 'created',
+        label: 'Создан',
+        description: 'Показывать предметы, созданные в выбранный период.',
+        fromInputLabel: 'Дата создания от',
+        toInputLabel: 'Дата создания до',
+    },
 ];
 
 export function createDefaultItemDateFilter(): DateRangeFilterValue<ItemDateFilterMode> {
     return {
-        mode: 'created',
+        mode: 'updated',
         from: '',
         to: '',
     };

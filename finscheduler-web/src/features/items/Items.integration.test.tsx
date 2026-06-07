@@ -135,12 +135,12 @@ describe('Items integration', () => {
         await user.click(screen.getByRole('button', {name: 'Сброс'}));
 
         // Assert
-        expect(await screen.findByText('All Results')).toBeInTheDocument();
+        expect(await screen.findByText('Coffee')).toBeInTheDocument();
         await waitFor(() => {
             const lastRequest = requests.at(-1);
 
             expect(lastRequest?.searchParams.get('name')).toBeNull();
-            expect(lastRequest?.searchParams.get('isActive')).toBeNull();
+            expect(lastRequest?.searchParams.get('isActive')).toBe('true');
         });
     });
 
@@ -292,6 +292,7 @@ describe('Items integration', () => {
         // Act
         renderWithProviders(<Items />);
         await screen.findByText('Coffee');
+        await user.click(screen.getByRole('button', {name: 'Обновлён'}));
         await user.click(screen.getByRole('button', {name: 'Создан'}));
         fireEvent.change(await screen.findByLabelText('Дата создания от'), {
             target: {value: '15.02.2025'},
@@ -361,7 +362,6 @@ describe('Items integration', () => {
         // Act
         renderWithProviders(<Items />);
         await screen.findByText('Coffee');
-        await user.click(screen.getByRole('button', {name: 'Создан'}));
         await user.click(screen.getByRole('button', {name: 'Обновлён'}));
         fireEvent.change(await screen.findByLabelText('Дата обновления от'), {
             target: {value: '10.03.2025'},
