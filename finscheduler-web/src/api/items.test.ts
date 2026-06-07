@@ -53,6 +53,29 @@ describe('items api', () => {
         });
     });
 
+    it('buildItemFilter normalizes reversed price bounds before sending them to the API', () => {
+        // Arrange
+        const params = {
+            page: 1,
+            pageSize: 10,
+            searchTerm: '',
+            statusFilter: 'All' as const,
+            priceFrom: '300',
+            priceTo: '100',
+        };
+
+        // Act
+        const filter = buildItemFilter(params);
+
+        // Assert
+        expect(filter).toEqual({
+            page: 0,
+            pageSize: 10,
+            priceFrom: 100,
+            priceTo: 300,
+        });
+    });
+
     it('getItem requests the item by id endpoint and returns the item', async () => {
         // Arrange
         const service = new ItemsService();

@@ -144,7 +144,7 @@ describe('Items integration', () => {
         });
     });
 
-    it('applies price filters and reloads the table', async () => {
+    it('applies the price range from a single filter control and delays reload until apply', async () => {
         // Arrange
         const requests: URL[] = [];
 
@@ -176,8 +176,15 @@ describe('Items integration', () => {
         // Act
         renderWithProviders(<Items />);
         await screen.findByText('Coffee');
-        await user.type(screen.getByPlaceholderText('Цена от'), '100');
-        await user.type(screen.getByPlaceholderText('Цена до'), '300{Enter}');
+        await user.click(screen.getByRole('button', {name: 'Цена'}));
+        await user.type(await screen.findByLabelText('Цена от'), '300');
+        await user.type(screen.getByLabelText('Цена до'), '100');
+
+        // Assert
+        expect(requests).toHaveLength(1);
+
+        // Act
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Price')).toBeInTheDocument();
@@ -187,6 +194,7 @@ describe('Items integration', () => {
             expect(lastRequest?.searchParams.get('priceFrom')).toBe('100');
             expect(lastRequest?.searchParams.get('priceTo')).toBe('300');
         });
+        expect(screen.getByRole('button', {name: 'Цена: 100 - 300 ₽'})).toBeInTheDocument();
     });
 
     it('navigates to the create page from the add button', async () => {

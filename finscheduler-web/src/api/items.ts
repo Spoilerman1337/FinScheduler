@@ -3,6 +3,26 @@ import {FinschedulerApiClient} from './finscheduler-api-client.ts';
 
 export type ItemStatusFilter = 'All' | 'Active' | 'Inactive';
 
+function parsePriceValue(value: string): number | null {
+    if (!value) {
+        return null;
+    }
+
+    const normalized = value.replace(',', '.').trim();
+
+    if (!normalized) {
+        return null;
+    }
+
+    const parsed = Number(normalized);
+
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return null;
+    }
+
+    return parsed;
+}
+
 export function buildItemFilter(params: {
     page: number;
     pageSize: number;
@@ -24,20 +44,21 @@ export function buildItemFilter(params: {
         filter.isActive = params.statusFilter === 'Active';
     }
 
-    if (params.priceFrom) {
-        const price = parseFloat(params.priceFrom);
+    const priceFrom = parsePriceValue(params.priceFrom);
+    const priceTo = parsePriceValue(params.priceTo);
 
-        if (!Number.isNaN(price)) {
-            filter.priceFrom = price;
-        }
+    if (priceFrom !== null && priceTo !== null) {
+        filter.priceFrom = Math.min(priceFrom, priceTo);
+        filter.priceTo = Math.max(priceFrom, priceTo);
+        return filter;
     }
 
-    if (params.priceTo) {
-        const price = parseFloat(params.priceTo);
+    if (priceFrom !== null) {
+        filter.priceFrom = priceFrom;
+    }
 
-        if (!Number.isNaN(price)) {
-            filter.priceTo = price;
-        }
+    if (priceTo !== null) {
+        filter.priceTo = priceTo;
     }
 
     return filter;

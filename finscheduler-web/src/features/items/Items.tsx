@@ -4,6 +4,7 @@ import {useCallback, useEffect, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import type {ItemDto, ItemFilter} from '../../api/types.ts';
 import ItemsService, {buildItemFilter, type ItemStatusFilter} from '../../api/items.ts';
+import type {NumberRangeValue} from '../../components/listingFilters/NumberRangeFilter.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {buildEditItemPath, newItemPath} from '../routes.ts';
 import ItemsFilters from './subcomponents/ItemsFilters.tsx';
@@ -22,8 +23,7 @@ export default function Items() {
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>('Active');
-    const [priceFrom, setPriceFrom] = useState<string>('');
-    const [priceTo, setPriceTo] = useState<string>('');
+    const [priceRange, setPriceRange] = useState<NumberRangeValue>({from: '', to: ''});
 
     const itemColumns: DataListingColumn<ItemDto>[] = [
         {
@@ -102,8 +102,8 @@ export default function Items() {
                 pageSize,
                 searchTerm,
                 statusFilter,
-                priceFrom,
-                priceTo,
+                priceFrom: priceRange.from,
+                priceTo: priceRange.to,
             });
             const result = await itemsService.getItems(filter);
             setItems(result.data);
@@ -114,7 +114,7 @@ export default function Items() {
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, searchTerm, statusFilter, priceFrom, priceTo]);
+    }, [page, pageSize, searchTerm, statusFilter, priceRange.from, priceRange.to]);
 
     useEffect(() => {
         loadItems();
@@ -123,8 +123,7 @@ export default function Items() {
     const handleReset = () => {
         setSearchTerm('');
         setStatusFilter('All');
-        setPriceFrom('');
-        setPriceTo('');
+        setPriceRange({from: '', to: ''});
         setPage(1);
     };
 
@@ -173,8 +172,7 @@ export default function Items() {
             <ItemsFilters
                 searchTerm={searchTerm}
                 statusFilter={statusFilter}
-                priceFrom={priceFrom}
-                priceTo={priceTo}
+                priceRange={priceRange}
                 onSearchTermChange={(value) => {
                     setPage(1);
                     setSearchTerm(value);
@@ -183,8 +181,10 @@ export default function Items() {
                     setStatusFilter(value);
                     setPage(1);
                 }}
-                onPriceFromChange={setPriceFrom}
-                onPriceToChange={setPriceTo}
+                onPriceRangeChange={(value) => {
+                    setPriceRange(value);
+                    setPage(1);
+                }}
                 onApply={() => {
                     setPage(1);
                     loadItems();
