@@ -2,11 +2,14 @@ import {screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import {describe, expect, it, vi} from 'vitest';
+import {Route, Routes} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api.ts';
-import type {TagDto, TagModification} from '../../api/types.ts';
+import type {TagDto} from '../../api/types.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';
+import {buildEditTagPath, newTagPath, tagEditRoutePath, tagsListPath} from '../routes.ts';
 import Tags from './Tags.tsx';
+import TagDetailsPage from './TagDetailsPage.tsx';
 
 function buildTag(overrides: Partial<TagDto> = {}): TagDto {
     return {
@@ -15,6 +18,17 @@ function buildTag(overrides: Partial<TagDto> = {}): TagDto {
         isActive: true,
         ...overrides,
     };
+}
+
+function renderTagsRoutes(initialEntries: string[] = [tagsListPath]) {
+    return renderWithProviders(
+        <Routes>
+            <Route path={tagsListPath} element={<Tags />} />
+            <Route path={newTagPath} element={<TagDetailsPage mode="create" />} />
+            <Route path={tagEditRoutePath} element={<TagDetailsPage mode="edit" />} />
+        </Routes>,
+        {initialEntries},
+    );
 }
 
 describe('Tags integration', () => {
@@ -124,107 +138,12 @@ describe('Tags integration', () => {
         });
     });
 
-    it('creates a new tag and reloads the table', async () => {
-        // Arrange
-        const currentTags = [buildTag({name: 'Existing Tag'})];
-        let createdPayload: TagModification | null = null;
-
-        server.use(
-            http.get(`${API_BASE_URL}/tags`, ({request}) => {
-                const isActive = new URL(request.url).searchParams.get('isActive');
-
-                return HttpResponse.json({
-                    data:
-                        isActive === 'true'
-                            ? currentTags.filter((tag) => tag.isActive)
-                            : currentTags,
-                    count: currentTags.length,
-                });
-            }),
-            http.post(`${API_BASE_URL}/tags`, async ({request}) => {
-                createdPayload = (await request.json()) as TagModification;
-                currentTags.push(
-                    buildTag({
-                        id: 'tag-2',
-                        name: createdPayload.name,
-                        isActive: createdPayload.isActive,
-                    }),
-                );
-
-                return HttpResponse.json('tag-2');
-            }),
-        );
-
-        const user = userEvent.setup();
-
-        // Act
-        renderWithProviders(<Tags />);
-        await screen.findByText('Existing Tag');
-        await user.click(screen.getByRole('button', {name: 'Добавить'}));
-        await user.type(screen.getByLabelText('Название'), 'New Tag');
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
-
-        // Assert
-        await waitFor(() => {
-            expect(createdPayload).toEqual({
-                name: 'New Tag',
-                isActive: true,
-            });
-        });
-        expect(await screen.findByText('New Tag')).toBeInTheDocument();
-    });
-
-    it('edits an existing tag and reloads the table', async () => {
-        // Arrange
-        const currentTags = [buildTag({name: 'Old Tag'})];
-        let updatedPayload: TagModification | null = null;
-
-        server.use(
-            http.get(`${API_BASE_URL}/tags`, () => {
-                return HttpResponse.json({
-                    data: currentTags,
-                    count: currentTags.length,
-                });
-            }),
-            http.put(`${API_BASE_URL}/tags/:id`, async ({params, request}) => {
-                updatedPayload = (await request.json()) as TagModification;
-                currentTags[0] = {
-                    ...currentTags[0],
-                    id: String(params.id),
-                    name: updatedPayload.name,
-                    isActive: updatedPayload.isActive,
-                };
-
-                return new HttpResponse(null, {status: 200});
-            }),
-        );
-
-        const user = userEvent.setup();
-
-        // Act
-        renderWithProviders(<Tags />);
-        await user.click(await screen.findByText('Old Tag'));
-        await user.clear(screen.getByLabelText('Название'));
-        await user.type(screen.getByLabelText('Название'), 'Updated Tag');
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
-
-        // Assert
-        await waitFor(() => {
-            expect(updatedPayload).toEqual({
-                name: 'Updated Tag',
-                isActive: true,
-            });
-        });
-        expect(await screen.findByText('Updated Tag')).toBeInTheDocument();
-        expect(screen.queryByText('Old Tag')).not.toBeInTheDocument();
-    });
-
-    it('allows reopening the edit modal after closing it', async () => {
+    it('navigates to the create page from the add button', async () => {
         // Arrange
         server.use(
             http.get(`${API_BASE_URL}/tags`, () => {
                 return HttpResponse.json({
-                    data: [buildTag({name: 'Food'})],
+                    data: [buildTag({name: 'Existing Tag'})],
                     count: 1,
                 });
             }),
@@ -233,21 +152,65 @@ describe('Tags integration', () => {
         const user = userEvent.setup();
 
         // Act
-        renderWithProviders(<Tags />);
+        renderTagsRoutes();
+        await screen.findByText('Existing Tag');
+        await user.click(screen.getByRole('button', {name: 'Добавить'}));
+
+        // Assert
+        expect(await screen.findByText('Новый тег')).toBeInTheDocument();
+        expect(screen.getByText('Создание')).toBeInTheDocument();
+    });
+
+    it('navigates to the edit page after a row click', async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: [buildTag({name: 'Old Tag'})],
+                    count: 1,
+                });
+            }),
+            http.get(`${API_BASE_URL}/tags/tag-1`, () => {
+                return HttpResponse.json(buildTag({name: 'Old Tag'}));
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderTagsRoutes();
+        await user.click(await screen.findByText('Old Tag'));
+
+        // Assert
+        expect(await screen.findByText('Редактирование тега')).toBeInTheDocument();
+        expect(screen.getByLabelText('Название')).toHaveValue('Old Tag');
+    });
+
+    it('returns to the list after cancelling from the edit page', async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: [buildTag({name: 'Food'})],
+                    count: 1,
+                });
+            }),
+            http.get(`${API_BASE_URL}/tags/tag-1`, () => {
+                return HttpResponse.json(buildTag({name: 'Food'}));
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderTagsRoutes();
         await user.click(await screen.findByText('Food'));
-        expect(await screen.findByText('Редактировать элемент')).toBeInTheDocument();
+        expect(await screen.findByText('Редактирование тега')).toBeInTheDocument();
         await user.click(screen.getByRole('button', {name: 'Отмена'}));
 
         // Assert
-        await waitFor(() => {
-            expect(screen.queryByText('Редактировать элемент')).not.toBeInTheDocument();
-        });
-
-        // Act
-        await user.click(screen.getByText('Food'));
-
-        // Assert
-        expect(await screen.findByText('Редактировать элемент')).toBeInTheDocument();
+        expect(await screen.findByText('Food')).toBeInTheDocument();
+        expect(screen.queryByText('Редактирование тега')).not.toBeInTheDocument();
     });
 
     it('hides the add button when a tag is selected', async () => {
@@ -435,7 +398,7 @@ describe('Tags integration', () => {
 
         try {
             // Act
-            renderWithProviders(<Tags />);
+            renderTagsRoutes();
             await screen.findByText('Existing Tag');
             await user.click(screen.getByRole('button', {name: 'Добавить'}));
             await user.type(screen.getByLabelText('Название'), 'Broken Tag');
@@ -449,5 +412,50 @@ describe('Tags integration', () => {
         } finally {
             consoleErrorSpy.mockRestore();
         }
+    });
+
+    it('opens the edit page from the selected-row action button', async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/tags`, () => {
+                return HttpResponse.json({
+                    data: [buildTag({name: 'Coffee'})],
+                    count: 1,
+                });
+            }),
+            http.get(`${API_BASE_URL}/tags/tag-1`, () => {
+                return HttpResponse.json(buildTag({name: 'Coffee'}));
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderTagsRoutes();
+        await screen.findByText('Coffee');
+        const checkboxes = await screen.findAllByRole('checkbox');
+
+        await user.click(checkboxes[1]);
+        await user.click(screen.getByRole('button', {name: 'Редактировать'}));
+
+        // Assert
+        expect(await screen.findByText('Редактирование тега')).toBeInTheDocument();
+        expect(screen.getByLabelText('Название')).toHaveValue('Coffee');
+    });
+
+    it('keeps the list route working when opening the edit page directly', async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/tags/tag-1`, () => {
+                return HttpResponse.json(buildTag({name: 'Travel'}));
+            }),
+        );
+
+        // Act
+        renderTagsRoutes([buildEditTagPath('tag-1')]);
+
+        // Assert
+        expect(await screen.findByText('Редактирование тега')).toBeInTheDocument();
+        expect(screen.getByLabelText('Название')).toHaveValue('Travel');
     });
 });

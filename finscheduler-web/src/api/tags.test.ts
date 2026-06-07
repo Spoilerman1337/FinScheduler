@@ -1,7 +1,12 @@
-import {describe, expect, it} from 'vitest';
-import {buildTagFilter} from './tags.ts';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+import {API_BASE_URL} from '../config/api.ts';
+import TagsService, {buildTagFilter} from './tags.ts';
 
 describe('tags api', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
     it('buildTagFilter maps page, search, and active status to TagFilter', () => {
         // Arrange
         const params = {
@@ -40,5 +45,49 @@ describe('tags api', () => {
             page: 0,
             pageSize: 10,
         });
+    });
+
+    it('getTag requests the tag by id endpoint and returns the tag', async () => {
+        // Arrange
+        const service = new TagsService();
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({id: 'tag-1', name: 'Food'}), {
+                status: 200,
+                headers: {'Content-Type': 'application/json'},
+            }),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+
+        // Act
+        const tag = await service.getTag('tag-1');
+
+        // Assert
+        expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/tags/tag-1`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        expect(tag).toEqual({id: 'tag-1', name: 'Food'});
+    });
+
+    it('getTag returns null when the tag endpoint responds with 404', async () => {
+        // Arrange
+        const service = new TagsService();
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(null, {
+                status: 404,
+                statusText: 'Not Found',
+            }),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+
+        // Act
+        const tag = await service.getTag('missing-tag');
+
+        // Assert
+        expect(tag).toBeNull();
     });
 });

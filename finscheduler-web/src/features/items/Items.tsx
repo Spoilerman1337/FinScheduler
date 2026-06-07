@@ -5,9 +5,9 @@ import {useNavigate} from 'react-router-dom';
 import type {ItemDto, ItemFilter} from '../../api/types.ts';
 import ItemsService, {buildItemFilter, type ItemStatusFilter} from '../../api/items.ts';
 import {toaster} from '../../components/ui/toaster-instance.ts';
+import {buildEditItemPath, newItemPath} from '../routes.ts';
 import ItemsFilters from './subcomponents/ItemsFilters.tsx';
 import {getCashbackColor} from './types.ts';
-import {buildEditItemPath, newItemPath} from './routes.ts';
 
 const itemsService = new ItemsService();
 
@@ -128,11 +128,11 @@ export default function Items() {
         setPage(1);
     };
 
-    const handleOpenAddModal = () => {
+    const handleOpenCreatePage = () => {
         navigate(newItemPath);
     };
 
-    const handleOpenEditModal = (item: ItemDto) => {
+    const handleOpenEditPage = (item: ItemDto) => {
         if (!item.id) {
             toaster.create({
                 title: 'Ошибка',
@@ -218,8 +218,8 @@ export default function Items() {
                         selectable={true}
                         selectedRows={selectedRows}
                         onSelectionChange={setSelectedRows}
-                        onAdd={handleOpenAddModal}
-                        onEdit={handleOpenEditModal}
+                        onAdd={handleOpenCreatePage}
+                        onEdit={handleOpenEditPage}
                         onDelete={handleDeleteItems}
                         getRowId={getRowId}
                     />

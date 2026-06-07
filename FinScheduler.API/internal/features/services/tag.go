@@ -72,6 +72,42 @@ func (service *TagsService) Get(ctx context.Context, filter *domains.TagFilter) 
 	return tags, count, err
 }
 
+func (service *TagsService) GetById(ctx context.Context, tagID uuid.UUID) (*domains.TagDto, error) {
+	tracer := otel.Tracer("tags")
+	ctx, span := tracer.Start(ctx, "tags-service")
+	traces.RecordServiceSpan(span, "GetById")
+	defer span.End()
+
+	if tagID == uuid.Nil {
+		service.logger.ErrorContext(ctx, "tagID is nil")
+		err := fmt.Errorf("tagID is nil")
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, tagsServiceName, "GetById", err)
+		return nil, err
+	}
+
+	var tag *domains.TagDto
+
+	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
+		rawTag, err := repositories.Tags.GetById(ctx, tagID)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tag by id failed", "tagID", tagID, "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, tagsServiceName, "GetById", err)
+			return err
+		}
+
+		tag = domains.NewTagDto(*rawTag)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	traces.EnrichSuccessServiceSpan(span)
+	return tag, nil
+}
+
 func (service *TagsService) GetLookup(ctx context.Context, filter *domains.TagLookupFilter) ([]domains.Lookup, int64, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-service")

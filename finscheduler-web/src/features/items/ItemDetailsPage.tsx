@@ -19,10 +19,10 @@ import {
     buildItemModification,
     createDefaultItemFormData,
     mapItemToFormData,
-    type ItemModalFormData,
+    type ItemFormData,
     validateItemFormData,
 } from './form.ts';
-import {buildEditItemPath, itemsListPath} from './routes.ts';
+import {buildEditItemPath, itemsListPath} from '../routes.ts';
 
 interface ItemDetailsPageProps {
     mode: 'create' | 'edit';
@@ -36,7 +36,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     const navigate = useNavigate();
     const {itemId} = useParams<{itemId: string}>();
     const [item, setItem] = useState<ItemDto | null>(null);
-    const [formData, setFormData] = useState<ItemModalFormData>(createDefaultItemFormData);
+    const [formData, setFormData] = useState<ItemFormData>(createDefaultItemFormData);
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -92,10 +92,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
         };
     }, [itemId, mode]);
 
-    const updateFormData = <K extends keyof ItemModalFormData>(
-        field: K,
-        value: ItemModalFormData[K],
-    ) => {
+    const updateFormData = <K extends keyof ItemFormData>(field: K, value: ItemFormData[K]) => {
         setFormData((prev) => ({...prev, [field]: value}));
     };
 

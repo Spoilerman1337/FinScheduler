@@ -7,9 +7,9 @@ import {API_BASE_URL} from '../../config/api.ts';
 import type {ItemDto} from '../../api/types.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';
+import {itemEditRoutePath, itemsListPath, newItemPath} from '../routes.ts';
 import ItemDetailsPage from './ItemDetailsPage.tsx';
 import Items from './Items.tsx';
-import {itemsListPath, newItemPath} from './routes.ts';
 
 function buildItem(overrides: Partial<ItemDto> = {}): ItemDto {
     return {
@@ -31,7 +31,7 @@ function renderItemsRoutes(initialEntries: string[] = [itemsListPath]) {
         <Routes>
             <Route path={itemsListPath} element={<Items />} />
             <Route path={newItemPath} element={<ItemDetailsPage mode="create" />} />
-            <Route path="/items/:itemId/edit" element={<ItemDetailsPage mode="edit" />} />
+            <Route path={itemEditRoutePath} element={<ItemDetailsPage mode="edit" />} />
         </Routes>,
         {initialEntries},
     );

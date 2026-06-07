@@ -2,6 +2,13 @@ import {Flex} from '@chakra-ui/react';
 import {screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {describe, expect, it, vi} from 'vitest';
+import {
+    buildEditItemPath,
+    buildEditTagPath,
+    dashboardPath,
+    itemsListPath,
+    tagsListPath,
+} from '../../features/routes.ts';
 import Main from './Main.tsx';
 import Sidebar from '../sidebar/Sidebar.tsx';
 import {renderWithProviders} from '../../test/render.tsx';
@@ -69,6 +76,12 @@ vi.mock('../../features/tags/Tags.tsx', () => ({
     },
 }));
 
+vi.mock('../../features/tags/TagDetailsPage.tsx', () => ({
+    default: function TagDetailsPageMock() {
+        return <div>Tag Details Page</div>;
+    },
+}));
+
 vi.mock('../../components/ui/toaster.tsx', () => {
     const ToasterMock: typeof import('../../components/ui/toaster.tsx').Toaster = () => <></>;
 
@@ -89,14 +102,14 @@ function ShellUnderTest() {
 describe('Main and Sidebar integration', () => {
     it('renders the current route title, page content, and active sidebar link', () => {
         // Arrange
-        renderWithProviders(<ShellUnderTest />, {route: '/items'});
+        renderWithProviders(<ShellUnderTest />, {route: itemsListPath});
 
         // Assert
         expect(screen.getByText('Items Page')).toBeInTheDocument();
         expect(screen.getAllByText('Каталог')).toHaveLength(2);
         expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
             'href',
-            '/items',
+            itemsListPath,
         );
         expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
             'aria-current',
@@ -107,7 +120,7 @@ describe('Main and Sidebar integration', () => {
     it('navigates between routes and updates the header and active link', async () => {
         // Arrange
         const user = userEvent.setup();
-        renderWithProviders(<ShellUnderTest />, {route: '/items'});
+        renderWithProviders(<ShellUnderTest />, {route: itemsListPath});
 
         // Act
         await user.click(screen.getByRole('link', {name: 'Теги', hidden: true}));
@@ -124,7 +137,7 @@ describe('Main and Sidebar integration', () => {
 
     it('keeps catalog route active for nested item detail pages', () => {
         // Arrange
-        renderWithProviders(<ShellUnderTest />, {route: '/items/item-1/edit'});
+        renderWithProviders(<ShellUnderTest />, {route: buildEditItemPath('item-1')});
 
         // Assert
         expect(screen.getByText('Item Details Page')).toBeInTheDocument();
@@ -135,10 +148,23 @@ describe('Main and Sidebar integration', () => {
         );
     });
 
+    it('keeps tags route active for nested tag detail pages', () => {
+        // Arrange
+        renderWithProviders(<ShellUnderTest />, {route: buildEditTagPath('tag-1')});
+
+        // Assert
+        expect(screen.getByText('Tag Details Page')).toBeInTheDocument();
+        expect(screen.getAllByText('Теги')).toHaveLength(2);
+        expect(screen.getByRole('link', {name: 'Теги', hidden: true})).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
     it('keeps navigation usable after collapsing the sidebar', async () => {
         // Arrange
         const user = userEvent.setup();
-        renderWithProviders(<ShellUnderTest />, {route: '/tags'});
+        renderWithProviders(<ShellUnderTest />, {route: tagsListPath});
         const collapseButton = screen.getByRole('button', {hidden: true});
         const dashboardLink = screen.getByRole('link', {name: 'Dashboard', hidden: true});
 
@@ -149,5 +175,6 @@ describe('Main and Sidebar integration', () => {
         // Assert
         expect(screen.getByText('Dashboard Page')).toBeInTheDocument();
         expect(screen.getByText('Дашборды')).toBeInTheDocument();
+        expect(dashboardLink).toHaveAttribute('href', dashboardPath);
     });
 });

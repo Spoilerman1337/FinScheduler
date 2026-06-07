@@ -1,7 +1,7 @@
 import type {ItemDto, ItemModification} from '../../api/types.ts';
 import {categoryTranslations} from '../../models/items.ts';
 
-export interface ItemModalFormData {
+export interface ItemFormData {
     name: string;
     description: string;
     price: string;
@@ -11,7 +11,7 @@ export interface ItemModalFormData {
     tagIds: string[];
 }
 
-export function createDefaultItemFormData(): ItemModalFormData {
+export function createDefaultItemFormData(): ItemFormData {
     return {
         name: '',
         description: '',
@@ -23,7 +23,7 @@ export function createDefaultItemFormData(): ItemModalFormData {
     };
 }
 
-export function mapItemToFormData(item?: ItemDto | null): ItemModalFormData {
+export function mapItemToFormData(item?: ItemDto | null): ItemFormData {
     if (!item) {
         return createDefaultItemFormData();
     }
@@ -48,7 +48,7 @@ export function mapItemToFormData(item?: ItemDto | null): ItemModalFormData {
     };
 }
 
-export function validateItemFormData(formData: ItemModalFormData): string | null {
+export function validateItemFormData(formData: ItemFormData): string | null {
     if (!formData.name.trim()) {
         return 'Название обязательно для заполнения';
     }
@@ -73,7 +73,7 @@ export function validateItemFormData(formData: ItemModalFormData): string | null
     return null;
 }
 
-export function buildItemModification(formData: ItemModalFormData): ItemModification {
+export function buildItemModification(formData: ItemFormData): ItemModification {
     return {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,

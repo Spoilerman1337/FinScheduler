@@ -1,17 +1,26 @@
 import Dashboard from '../../features/dashboard/Dashboard.tsx';
+import {
+    dashboardPath,
+    itemEditRoutePath,
+    itemsListPath,
+    newItemPath,
+    newTagPath,
+    tagEditRoutePath,
+    tagsListPath,
+} from '../../features/routes.ts';
 import ItemDetailsPage from '../../features/items/ItemDetailsPage.tsx';
 import Items from '../../features/items/Items.tsx';
-import {newItemPath} from '../../features/items/routes.ts';
+import TagDetailsPage from '../../features/tags/TagDetailsPage.tsx';
 import Tags from '../../features/tags/Tags.tsx';
 
 export const routes = [
     {
-        path: '/',
+        path: dashboardPath,
         title: 'Дашборды',
         element: <Dashboard />,
     },
     {
-        path: '/items',
+        path: itemsListPath,
         title: 'Каталог',
         element: <Items />,
     },
@@ -21,13 +30,23 @@ export const routes = [
         element: <ItemDetailsPage mode="create" />,
     },
     {
-        path: '/items/:itemId/edit',
+        path: itemEditRoutePath,
         title: 'Каталог',
         element: <ItemDetailsPage mode="edit" />,
     },
     {
-        path: '/tags',
+        path: tagsListPath,
         title: 'Теги',
         element: <Tags />,
+    },
+    {
+        path: newTagPath,
+        title: 'Теги',
+        element: <TagDetailsPage mode="create" />,
+    },
+    {
+        path: tagEditRoutePath,
+        title: 'Теги',
+        element: <TagDetailsPage mode="edit" />,
     },
 ];

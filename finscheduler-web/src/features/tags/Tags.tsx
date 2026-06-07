@@ -1,15 +1,17 @@
 import DataTable, {type DataListingColumn} from '../../components/dataTable/DataTable.tsx';
 import {Badge, Flex, Spinner, Text} from '@chakra-ui/react';
 import {useCallback, useEffect, useState} from 'react';
-import type {TagDto, TagFilter, TagModification} from '../../api/types.ts';
+import {useNavigate} from 'react-router-dom';
+import type {TagDto, TagFilter} from '../../api/types.ts';
 import TagsService, {buildTagFilter, type TagStatusFilter} from '../../api/tags.ts';
 import {toaster} from '../../components/ui/toaster-instance.ts';
-import TagModal from './subcomponents/TagModal.tsx';
+import {buildEditTagPath, newTagPath} from '../routes.ts';
 import TagsFilters from './subcomponents/TagsFilters.tsx';
 
 const tagsService = new TagsService();
 
 export default function Tags() {
+    const navigate = useNavigate();
     const [tags, setTags] = useState<TagDto[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
@@ -17,9 +19,6 @@ export default function Tags() {
     const [page, setPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(10);
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingTag, setEditingTag] = useState<TagDto | null>(null);
-    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<TagStatusFilter>('Active');
 
@@ -85,53 +84,21 @@ export default function Tags() {
         setPage(1);
     };
 
-    const handleOpenAddModal = () => {
-        setEditingTag(null);
-        setModalMode('create');
-        setIsModalOpen(true);
+    const handleOpenCreatePage = () => {
+        navigate(newTagPath);
     };
 
-    const handleOpenEditModal = (tag: TagDto) => {
-        setEditingTag(tag);
-        setModalMode('edit');
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setEditingTag(null);
-        setSelectedRows(new Set());
-    };
-
-    const handleSaveTag = async (tagData: TagModification) => {
-        try {
-            if (modalMode === 'create') {
-                await tagsService.createTag(tagData);
-                toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно добавлен',
-                    type: 'success',
-                });
-            } else if (modalMode === 'edit' && editingTag?.id) {
-                await tagsService.updateTag(editingTag.id, tagData);
-                toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно обновлен',
-                    type: 'success',
-                });
-            } else {
-                console.error('Cannot save: missing id for edit mode', {
-                    modalMode,
-                    editingItem: editingTag,
-                });
-                throw new Error('Не удалось определить режим сохранения');
-            }
-
-            await loadTags();
-        } catch (err) {
-            console.error('Error saving tag:', err);
-            throw err;
+    const handleOpenEditPage = (tag: TagDto) => {
+        if (!tag.id) {
+            toaster.create({
+                title: 'Ошибка',
+                description: 'Не удалось открыть карточку тега',
+                type: 'error',
+            });
+            return;
         }
+
+        navigate(buildEditTagPath(tag.id));
     };
 
     const getRowId = (row: TagDto): string => {
@@ -184,16 +151,9 @@ export default function Tags() {
                         selectable={true}
                         selectedRows={selectedRows}
                         onSelectionChange={setSelectedRows}
-                        onAdd={handleOpenAddModal}
-                        onEdit={handleOpenEditModal}
+                        onAdd={handleOpenCreatePage}
+                        onEdit={handleOpenEditPage}
                         getRowId={getRowId}
-                    />
-                    <TagModal
-                        isOpen={isModalOpen}
-                        onClose={handleCloseModal}
-                        onSave={handleSaveTag}
-                        item={editingTag}
-                        mode={modalMode}
                     />
                 </>
             )}

@@ -89,6 +89,101 @@ func Test_TagsHandler_Get_ShouldReturnInternalServerErrorOnServiceFailure(t *tes
 	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
+func Test_TagsHandler_GetById_ShouldReturnTag(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	app := newTestApplication()
+	ctx := testContext
+	method := http.MethodGet
+	expectedName := "Groceries"
+	expectedIsActive := true
+	create := &domains.TagCreate{Name: expectedName, IsActive: expectedIsActive}
+
+	tagID, createErr := app.tagsService.Create(ctx, create)
+	target := "/api/tags/" + tagID.String()
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	var actualResponse domains.TagDto
+	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
+
+	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, decodeErr)
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.Equal(t, tagID, *actualResponse.Id)
+	assert.Equal(t, expectedName, *actualResponse.Name)
+	assert.Equal(t, expectedIsActive, *actualResponse.IsActive)
+}
+
+func Test_TagsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodGet
+	target := "/api/tags/bad-id"
+	expectedBodyFragment := "invalid UUID length"
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_TagsHandler_GetById_ShouldReturnNotFoundForMissingTag(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodGet
+	missingID := uuid.New()
+	target := "/api/tags/" + missingID.String()
+	expectedBodyFragment := "tag not found"
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusNotFound, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_TagsHandler_GetById_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodGet
+	tagID := uuid.New()
+	target := "/api/tags/" + tagID.String()
+	request := newJSONRequest(method, target, "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
+}
+
 func Test_TagsHandler_GetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {

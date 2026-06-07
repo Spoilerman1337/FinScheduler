@@ -7,15 +7,15 @@ import type {ItemModification} from '../../api/types.ts';
 import {API_BASE_URL} from '../../config/api.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';
+import {buildEditItemPath, itemEditRoutePath, itemsListPath, newItemPath} from '../routes.ts';
 import ItemDetailsPage from './ItemDetailsPage.tsx';
-import {buildEditItemPath, itemsListPath, newItemPath} from './routes.ts';
 
 function renderItemDetailsRoutes(initialEntries: string[]) {
     return renderWithProviders(
         <Routes>
             <Route path={itemsListPath} element={<div>Items Listing Page</div>} />
             <Route path={newItemPath} element={<ItemDetailsPage mode="create" />} />
-            <Route path="/items/:itemId/edit" element={<ItemDetailsPage mode="edit" />} />
+            <Route path={itemEditRoutePath} element={<ItemDetailsPage mode="edit" />} />
         </Routes>,
         {initialEntries},
     );
