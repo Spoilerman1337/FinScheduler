@@ -10,9 +10,11 @@ type ItemsFiltersProps = {
     searchTerm: string;
     statusFilter: ActivityFilterValue;
     priceRange: NumberRangeValue;
+    cashbackRange: NumberRangeValue;
     onSearchTermChange: (value: string) => void;
     onStatusFilterChange: (value: ActivityFilterValue) => void;
     onPriceRangeChange: (value: NumberRangeValue) => void;
+    onCashbackRangeChange: (value: NumberRangeValue) => void;
     onApply: () => void;
     onReset: () => void;
 };
@@ -34,6 +36,14 @@ export default function ItemsFilters(props: ItemsFiltersProps) {
                 onChange={props.onPriceRangeChange}
                 min={0}
                 suffix="₽"
+            />
+            <NumberRangeFilter
+                label="Кэшбэк"
+                description="Укажите диапазон кэшбэка, который применится к списку."
+                value={props.cashbackRange}
+                onChange={props.onCashbackRangeChange}
+                min={0}
+                suffix="%"
             />
         </FilterWrapper>
     );

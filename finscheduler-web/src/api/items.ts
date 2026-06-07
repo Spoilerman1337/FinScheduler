@@ -3,7 +3,7 @@ import {FinschedulerApiClient} from './finscheduler-api-client.ts';
 
 export type ItemStatusFilter = 'All' | 'Active' | 'Inactive';
 
-function parsePriceValue(value: string): number | null {
+function parseNonNegativeNumberValue(value: string): number | null {
     if (!value) {
         return null;
     }
@@ -23,6 +23,23 @@ function parsePriceValue(value: string): number | null {
     return parsed;
 }
 
+function buildNonNegativeRange(fromValue: string, toValue: string): {
+    from: number | null;
+    to: number | null;
+} {
+    const from = parseNonNegativeNumberValue(fromValue);
+    const to = parseNonNegativeNumberValue(toValue);
+
+    if (from !== null && to !== null && from > to) {
+        return {
+            from: to,
+            to: from,
+        };
+    }
+
+    return {from, to};
+}
+
 export function buildItemFilter(params: {
     page: number;
     pageSize: number;
@@ -30,6 +47,8 @@ export function buildItemFilter(params: {
     statusFilter: ItemStatusFilter;
     priceFrom: string;
     priceTo: string;
+    cashbackFrom: string;
+    cashbackTo: string;
 }): ItemFilter {
     const filter: ItemFilter = {
         page: params.page - 1,
@@ -44,21 +63,24 @@ export function buildItemFilter(params: {
         filter.isActive = params.statusFilter === 'Active';
     }
 
-    const priceFrom = parsePriceValue(params.priceFrom);
-    const priceTo = parsePriceValue(params.priceTo);
+    const priceRange = buildNonNegativeRange(params.priceFrom, params.priceTo);
 
-    if (priceFrom !== null && priceTo !== null) {
-        filter.priceFrom = Math.min(priceFrom, priceTo);
-        filter.priceTo = Math.max(priceFrom, priceTo);
-        return filter;
+    if (priceRange.from !== null) {
+        filter.priceFrom = priceRange.from;
     }
 
-    if (priceFrom !== null) {
-        filter.priceFrom = priceFrom;
+    if (priceRange.to !== null) {
+        filter.priceTo = priceRange.to;
     }
 
-    if (priceTo !== null) {
-        filter.priceTo = priceTo;
+    const cashbackRange = buildNonNegativeRange(params.cashbackFrom, params.cashbackTo);
+
+    if (cashbackRange.from !== null) {
+        filter.cashbackFrom = cashbackRange.from;
+    }
+
+    if (cashbackRange.to !== null) {
+        filter.cashbackTo = cashbackRange.to;
     }
 
     return filter;

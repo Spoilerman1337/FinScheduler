@@ -24,6 +24,7 @@ export default function Items() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>('Active');
     const [priceRange, setPriceRange] = useState<NumberRangeValue>({from: '', to: ''});
+    const [cashbackRange, setCashbackRange] = useState<NumberRangeValue>({from: '', to: ''});
 
     const itemColumns: DataListingColumn<ItemDto>[] = [
         {
@@ -104,6 +105,8 @@ export default function Items() {
                 statusFilter,
                 priceFrom: priceRange.from,
                 priceTo: priceRange.to,
+                cashbackFrom: cashbackRange.from,
+                cashbackTo: cashbackRange.to,
             });
             const result = await itemsService.getItems(filter);
             setItems(result.data);
@@ -114,7 +117,16 @@ export default function Items() {
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, searchTerm, statusFilter, priceRange.from, priceRange.to]);
+    }, [
+        page,
+        pageSize,
+        searchTerm,
+        statusFilter,
+        priceRange.from,
+        priceRange.to,
+        cashbackRange.from,
+        cashbackRange.to,
+    ]);
 
     useEffect(() => {
         loadItems();
@@ -124,6 +136,7 @@ export default function Items() {
         setSearchTerm('');
         setStatusFilter('All');
         setPriceRange({from: '', to: ''});
+        setCashbackRange({from: '', to: ''});
         setPage(1);
     };
 
@@ -173,6 +186,7 @@ export default function Items() {
                 searchTerm={searchTerm}
                 statusFilter={statusFilter}
                 priceRange={priceRange}
+                cashbackRange={cashbackRange}
                 onSearchTermChange={(value) => {
                     setPage(1);
                     setSearchTerm(value);
@@ -183,6 +197,10 @@ export default function Items() {
                 }}
                 onPriceRangeChange={(value) => {
                     setPriceRange(value);
+                    setPage(1);
+                }}
+                onCashbackRangeChange={(value) => {
+                    setCashbackRange(value);
                     setPage(1);
                 }}
                 onApply={() => {

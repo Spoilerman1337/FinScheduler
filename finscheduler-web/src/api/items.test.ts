@@ -16,6 +16,8 @@ describe('items api', () => {
             statusFilter: 'Active' as const,
             priceFrom: '100.50',
             priceTo: '300',
+            cashbackFrom: '5',
+            cashbackTo: '15',
         };
 
         // Act
@@ -29,6 +31,8 @@ describe('items api', () => {
             isActive: true,
             priceFrom: 100.5,
             priceTo: 300,
+            cashbackFrom: 5,
+            cashbackTo: 15,
         });
     });
 
@@ -41,6 +45,8 @@ describe('items api', () => {
             statusFilter: 'All' as const,
             priceFrom: 'abc',
             priceTo: '',
+            cashbackFrom: '',
+            cashbackTo: 'oops',
         };
 
         // Act
@@ -62,6 +68,8 @@ describe('items api', () => {
             statusFilter: 'All' as const,
             priceFrom: '300',
             priceTo: '100',
+            cashbackFrom: '',
+            cashbackTo: '',
         };
 
         // Act
@@ -73,6 +81,31 @@ describe('items api', () => {
             pageSize: 10,
             priceFrom: 100,
             priceTo: 300,
+        });
+    });
+
+    it('buildItemFilter normalizes reversed cashback bounds before sending them to the API', () => {
+        // Arrange
+        const params = {
+            page: 1,
+            pageSize: 10,
+            searchTerm: '',
+            statusFilter: 'All' as const,
+            priceFrom: '',
+            priceTo: '',
+            cashbackFrom: '25',
+            cashbackTo: '10',
+        };
+
+        // Act
+        const filter = buildItemFilter(params);
+
+        // Assert
+        expect(filter).toEqual({
+            page: 0,
+            pageSize: 10,
+            cashbackFrom: 10,
+            cashbackTo: 25,
         });
     });
 

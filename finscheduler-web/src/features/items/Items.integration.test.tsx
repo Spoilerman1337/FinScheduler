@@ -197,6 +197,59 @@ describe('Items integration', () => {
         expect(screen.getByRole('button', {name: 'Цена: 100 - 300 ₽'})).toBeInTheDocument();
     });
 
+    it('applies the cashback range from a single filter control and delays reload until apply', async () => {
+        // Arrange
+        const requests: URL[] = [];
+
+        server.use(
+            http.get(`${API_BASE_URL}/items`, ({request}) => {
+                const url = new URL(request.url);
+
+                requests.push(url);
+
+                if (
+                    url.searchParams.get('cashbackFrom') === '5' &&
+                    url.searchParams.get('cashbackTo') === '15'
+                ) {
+                    return HttpResponse.json({
+                        data: [buildItem({id: 'item-5', name: 'Filtered by Cashback', cashback: 10})],
+                        count: 1,
+                    });
+                }
+
+                return HttpResponse.json({
+                    data: [buildItem({name: 'Coffee'})],
+                    count: 1,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Items />);
+        await screen.findByText('Coffee');
+        await user.click(screen.getByRole('button', {name: 'Кэшбэк'}));
+        await user.type(await screen.findByLabelText('Кэшбэк от'), '15');
+        await user.type(screen.getByLabelText('Кэшбэк до'), '5');
+
+        // Assert
+        expect(requests).toHaveLength(1);
+
+        // Act
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
+
+        // Assert
+        expect(await screen.findByText('Filtered by Cashback')).toBeInTheDocument();
+        await waitFor(() => {
+            const lastRequest = requests.at(-1);
+
+            expect(lastRequest?.searchParams.get('cashbackFrom')).toBe('5');
+            expect(lastRequest?.searchParams.get('cashbackTo')).toBe('15');
+        });
+        expect(screen.getByRole('button', {name: 'Кэшбэк: 5 - 15 %'})).toBeInTheDocument();
+    });
+
     it('navigates to the create page from the add button', async () => {
         // Arrange
         server.use(
