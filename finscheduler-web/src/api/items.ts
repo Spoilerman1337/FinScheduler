@@ -62,7 +62,10 @@ export function buildItemFilter(params: {
 
     applyDateFilterRange(filter, params.dateFilter);
 
-    const priceRange = FinschedulerApiClient.buildNonNegativeRange(params.priceFrom, params.priceTo);
+    const priceRange = FinschedulerApiClient.buildNonNegativeRange(
+        params.priceFrom,
+        params.priceTo,
+    );
 
     if (priceRange.from !== null) {
         filter.priceFrom = priceRange.from;

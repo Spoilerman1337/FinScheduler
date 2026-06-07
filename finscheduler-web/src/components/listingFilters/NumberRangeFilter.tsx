@@ -52,15 +52,10 @@ function normalizeNumberRange(value: NumberRangeValue, min?: number): NumberRang
         return {from, to};
     }
 
-    return parseFloat(from) <= parseFloat(to)
-        ? {from, to}
-        : {from: to, to: from};
+    return parseFloat(from) <= parseFloat(to) ? {from, to} : {from: to, to: from};
 }
 
-function formatNumberValue(
-    value: string,
-    formatValue?: (value: number) => string,
-): string | null {
+function formatNumberValue(value: string, formatValue?: (value: number) => string): string | null {
     if (!value) {
         return null;
     }
@@ -230,7 +225,10 @@ export default function NumberRangeFilter(props: NumberRangeFilterProps) {
                                 <NumberInput.Root
                                     value={draftValue.from}
                                     onValueChange={(details) => {
-                                        setDraftValue((current) => ({...current, from: details.value}));
+                                        setDraftValue((current) => ({
+                                            ...current,
+                                            from: details.value,
+                                        }));
                                     }}
                                     min={props.min}
                                     width="100%"
@@ -270,7 +268,10 @@ export default function NumberRangeFilter(props: NumberRangeFilterProps) {
                                 <NumberInput.Root
                                     value={draftValue.to}
                                     onValueChange={(details) => {
-                                        setDraftValue((current) => ({...current, to: details.value}));
+                                        setDraftValue((current) => ({
+                                            ...current,
+                                            to: details.value,
+                                        }));
                                     }}
                                     min={props.min}
                                     width="100%"

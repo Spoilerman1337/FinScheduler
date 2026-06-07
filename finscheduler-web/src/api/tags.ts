@@ -1,7 +1,4 @@
-import type {
-    Lookup,
-    PaginatedList,
-} from './types';
+import type {Lookup, PaginatedList} from './types';
 import type {
     TagDto,
     TagFilter,

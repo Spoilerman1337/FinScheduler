@@ -292,11 +292,17 @@ export default function DateRangeFilter(props: DateRangeFilterProps) {
                                                         color={isSelected ? 'bg.base' : 'textMuted'}
                                                         border="1px solid"
                                                         borderColor={
-                                                            isSelected ? 'neon.blue' : 'glass.border'
+                                                            isSelected
+                                                                ? 'neon.blue'
+                                                                : 'glass.border'
                                                         }
                                                         _hover={{
-                                                            bg: isSelected ? 'neon.blue' : 'bg.layer2',
-                                                            color: isSelected ? 'bg.base' : 'neon.blue',
+                                                            bg: isSelected
+                                                                ? 'neon.blue'
+                                                                : 'bg.layer2',
+                                                            color: isSelected
+                                                                ? 'bg.base'
+                                                                : 'neon.blue',
                                                             borderColor: 'neon.blue',
                                                         }}
                                                         onClick={() => {

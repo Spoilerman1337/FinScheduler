@@ -212,7 +212,9 @@ describe('Items integration', () => {
                     url.searchParams.get('cashbackTo') === '15'
                 ) {
                     return HttpResponse.json({
-                        data: [buildItem({id: 'item-5', name: 'Filtered by Cashback', cashback: 10})],
+                        data: [
+                            buildItem({id: 'item-5', name: 'Filtered by Cashback', cashback: 10}),
+                        ],
                         count: 1,
                     });
                 }
@@ -314,7 +316,9 @@ describe('Items integration', () => {
             expect(lastRequest?.searchParams.get('createdFrom')).toBe(expectedCreatedFrom);
             expect(lastRequest?.searchParams.get('createdTo')).toBe(expectedCreatedTo);
         });
-        expect(screen.getByRole('button', {name: 'Создан: 10.02.2025 - 15.02.2025'})).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {name: 'Создан: 10.02.2025 - 15.02.2025'}),
+        ).toBeInTheDocument();
     });
 
     it('applies the updated date range after switching the active date mode', async () => {
@@ -384,7 +388,9 @@ describe('Items integration', () => {
             expect(lastRequest?.searchParams.get('createdFrom')).toBeNull();
             expect(lastRequest?.searchParams.get('createdTo')).toBeNull();
         });
-        expect(screen.getByRole('button', {name: 'Обновлён: 10.03.2025 - 12.03.2025'})).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {name: 'Обновлён: 10.03.2025 - 12.03.2025'}),
+        ).toBeInTheDocument();
     });
 
     it('navigates to the create page from the add button', async () => {
