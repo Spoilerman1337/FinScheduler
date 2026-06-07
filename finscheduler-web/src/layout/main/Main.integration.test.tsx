@@ -1,13 +1,20 @@
-import {Flex} from "@chakra-ui/react";
-import {screen} from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import {describe, expect, it, vi} from "vitest";
-import Main from "./Main.tsx";
-import Sidebar from "../sidebar/Sidebar.tsx";
-import {renderWithProviders} from "../../test/render.tsx";
+import {Flex} from '@chakra-ui/react';
+import {screen} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import {describe, expect, it, vi} from 'vitest';
+import {
+    buildEditItemPath,
+    buildEditTagPath,
+    dashboardPath,
+    itemsListPath,
+    tagsListPath,
+} from '../../features/routes.ts';
+import Main from './Main.tsx';
+import Sidebar from '../sidebar/Sidebar.tsx';
+import {renderWithProviders} from '../../test/render.tsx';
 
-vi.mock("framer-motion", async () => {
-    const React = await import("react");
+vi.mock('framer-motion', async () => {
+    const React = await import('react');
 
     const MotionDiv = React.forwardRef<
         HTMLDivElement,
@@ -25,11 +32,11 @@ vi.mock("framer-motion", async () => {
         void layout;
         void transition;
 
-        return <div ref={ref} {...props}/>;
+        return <div ref={ref} {...props} />;
     });
 
     return {
-        AnimatePresence: ({children}: { children: React.ReactNode }) => <>{children}</>,
+        AnimatePresence: ({children}: {children: React.ReactNode}) => <>{children}</>,
         motion: {
             div: MotionDiv,
             create: <TProps extends object>(Component: React.ComponentType<TProps>) =>
@@ -39,79 +46,135 @@ vi.mock("framer-motion", async () => {
                 ) {
                     void layout;
 
-                    return <Component ref={ref as never} {...props as TProps}/>;
+                    return <Component ref={ref as never} {...(props as TProps)} />;
                 }),
         },
     };
 });
 
-vi.mock("../../features/dashboard/Dashboard.tsx", () => ({
+vi.mock('../../features/dashboard/Dashboard.tsx', () => ({
     default: function DashboardPageMock() {
         return <div>Dashboard Page</div>;
     },
 }));
 
-vi.mock("../../features/items/Items.tsx", () => ({
+vi.mock('../../features/items/Items.tsx', () => ({
     default: function ItemsPageMock() {
         return <div>Items Page</div>;
     },
 }));
 
-vi.mock("../../features/tags/Tags.tsx", () => ({
+vi.mock('../../features/items/ItemDetailsPage.tsx', () => ({
+    default: function ItemDetailsPageMock() {
+        return <div>Item Details Page</div>;
+    },
+}));
+
+vi.mock('../../features/tags/Tags.tsx', () => ({
     default: function TagsPageMock() {
         return <div>Tags Page</div>;
     },
 }));
 
+vi.mock('../../features/tags/TagDetailsPage.tsx', () => ({
+    default: function TagDetailsPageMock() {
+        return <div>Tag Details Page</div>;
+    },
+}));
+
+vi.mock('../../components/ui/toaster.tsx', () => {
+    const ToasterMock: typeof import('../../components/ui/toaster.tsx').Toaster = () => <></>;
+
+    return {
+        Toaster: ToasterMock,
+    };
+});
+
 function ShellUnderTest() {
     return (
         <Flex w="100vw" h="100vh">
-            <Sidebar/>
-            <Main/>
+            <Sidebar />
+            <Main />
         </Flex>
     );
 }
 
-describe("Main and Sidebar integration", () => {
-    it("renders the current route title, page content, and active sidebar link", () => {
+describe('Main and Sidebar integration', () => {
+    it('renders the current route title, page content, and active sidebar link', () => {
         // Arrange
-        renderWithProviders(<ShellUnderTest/>, {route: "/items"});
+        renderWithProviders(<ShellUnderTest />, {route: itemsListPath});
 
         // Assert
-        expect(screen.getByText("Items Page")).toBeInTheDocument();
-        expect(screen.getAllByText("Виды расходов")).toHaveLength(2);
-        expect(screen.getByRole("link", {name: "Виды расходов"})).toHaveAttribute("href", "/items");
+        expect(screen.getByText('Items Page')).toBeInTheDocument();
+        expect(screen.getAllByText('Каталог')).toHaveLength(2);
+        expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
+            'href',
+            itemsListPath,
+        );
+        expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
     });
 
-    it("navigates between routes and updates the header and active link", async () => {
+    it('navigates between routes and updates the header and active link', async () => {
         // Arrange
         const user = userEvent.setup();
-        renderWithProviders(<ShellUnderTest/>, {route: "/items"});
+        renderWithProviders(<ShellUnderTest />, {route: itemsListPath});
 
         // Act
-        await user.click(screen.getByRole("link", {name: "Теги"}));
+        await user.click(screen.getByRole('link', {name: 'Теги', hidden: true}));
 
         // Assert
-        expect(screen.getByText("Tags Page")).toBeInTheDocument();
-        expect(screen.getAllByText("Теги")).toHaveLength(2);
-        expect(screen.queryByText("Items Page")).not.toBeInTheDocument();
+        expect(screen.getByText('Tags Page')).toBeInTheDocument();
+        expect(screen.getAllByText('Теги')).toHaveLength(2);
+        expect(screen.queryByText('Items Page')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', {name: 'Теги', hidden: true})).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
     });
 
-    it("keeps navigation usable after collapsing the sidebar", async () => {
+    it('keeps catalog route active for nested item detail pages', () => {
+        // Arrange
+        renderWithProviders(<ShellUnderTest />, {route: buildEditItemPath('item-1')});
+
+        // Assert
+        expect(screen.getByText('Item Details Page')).toBeInTheDocument();
+        expect(screen.getAllByText('Каталог')).toHaveLength(2);
+        expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
+    it('keeps tags route active for nested tag detail pages', () => {
+        // Arrange
+        renderWithProviders(<ShellUnderTest />, {route: buildEditTagPath('tag-1')});
+
+        // Assert
+        expect(screen.getByText('Tag Details Page')).toBeInTheDocument();
+        expect(screen.getAllByText('Теги')).toHaveLength(2);
+        expect(screen.getByRole('link', {name: 'Теги', hidden: true})).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
+    it('keeps navigation usable after collapsing the sidebar', async () => {
         // Arrange
         const user = userEvent.setup();
-        const {container} = renderWithProviders(<ShellUnderTest/>, {route: "/tags"});
-        const collapseButton = screen.getByRole("button", {name: "Свернуть/развернуть"});
-        const dashboardLink = container.querySelector('a[href="/"]');
+        renderWithProviders(<ShellUnderTest />, {route: tagsListPath});
+        const collapseButton = screen.getByRole('button', {hidden: true});
+        const dashboardLink = screen.getByRole('link', {name: 'Dashboard', hidden: true});
 
         // Act
         await user.click(collapseButton);
-        expect(screen.queryByText("FinScheduler")).not.toBeInTheDocument();
-        expect(dashboardLink).not.toBeNull();
-        await user.click(dashboardLink!);
+        await user.click(dashboardLink);
 
         // Assert
-        expect(screen.getByText("Dashboard Page")).toBeInTheDocument();
-        expect(screen.getByText("Дашборды")).toBeInTheDocument();
+        expect(screen.getByText('Dashboard Page')).toBeInTheDocument();
+        expect(screen.getByText('Дашборды')).toBeInTheDocument();
+        expect(dashboardLink).toHaveAttribute('href', dashboardPath);
     });
 });

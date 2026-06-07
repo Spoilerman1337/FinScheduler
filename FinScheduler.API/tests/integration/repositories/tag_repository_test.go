@@ -44,6 +44,35 @@ func TestTagsRepositoryCreateAndGetByIDs_ShouldNotErr(t *testing.T) {
 	assert.Equal(t, tagIsActive, tags[0].IsActive)
 }
 
+func TestTagsRepositoryGetByID_ShouldReturnCreatedTag(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "tags")
+	})
+
+	ctx := testContext
+	repo := repositories.NewTagsRepository(testDB, testLogger)
+	tagName := "Bakery"
+	tagIsActive := false
+	create := &domains.TagCreate{
+		Name:     tagName,
+		IsActive: tagIsActive,
+	}
+
+	tagID, createErr := repo.Create(ctx, create)
+
+	// Act
+	tag, getErr := repo.GetById(ctx, tagID)
+
+	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, getErr)
+	require.NotNil(t, tag)
+	assert.Equal(t, tagID, tag.Id)
+	assert.Equal(t, tagName, tag.Name)
+	assert.Equal(t, tagIsActive, tag.IsActive)
+}
+
 func TestTagsRepositoryGet_ShouldFilterAndReturnCount(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {

@@ -117,6 +117,63 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 	return items, count, err
 }
 
+func (service *ItemsService) GetById(ctx context.Context, itemID uuid.UUID) (*domains.ItemDto, error) {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-service")
+	traces.RecordServiceSpan(span, "GetById")
+	defer span.End()
+
+	if itemID == uuid.Nil {
+		service.logger.ErrorContext(ctx, "itemID is nil")
+		err := fmt.Errorf("itemID is nil")
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+		return nil, err
+	}
+
+	var item *domains.ItemDto
+
+	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
+		rawItem, err := repositories.Items.GetById(ctx, itemID)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get item by id failed", "itemID", itemID, "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			return err
+		}
+
+		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{rawItem.Id})
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tag to items failed", "itemID", itemID, "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			return err
+		}
+
+		tagIDs := make([]uuid.UUID, 0, len(rawTagToItems))
+		for _, tagToItem := range rawTagToItems {
+			tagIDs = append(tagIDs, tagToItem.TagId)
+		}
+
+		rawTags, err := repositories.Tags.GetByIds(ctx, tagIDs)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get tags by ids failed", "itemID", itemID, "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			return err
+		}
+
+		item = domains.NewItemDto(*rawItem, rawTags)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	traces.EnrichSuccessServiceSpan(span)
+	return item, nil
+}
+
 func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCreate) (uuid.UUID, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")

@@ -1,0 +1,7 @@
+dist
+node_modules
+.vite
+.idea
+coverage
+pnpm-lock.yaml
+yarn.lock

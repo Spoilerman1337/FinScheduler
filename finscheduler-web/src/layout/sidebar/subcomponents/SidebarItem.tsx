@@ -1,98 +1,90 @@
-'use client';
+import {Box, HStack, Icon, Text} from '@chakra-ui/react';
+import type {LucideIcon} from 'lucide-react';
+import {matchPath, NavLink, useLocation} from 'react-router-dom';
 
-import type {ReactNode} from 'react';
-import {motion, AnimatePresence} from 'framer-motion';
-import {Box, Text} from '@chakra-ui/react';
-import 'focus-visible/dist/focus-visible'
-import {Link, useLocation} from "react-router-dom";
-
-interface SidebarItemProps {
-    icon: ReactNode;
+export interface SidebarItemProps {
+    icon: LucideIcon;
     label: string;
-    isCollapsed: boolean;
-    onClick?: () => void;
-    id: string;
-    path: string;
+    path?: string;
+    disabled?: boolean;
+    compact?: boolean;
+}
+
+function SidebarItemContent(props: SidebarItemProps & {isActive: boolean}) {
+    const {icon, label, compact = false, isActive, disabled = false} = props;
+
+    return (
+        <HStack
+            w="full"
+            minH="12"
+            px={{md: '3', lg: compact ? '3' : '4'}}
+            py="3"
+            gap="3"
+            borderRadius="l2"
+            borderWidth="1px"
+            borderColor={isActive ? 'app.cardBorderActive' : 'transparent'}
+            bg={isActive ? 'app.accentSoft' : 'transparent'}
+            color={isActive ? 'app.accent' : 'fg.muted'}
+            opacity={disabled ? 0.56 : 1}
+            transition="all 0.2s ease"
+            _hover={{
+                bg: disabled ? 'transparent' : 'transparent',
+                bgGradient: disabled
+                    ? undefined
+                    : 'linear(to-r, app.sidebarItemHoverStart, app.sidebarItemHoverEnd)',
+                color: disabled ? 'fg.muted' : 'fg',
+                borderColor: disabled ? 'transparent' : 'app.sidebarItemHoverBorder',
+                boxShadow: disabled ? 'none' : 'app.sidebarItemHover',
+            }}
+        >
+            <Box
+                boxSize="6"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexShrink={0}
+            >
+                <Icon as={icon} boxSize="4.5" />
+            </Box>
+
+            <Text
+                display={{base: 'none', md: 'none', lg: compact ? 'none' : 'block'}}
+                fontSize="sm"
+                fontWeight={isActive ? '700' : '600'}
+                color="currentColor"
+                whiteSpace="nowrap"
+            >
+                {label}
+            </Text>
+        </HStack>
+    );
 }
 
 export default function SidebarItem(props: SidebarItemProps) {
     const location = useLocation();
-    const isActive = location.pathname === props.path;
 
-    const handleClick = () => {
-        props.onClick?.()
+    if (!props.path || props.disabled) {
+        return (
+            <Box as="button" w="full" textAlign="left" cursor="not-allowed" aria-disabled="true">
+                <SidebarItemContent {...props} isActive={false} />
+            </Box>
+        );
     }
 
-    return (
-        <Link to={props.path}>
-            <Box
-                as="button"
-                w="full"
-                h="36px"
-                display="flex"
-                alignItems="center"
-                gap={3}
-                px={2}
-                borderRadius="xl"
-                cursor="pointer"
-                position="relative"
-                overflow="hidden"
-
-                color={isActive ? "text.primary" : "text.secondary"}
-                fontWeight={isActive ? "semibold" : "medium"}
-                bg={isActive ? "rgba(255,255,255,0.08)" : "transparent"}
-                backdropFilter={isActive ? "blur(12px)" : undefined}
-                style={{
-                    textShadow: isActive
-                        ? "0 0 16px rgba(0,212,255,0.8)"
-                        : undefined,
-                }}
-                _hover={{
-                    filter: "drop-shadow(0 0 16px rgba(0,212,255,0.9))",
-                    textShadow: "0 0 20px rgba(0,212,255,1)",
-                    color: "white",
-                    bg: "rgba(255,255,255,0.12)",
-                    backdropFilter: "blur(12px)",
-                }}
-                focusRing={"none"}
-
-                transition="all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
-                onClick={handleClick}
-            >
-                <Box flexShrink={0} w={6} h={6} display="flex" alignItems="center" justifyContent="center"
-                     color={isActive ? "neon.blue" : "text.primary"}>
-                    {props.icon}
-                </Box>
-
-                <AnimatePresence>
-                    {!props.isCollapsed && (
-                        <motion.div
-                            initial={{opacity: 0, width: 0}}
-                            animate={{opacity: 1, width: 'auto'}}
-                            exit={{opacity: 0, width: 0}}
-                            transition={{duration: 0.2, ease: 'easeInOut'}}
-                            style={{overflow: 'hidden', whiteSpace: 'nowrap'}}
-                        >
-                            <Text fontSize="sm" fontWeight={isActive ? "semibold" : "medium"} fontFamily={"Montserrat"}
-                                  color={isActive ? "neon.blue" : "text.primary"}>
-                                {props.label}
-                            </Text>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-                {isActive && (
-                    <Box
-                        position="absolute"
-                        left={0}
-                        top="4px"
-                        bottom="4px"
-                        w="3px"
-                        bg="neon.blue"
-                        borderRadius="full"
-                        boxShadow="0 0 12px rgba(0,212,255,0.8)"
-                    />
-                )}
-            </Box>
-        </Link>
+    const path = props.path;
+    const isActive = Boolean(
+        matchPath(
+            {
+                path,
+                end: path === '/',
+            },
+            location.pathname,
+        ),
     );
-};
+
+    return (
+        <NavLink to={path} aria-label={props.label}>
+            <SidebarItemContent {...props} isActive={isActive} />
+        </NavLink>
+    );
+}

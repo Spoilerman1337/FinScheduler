@@ -1,10 +1,10 @@
-import {Flex, Text} from "@chakra-ui/react";
-import DataTableCell from "./DataTableCell.tsx";
-import DataTableSelectionCheckbox from "./DataTableSelectionCheckbox.tsx";
-import type {TableColumn} from "../models.ts";
+import {Flex, Text} from '@chakra-ui/react';
+import type {DataListingColumn} from '../../dataListing/types.ts';
+import ListingSelectionCheckbox from '../../dataListing/selectionCheckbox/ListingSelectionCheckbox.tsx';
+import DataTableCell from './DataTableCell.tsx';
 
 interface DataTableHeaderProps<T> {
-    columns: TableColumn<T>[];
+    columns: DataListingColumn<T>[];
     selectable: boolean;
     allSelected: boolean;
     onSelectAll: (checked: boolean) => void;
@@ -14,14 +14,7 @@ export default function DataTableHeader<T>(props: DataTableHeaderProps<T>) {
     const {columns, selectable, allSelected, onSelectAll} = props;
 
     return (
-        <Flex
-            as="thead"
-            position="sticky"
-            top="0"
-            bg="bg.layer2"
-            zIndex={10}
-            boxShadow="sm"
-        >
+        <Flex as="thead" position="sticky" top="0" bg="bg.layer2" zIndex={10} boxShadow="sm">
             <Flex
                 as="tr"
                 borderBottom="1px solid"
@@ -30,19 +23,14 @@ export default function DataTableHeader<T>(props: DataTableHeaderProps<T>) {
                 display="flex"
             >
                 {selectable && (
-                    <DataTableSelectionCheckbox
+                    <ListingSelectionCheckbox
                         checked={allSelected}
                         onCheckedChange={onSelectAll}
                         isHeader
                     />
                 )}
                 {columns.map((col) => (
-                    <DataTableCell
-                        key={col.key}
-                        as="th"
-                        isHeader
-                        {...col.headerProps}
-                    >
+                    <DataTableCell key={col.key} as="th" isHeader {...col.headerProps}>
                         <Text color="neon.blue">{col.header}</Text>
                     </DataTableCell>
                 ))}

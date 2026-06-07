@@ -1,4 +1,4 @@
-import {Field, Textarea} from "@chakra-ui/react";
+import {Field, Textarea} from '@chakra-ui/react';
 
 interface TextareaFieldProps {
     label: string;

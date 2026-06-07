@@ -1,32 +1,39 @@
-import DataTable, {type TableColumn} from "../../components/dataTable/DataTable.tsx";
-import {Badge, Flex, Spinner, Text} from "@chakra-ui/react";
-import {useState, useEffect, useCallback} from "react";
-import type {ItemDto, ItemFilter, ItemModification} from "../../api/types.ts";
-import ItemModal from "./subcomponents/ItemModal.tsx";
-import {toaster} from "../../components/ui/toaster.tsx";
-import ItemsService, {buildItemFilter, type ItemStatusFilter} from "../../api/items.ts";
-import ItemsFilters from "./subcomponents/ItemsFilters.tsx";
-import {getCashbackColor} from "./types.ts";
+import DataShowcase, {type DataListingColumn} from '../../components/dataShowcase/DataShowcase.tsx';
+import {Badge, Flex, Spinner, Text} from '@chakra-ui/react';
+import {useCallback, useEffect, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
+import type {
+    ItemDateFilterValue,
+    ItemDto,
+    ItemFilter,
+    ItemStatusFilter,
+} from '../../api/items.types.ts';
+import ItemsService, {buildItemFilter} from '../../api/items.ts';
+import type {NumberRangeValue} from '../../components/listingFilters/NumberRangeFilter.tsx';
+import {toaster} from '../../components/ui/toaster-instance.ts';
+import {buildEditItemPath, newItemPath} from '../routes.ts';
+import {createDefaultItemDateFilter} from './types.ts';
+import ItemsFilters from './subcomponents/ItemsFilters.tsx';
+import {getCashbackColor} from './types.ts';
 
 const itemsService = new ItemsService();
 
 export default function Items() {
+    const navigate = useNavigate();
     const [items, setItems] = useState<ItemDto[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState<number>(1);
-    const [pageSize, setPageSize] = useState<number>(10);
+    const [pageSize, setPageSize] = useState<number>(12);
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<ItemDto | null>(null);
-    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>('Active');
-    const [priceFrom, setPriceFrom] = useState<string>('');
-    const [priceTo, setPriceTo] = useState<string>('');
+    const [dateFilter, setDateFilter] = useState<ItemDateFilterValue>(createDefaultItemDateFilter);
+    const [priceRange, setPriceRange] = useState<NumberRangeValue>({from: '', to: ''});
+    const [cashbackRange, setCashbackRange] = useState<NumberRangeValue>({from: '', to: ''});
 
-    const itemColumns: TableColumn<ItemDto>[] = [
+    const itemColumns: DataListingColumn<ItemDto>[] = [
         {
             header: 'Название',
             key: 'name',
@@ -42,10 +49,12 @@ export default function Items() {
             key: 'price',
             render: (row: ItemDto) => (
                 <Text color="neon.blue" fontWeight="medium">
-                    {row.price !== undefined ? `₽${row.price.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                    })}` : '-'}
+                    {row.price !== undefined
+                        ? `${row.price.toLocaleString('ru-RU', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                          })} ₽`
+                        : '-'}
                 </Text>
             ),
             headerProps: {textAlign: 'right'},
@@ -71,20 +80,20 @@ export default function Items() {
                     px={3}
                     py={1}
                     borderRadius="full"
-                    bg={row.isActive ? "neon.green" : "neon.pink"}
+                    bg={row.isActive ? 'neon.green' : 'neon.pink'}
                     color="bg.base"
                 >
-                    {row.isActive ? "Активен" : "Неактивен"}
+                    {row.isActive ? 'Активен' : 'Неактивен'}
                 </Badge>
             ),
             headerProps: {textAlign: 'left'},
         },
         {
-            header: 'Создан',
-            key: 'createdAt',
+            header: 'Обновлён',
+            key: 'updatedAt',
             render: (row: ItemDto) => (
                 <Text color="neon.blue" fontSize="sm">
-                    {row.createdAt ? new Date(row.createdAt).toLocaleDateString('ru-RU') : '-'}
+                    {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString('ru-RU') : '-'}
                 </Text>
             ),
             headerProps: {textAlign: 'left'},
@@ -101,8 +110,11 @@ export default function Items() {
                 pageSize,
                 searchTerm,
                 statusFilter,
-                priceFrom,
-                priceTo,
+                dateFilter,
+                priceFrom: priceRange.from,
+                priceTo: priceRange.to,
+                cashbackFrom: cashbackRange.from,
+                cashbackTo: cashbackRange.to,
             });
             const result = await itemsService.getItems(filter);
             setItems(result.data);
@@ -113,7 +125,17 @@ export default function Items() {
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, searchTerm, statusFilter, priceFrom, priceTo]);
+    }, [
+        page,
+        pageSize,
+        searchTerm,
+        statusFilter,
+        dateFilter,
+        priceRange.from,
+        priceRange.to,
+        cashbackRange.from,
+        cashbackRange.to,
+    ]);
 
     useEffect(() => {
         loadItems();
@@ -121,56 +143,28 @@ export default function Items() {
 
     const handleReset = () => {
         setSearchTerm('');
-        setStatusFilter('All');
-        setPriceFrom('');
-        setPriceTo('');
+        setStatusFilter('Active');
+        setDateFilter(createDefaultItemDateFilter());
+        setPriceRange({from: '', to: ''});
+        setCashbackRange({from: '', to: ''});
         setPage(1);
     };
 
-    const handleOpenAddModal = () => {
-        setEditingItem(null);
-        setModalMode('create');
-        setIsModalOpen(true);
+    const handleOpenCreatePage = () => {
+        navigate(newItemPath);
     };
 
-    const handleOpenEditModal = (item: ItemDto) => {
-        setEditingItem(item);
-        setModalMode('edit');
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setEditingItem(null);
-        setSelectedRows(new Set());
-    };
-
-    const handleSaveItem = async (itemData: ItemModification) => {
-        try {
-            if (modalMode === 'create') {
-                await itemsService.createItem(itemData);
-                toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно добавлен',
-                    type: 'success',
-                });
-            } else if (modalMode === 'edit' && editingItem?.id) {
-                await itemsService.updateItem(editingItem.id, itemData);
-                toaster.create({
-                    title: 'Успешно',
-                    description: 'Элемент успешно обновлен',
-                    type: 'success',
-                });
-            } else {
-                console.error('Cannot save: missing id for edit mode', {modalMode, editingItem});
-                throw new Error('Не удалось определить режим сохранения');
-            }
-
-            await loadItems();
-        } catch (err) {
-            console.error('Error saving item:', err);
-            throw err;
+    const handleOpenEditPage = (item: ItemDto) => {
+        if (!item.id) {
+            toaster.create({
+                title: 'Ошибка',
+                description: 'Не удалось открыть карточку предмета',
+                type: 'error',
+            });
+            return;
         }
+
+        navigate(buildEditItemPath(item.id));
     };
 
     const handleDeleteItems = async (ids: string[]) => {
@@ -201,8 +195,9 @@ export default function Items() {
             <ItemsFilters
                 searchTerm={searchTerm}
                 statusFilter={statusFilter}
-                priceFrom={priceFrom}
-                priceTo={priceTo}
+                dateFilter={dateFilter}
+                priceRange={priceRange}
+                cashbackRange={cashbackRange}
                 onSearchTermChange={(value) => {
                     setPage(1);
                     setSearchTerm(value);
@@ -211,8 +206,18 @@ export default function Items() {
                     setStatusFilter(value);
                     setPage(1);
                 }}
-                onPriceFromChange={setPriceFrom}
-                onPriceToChange={setPriceTo}
+                onDateFilterChange={(value) => {
+                    setDateFilter(value);
+                    setPage(1);
+                }}
+                onPriceRangeChange={(value) => {
+                    setPriceRange(value);
+                    setPage(1);
+                }}
+                onCashbackRangeChange={(value) => {
+                    setCashbackRange(value);
+                    setPage(1);
+                }}
                 onApply={() => {
                     setPage(1);
                     loadItems();
@@ -222,15 +227,17 @@ export default function Items() {
 
             {loading ? (
                 <Flex justify="center" align="center" minH="400px">
-                    <Spinner size="xl" color="neon.blue"/>
+                    <Spinner size="xl" color="neon.blue" />
                 </Flex>
             ) : error ? (
                 <Flex justify="center" align="center" minH="400px">
-                    <Text color="neon.pink" fontSize="lg">{error}</Text>
+                    <Text color="neon.pink" fontSize="lg">
+                        {error}
+                    </Text>
                 </Flex>
             ) : (
                 <>
-                    <DataTable
+                    <DataShowcase
                         data={items}
                         columns={itemColumns}
                         total={total}
@@ -244,18 +251,10 @@ export default function Items() {
                         selectable={true}
                         selectedRows={selectedRows}
                         onSelectionChange={setSelectedRows}
-                        onAdd={handleOpenAddModal}
-                        onEdit={handleOpenEditModal}
+                        onAdd={handleOpenCreatePage}
+                        onEdit={handleOpenEditPage}
                         onDelete={handleDeleteItems}
                         getRowId={getRowId}
-                    />
-                    <ItemModal
-                        key={`${modalMode}-${editingItem?.id || 'new'}`}
-                        isOpen={isModalOpen}
-                        onClose={handleCloseModal}
-                        onSave={handleSaveItem}
-                        item={editingItem}
-                        mode={modalMode}
                     />
                 </>
             )}

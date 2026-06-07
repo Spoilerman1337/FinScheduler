@@ -1,49 +1,41 @@
-import "@testing-library/jest-dom/vitest";
-import {afterAll, afterEach, beforeAll} from "vitest";
-import {server} from "./msw/server.ts";
+import '@testing-library/jest-dom/vitest';
+import {afterAll, afterEach, beforeAll} from 'vitest';
+import {server} from './msw/server.ts';
 
-Object.defineProperty(window, "matchMedia", {
+Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: (query: string) => ({
         matches: false,
         media: query,
         onchange: null,
-        addListener: () => {
-        },
-        removeListener: () => {
-        },
-        addEventListener: () => {
-        },
-        removeEventListener: () => {
-        },
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
         dispatchEvent: () => false,
     }),
 });
 
 class ResizeObserverMock {
-    observe() {
-    }
+    observe() {}
 
-    unobserve() {
-    }
+    unobserve() {}
 
-    disconnect() {
-    }
+    disconnect() {}
 }
 
-Object.defineProperty(window, "ResizeObserver", {
+Object.defineProperty(window, 'ResizeObserver', {
     writable: true,
     value: ResizeObserverMock,
 });
 
-Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
     writable: true,
-    value: () => {
-    },
+    value: () => {},
 });
 
 beforeAll(() => {
-    server.listen({onUnhandledRequest: "error"});
+    server.listen({onUnhandledRequest: 'error'});
 });
 
 afterEach(() => {

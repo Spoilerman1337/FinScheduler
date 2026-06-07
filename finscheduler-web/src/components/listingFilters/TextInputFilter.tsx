@@ -1,6 +1,6 @@
-import {Box, Input} from "@chakra-ui/react";
-import {SearchIcon} from "lucide-react";
-import {filterWidthProps} from "./shared.ts";
+import {Box, Input} from '@chakra-ui/react';
+import {SearchIcon} from 'lucide-react';
+import {filterWidthProps} from './shared.ts';
 
 type TextInputFilterProps = {
     value: string;
@@ -12,9 +12,15 @@ type TextInputFilterProps = {
 export default function TextInputFilter(props: TextInputFilterProps) {
     return (
         <Box {...filterWidthProps} position="relative">
-            <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" zIndex="1"
-                 pointerEvents="none">
-                <SearchIcon size={18} color="rgba(255,255,255,0.6)"/>
+            <Box
+                position="absolute"
+                left="3"
+                top="50%"
+                transform="translateY(-50%)"
+                zIndex="1"
+                pointerEvents="none"
+            >
+                <SearchIcon size={18} color="rgba(255,255,255,0.6)" />
             </Box>
             <Input
                 placeholder={props.placeholder}

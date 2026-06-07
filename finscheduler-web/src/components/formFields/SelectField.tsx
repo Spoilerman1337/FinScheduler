@@ -10,10 +10,10 @@ import {
     SelectTrigger,
     SelectValueText,
     Spinner,
-} from "@chakra-ui/react";
-import {ChevronDownIcon} from "lucide-react";
-import {useMemo} from "react";
-import type {SelectOption} from "./types.ts";
+} from '@chakra-ui/react';
+import {ChevronDownIcon} from 'lucide-react';
+import {useMemo} from 'react';
+import type {SelectOption} from './types.ts';
 
 interface BaseSelectFieldProps {
     label: string;
@@ -38,13 +38,7 @@ type MultipleSelectFieldProps = BaseSelectFieldProps & {
 type SelectFieldProps = SingleSelectFieldProps | MultipleSelectFieldProps;
 
 export default function SelectField(props: SelectFieldProps) {
-    const {
-        label,
-        options,
-        placeholder,
-        loading = false,
-        required = false,
-    } = props;
+    const {label, options, placeholder, loading = false, required = false} = props;
 
     const collection = useMemo(() => createListCollection({items: options}), [options]);
     const value = props.multiple ? props.value : props.value ? [props.value] : [];
@@ -53,7 +47,7 @@ export default function SelectField(props: SelectFieldProps) {
     return (
         <Field.Root required={required} gap={0}>
             <Field.Label color="neon.blue">
-                {label} {loading && <Spinner size="xs" ml={2}/>}
+                {label} {loading && <Spinner size="xs" ml={2} />}
             </Field.Label>
             <SelectRoot
                 multiple={props.multiple}
@@ -67,7 +61,7 @@ export default function SelectField(props: SelectFieldProps) {
                     }
                 }}
             >
-                <SelectHiddenSelect/>
+                <SelectHiddenSelect />
                 <SelectTrigger asChild>
                     <Flex
                         align="center"
@@ -83,15 +77,15 @@ export default function SelectField(props: SelectFieldProps) {
                         color="neon.blue"
                         transition="all 0.2s"
                         _hover={{
-                            color: "neon.blue",
-                            bg: "bg.layer2",
-                            borderColor: "glass.border",
-                            cursor: "pointer",
+                            color: 'neon.blue',
+                            bg: 'bg.layer2',
+                            borderColor: 'glass.border',
+                            cursor: 'pointer',
                         }}
                     >
                         <SelectValueText
                             placeholder={placeholder}
-                            color={hasValue ? "currentColor" : "text.placeholder"}
+                            color={hasValue ? 'currentColor' : 'text.placeholder'}
                             overflow="hidden"
                             textOverflow="ellipsis"
                             whiteSpace="nowrap"
@@ -101,9 +95,9 @@ export default function SelectField(props: SelectFieldProps) {
                             size={16}
                             style={{
                                 flexShrink: 0,
-                                color: "currentColor",
-                                stroke: "currentColor",
-                                display: "block",
+                                color: 'currentColor',
+                                stroke: 'currentColor',
+                                display: 'block',
                             }}
                         />
                     </Flex>
@@ -134,17 +128,17 @@ export default function SelectField(props: SelectFieldProps) {
                                 borderRadius="sm"
                                 color="neon.blue"
                                 _highlighted={{
-                                    color: "neon.purple",
-                                    bg: "glass.bgHover",
-                                    filter: "drop-shadow(0 0 12px rgba(212, 0, 255, 0.55))",
-                                    boxShadow: "0 0 12px rgba(212, 0, 255, 0.35)",
+                                    color: 'neon.purple',
+                                    bg: 'glass.bgHover',
+                                    filter: 'drop-shadow(0 0 12px rgba(212, 0, 255, 0.55))',
+                                    boxShadow: '0 0 12px rgba(212, 0, 255, 0.35)',
                                 }}
                                 _selected={{
-                                    color: "neon.blue",
-                                    bg: "glass.bgHover",
-                                    fontWeight: "semibold",
-                                    filter: "drop-shadow(0 0 10px rgba(0, 212, 255, 0.5))",
-                                    boxShadow: "0 0 10px rgba(0, 212, 255, 0.3)",
+                                    color: 'neon.blue',
+                                    bg: 'glass.bgHover',
+                                    fontWeight: 'semibold',
+                                    filter: 'drop-shadow(0 0 10px rgba(0, 212, 255, 0.5))',
+                                    boxShadow: '0 0 10px rgba(0, 212, 255, 0.3)',
                                 }}
                             >
                                 {option.label}

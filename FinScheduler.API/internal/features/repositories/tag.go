@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/traces"
@@ -112,6 +113,47 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 
 	traces.EnrichSuccessRepositorySpanRead(span, int64(len(tags)))
 	return tags, count, err
+}
+
+func (repository *TagsRepository) GetById(ctx context.Context, id uuid.UUID) (*domains.Tag, error) {
+	tracer := otel.Tracer("tags")
+	ctx, span := tracer.Start(ctx, "tags-repository")
+	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
+	defer span.End()
+
+	var tag domains.Tag
+
+	if id == uuid.Nil {
+		repository.logger.ErrorContext(ctx, "id should not be nil")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("id should not be nil")
+		traces.EnrichFailedRepositorySpanRead(span, err, 0)
+		return nil, err
+	}
+
+	query := "SELECT * FROM public.tags WHERE id = ?"
+	query = repository.db.Rebind(query)
+
+	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)
+	start := time.Now()
+	err := sqlx.GetContext(ctx, repository.db, &tag, query, id)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsTableName, err == nil, metrics.DatabaseOperationSelect)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			repository.logger.InfoContext(ctx, "tag not found", "id", id)
+		} else {
+			repository.logger.ErrorContext(ctx, "error on SELECT operation", "error", err)
+		}
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, false, metrics.DatabaseOperationSelect)
+		traces.EnrichFailedRepositorySpanRead(span, err, 0)
+		return nil, err
+	}
+
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsTableName, true, metrics.DatabaseOperationSelect)
+	traces.EnrichSuccessRepositorySpanRead(span, 1)
+	return &tag, nil
 }
 
 func (repository *TagsRepository) GetByIds(ctx context.Context, ids []uuid.UUID) ([]domains.Tag, error) {

@@ -1,5 +1,5 @@
-import {Box, NumberInput} from "@chakra-ui/react";
-import {filterWidthProps} from "./shared.ts";
+import {Box, NumberInput} from '@chakra-ui/react';
+import {filterWidthProps} from './shared.ts';
 
 type NumberInputFilterProps = {
     value: string;
@@ -26,8 +26,8 @@ export default function NumberInputFilter(props: NumberInputFilterProps) {
                         color="neon.blue"
                         p={0}
                         _hover={{
-                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
-                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                            filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))',
+                            boxShadow: '0 0 12px rgba(0, 212, 255, 0.45)',
                         }}
                     >
                         +
@@ -37,8 +37,8 @@ export default function NumberInputFilter(props: NumberInputFilterProps) {
                         color="neon.blue"
                         p={0}
                         _hover={{
-                            filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
-                            boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                            filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))',
+                            boxShadow: '0 0 12px rgba(0, 212, 255, 0.45)',
                         }}
                     >
                         -

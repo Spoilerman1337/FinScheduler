@@ -1,6 +1,6 @@
-import {Button, Flex} from "@chakra-ui/react";
-import type {ReactNode} from "react";
-import {filterWidthProps} from "./shared.ts";
+import {Button, Flex} from '@chakra-ui/react';
+import type {ReactNode} from 'react';
+import {filterWidthProps} from './shared.ts';
 
 type FilterWrapperProps = {
     children: ReactNode;
@@ -33,12 +33,12 @@ export default function FilterWrapper(props: FilterWrapperProps) {
                 border="1px solid"
                 transition="all 0.3s ease-in-out"
                 _hover={{
-                    filter: "drop-shadow(0 0 16px rgba(212, 0,255,0.9))",
-                    boxShadow: "0 0 20px rgba(212, 0,255,1)",
-                    color: "neon.pink",
-                    bg: "glass.bgHover",
-                    backdropFilter: "blur(12px)",
-                    borderColor: "neon.purple",
+                    filter: 'drop-shadow(0 0 16px rgba(212, 0,255,0.9))',
+                    boxShadow: '0 0 20px rgba(212, 0,255,1)',
+                    color: 'neon.pink',
+                    bg: 'glass.bgHover',
+                    backdropFilter: 'blur(12px)',
+                    borderColor: 'neon.purple',
                 }}
                 focusRing="none"
             >

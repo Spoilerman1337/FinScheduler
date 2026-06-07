@@ -54,6 +54,36 @@ func TestTagsServiceCreateAndGet_ShouldNotErr(t *testing.T) {
 	assert.Equal(t, tagIsActive, *tags[0].IsActive)
 }
 
+func TestTagsServiceGetById_ShouldReturnCreatedTag(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB, "tags")
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	service := services.NewTagsService(uow, testLogger)
+	tagName := "Groceries"
+	tagIsActive := false
+	create := &domains.TagCreate{
+		Name:     tagName,
+		IsActive: tagIsActive,
+	}
+
+	tagID, createErr := service.Create(ctx, create)
+
+	// Act
+	tag, getErr := service.GetById(ctx, tagID)
+
+	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, getErr)
+	require.NotNil(t, tag)
+	assert.Equal(t, tagID, *tag.Id)
+	assert.Equal(t, tagName, *tag.Name)
+	assert.Equal(t, tagIsActive, *tag.IsActive)
+}
+
 func TestTagsServiceGetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {

@@ -1,8 +1,8 @@
-import {describe, expect, it} from "vitest";
-import {getCashbackColor} from "./types.ts";
+import {describe, expect, it} from 'vitest';
+import {getCashbackColor} from './types.ts';
 
-describe("items feature types", () => {
-    it("getCashbackColor returns the expected color buckets", () => {
+describe('items feature types', () => {
+    it('getCashbackColor returns the expected color buckets', () => {
         // Arrange
         const cashbackValues = {
             missing: undefined,
@@ -21,10 +21,10 @@ describe("items feature types", () => {
 
         // Assert
         expect(colors).toEqual({
-            missing: "neon.pink",
-            zero: "neon.pink",
-            low: "neon.yellow",
-            high: "neon.green",
+            missing: 'neon.pink',
+            zero: 'neon.pink',
+            low: 'neon.yellow',
+            high: 'neon.green',
         });
     });
 });

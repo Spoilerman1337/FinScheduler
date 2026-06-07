@@ -1,15 +1,7 @@
-import {
-    Combobox,
-    createListCollection,
-    Field,
-    Flex,
-    Portal,
-    Spinner,
-    Text,
-} from "@chakra-ui/react";
-import {CheckIcon, ChevronDownIcon, XIcon} from "lucide-react";
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import type {SelectOption} from "./types.ts";
+import {Combobox, createListCollection, Field, Flex, Portal, Spinner, Text} from '@chakra-ui/react';
+import {CheckIcon, ChevronDownIcon, XIcon} from 'lucide-react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import type {SelectOption} from './types.ts';
 
 interface AsyncLoadResult {
     options: SelectOption[];
@@ -25,7 +17,7 @@ interface BaseAsyncSelectFieldProps {
     collapseThreshold?: number;
     cacheKey?: string;
     preloadOnMount?: boolean;
-    loadOptions: (params: { search: string; page: number }) => Promise<AsyncLoadResult>;
+    loadOptions: (params: {search: string; page: number}) => Promise<AsyncLoadResult>;
 }
 
 type SingleAsyncSelectFieldProps = BaseAsyncSelectFieldProps & {
@@ -100,74 +92,84 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         [initialOptions, options],
     );
     const selectedOptions = useMemo(
-        () => values.map((value) => mergedOptions.find((option) => option.value === value) ?? {
-            value,
-            label: value,
-        }),
+        () =>
+            values.map(
+                (value) =>
+                    mergedOptions.find((option) => option.value === value) ?? {
+                        value,
+                        label: value,
+                    },
+            ),
         [mergedOptions, values],
     );
     const shouldCollapseSelection = props.multiple && selectedOptions.length > collapseThreshold;
     const collection = useMemo(() => createListCollection({items: mergedOptions}), [mergedOptions]);
 
-    const syncFromCache = useCallback((search: string) => {
-        const cachedEntry = globalSearchCache.get(getSearchCacheKey(cacheNamespace, search));
+    const syncFromCache = useCallback(
+        (search: string) => {
+            const cachedEntry = globalSearchCache.get(getSearchCacheKey(cacheNamespace, search));
 
-        if (!cachedEntry) {
-            return false;
-        }
-
-        setOptions(cachedEntry.options);
-        setCurrentPage(cachedEntry.pages.size > 0 ? Math.max(...cachedEntry.pages) : 0);
-        setHasMore(cachedEntry.hasMore);
-        return true;
-    }, [cacheNamespace]);
-
-    const loadPage = useCallback(async (search: string, page: number, append: boolean) => {
-        const searchCacheKey = getSearchCacheKey(cacheNamespace, search);
-        const requestCacheKey = getRequestCacheKey(cacheNamespace, search, page);
-
-        if (append) {
-            setLoadingMore(true);
-        } else {
-            setInitialLoading(true);
-        }
-
-        try {
-            let request = globalRequestCache.get(requestCacheKey);
-
-            if (!request) {
-                request = loadOptions({search, page}).finally(() => {
-                    globalRequestCache.delete(requestCacheKey);
-                });
-                globalRequestCache.set(requestCacheKey, request);
+            if (!cachedEntry) {
+                return false;
             }
 
-            const result = await request;
-            const cachedEntry = globalSearchCache.get(searchCacheKey);
-            const previousOptions = append ? cachedEntry?.options ?? [] : [];
-            const nextOptions = mergeOptions(previousOptions, result.options);
-            const nextPages = new Set(append ? cachedEntry?.pages ?? [] : []);
+            setOptions(cachedEntry.options);
+            setCurrentPage(cachedEntry.pages.size > 0 ? Math.max(...cachedEntry.pages) : 0);
+            setHasMore(cachedEntry.hasMore);
+            return true;
+        },
+        [cacheNamespace],
+    );
 
-            nextPages.add(page);
+    const loadPage = useCallback(
+        async (search: string, page: number, append: boolean) => {
+            const searchCacheKey = getSearchCacheKey(cacheNamespace, search);
+            const requestCacheKey = getRequestCacheKey(cacheNamespace, search, page);
 
-            const nextEntry: CacheEntry = {
-                options: nextOptions,
-                pages: nextPages,
-                hasMore: result.hasMore,
-            };
-
-            globalSearchCache.set(searchCacheKey, nextEntry);
-            setOptions(nextEntry.options);
-            setCurrentPage(page);
-            setHasMore(nextEntry.hasMore);
-        } finally {
             if (append) {
-                setLoadingMore(false);
+                setLoadingMore(true);
             } else {
-                setInitialLoading(false);
+                setInitialLoading(true);
             }
-        }
-    }, [cacheNamespace, loadOptions]);
+
+            try {
+                let request = globalRequestCache.get(requestCacheKey);
+
+                if (!request) {
+                    request = loadOptions({search, page}).finally(() => {
+                        globalRequestCache.delete(requestCacheKey);
+                    });
+                    globalRequestCache.set(requestCacheKey, request);
+                }
+
+                const result = await request;
+                const cachedEntry = globalSearchCache.get(searchCacheKey);
+                const previousOptions = append ? (cachedEntry?.options ?? []) : [];
+                const nextOptions = mergeOptions(previousOptions, result.options);
+                const nextPages = new Set(append ? (cachedEntry?.pages ?? []) : []);
+
+                nextPages.add(page);
+
+                const nextEntry: CacheEntry = {
+                    options: nextOptions,
+                    pages: nextPages,
+                    hasMore: result.hasMore,
+                };
+
+                globalSearchCache.set(searchCacheKey, nextEntry);
+                setOptions(nextEntry.options);
+                setCurrentPage(page);
+                setHasMore(nextEntry.hasMore);
+            } finally {
+                if (append) {
+                    setLoadingMore(false);
+                } else {
+                    setInitialLoading(false);
+                }
+            }
+        },
+        [cacheNamespace, loadOptions],
+    );
 
     useEffect(() => {
         if (!preloadOnMount) {
@@ -212,7 +214,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         props.onChange(props.value.filter((value) => value !== valueToRemove));
     };
 
-    const handleOpenChange = (details: { open: boolean }) => {
+    const handleOpenChange = (details: {open: boolean}) => {
         setOpen(details.open);
 
         if (!details.open) {
@@ -226,8 +228,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         }
 
         const element = event.currentTarget;
-        const isNearBottom =
-            element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
+        const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
 
         if (!isNearBottom) {
             return;
@@ -239,7 +240,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     return (
         <Field.Root required={required} gap={0}>
             <Field.Label color="neon.blue">
-                {label} {(initialLoading || loadingMore) && <Spinner size="xs" ml={2}/>}
+                {label} {(initialLoading || loadingMore) && <Spinner size="xs" ml={2} />}
             </Field.Label>
             <Combobox.Root
                 multiple={props.multiple}
@@ -250,7 +251,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                 closeOnSelect={!props.multiple}
                 openOnClick
                 openOnChange
-                selectionBehavior={props.multiple ? "clear" : "replace"}
+                selectionBehavior={props.multiple ? 'clear' : 'replace'}
                 onOpenChange={handleOpenChange}
                 onInputValueChange={(details) => setInputValue(details.inputValue)}
                 onValueChange={(details) => handleValueChange(details.value)}
@@ -343,9 +344,9 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                                     size={8}
                                                     strokeWidth={2}
                                                     style={{
-                                                        color: "var(--chakra-colors-neon-blue)",
-                                                        stroke: "var(--chakra-colors-neon-blue)",
-                                                        display: "block",
+                                                        color: 'var(--chakra-colors-neon-blue)',
+                                                        stroke: 'var(--chakra-colors-neon-blue)',
+                                                        display: 'block',
                                                     }}
                                                 />
                                             </Flex>
@@ -370,7 +371,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                             <Combobox.Input
                                 placeholder={values.length === 0 ? placeholder : ''}
                                 flex="1"
-                                minW={values.length === 0 ? "0" : "56px"}
+                                minW={values.length === 0 ? '0' : '56px'}
                                 h="24px"
                                 bg="transparent"
                                 border="none"
@@ -400,12 +401,12 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                 strokeWidth={1.8}
                                 style={{
                                     color: open
-                                        ? "var(--chakra-colors-neon-blue)"
-                                        : "var(--chakra-colors-textMuted)",
+                                        ? 'var(--chakra-colors-neon-blue)'
+                                        : 'var(--chakra-colors-textMuted)',
                                     stroke: open
-                                        ? "var(--chakra-colors-neon-blue)"
-                                        : "var(--chakra-colors-textMuted)",
-                                    display: "block",
+                                        ? 'var(--chakra-colors-neon-blue)'
+                                        : 'var(--chakra-colors-textMuted)',
+                                    display: 'block',
                                 }}
                             />
                         </Combobox.Trigger>
@@ -442,22 +443,22 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                                     alignItems="center"
                                     justifyContent="space-between"
                                     _highlighted={{
-                                        color: "neon.purple",
-                                        bg: "glass.bgHover",
-                                        filter: "drop-shadow(0 0 12px rgba(212, 0, 255, 0.55))",
-                                        boxShadow: "0 0 12px rgba(212, 0, 255, 0.35)",
+                                        color: 'neon.purple',
+                                        bg: 'glass.bgHover',
+                                        filter: 'drop-shadow(0 0 12px rgba(212, 0, 255, 0.55))',
+                                        boxShadow: '0 0 12px rgba(212, 0, 255, 0.35)',
                                     }}
                                     _selected={{
-                                        color: "neon.blue",
-                                        bg: "glass.bgHover",
-                                        fontWeight: "semibold",
-                                        filter: "drop-shadow(0 0 10px rgba(0, 212, 255, 0.5))",
-                                        boxShadow: "0 0 10px rgba(0, 212, 255, 0.3)",
+                                        color: 'neon.blue',
+                                        bg: 'glass.bgHover',
+                                        fontWeight: 'semibold',
+                                        filter: 'drop-shadow(0 0 10px rgba(0, 212, 255, 0.5))',
+                                        boxShadow: '0 0 10px rgba(0, 212, 255, 0.3)',
                                     }}
                                 >
                                     <Combobox.ItemText>{option.label}</Combobox.ItemText>
                                     <Combobox.ItemIndicator>
-                                        <CheckIcon size={14}/>
+                                        <CheckIcon size={14} />
                                     </Combobox.ItemIndicator>
                                 </Combobox.Item>
                             ))}
@@ -468,12 +469,12 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                             )}
                             {loadingMore && (
                                 <Flex align="center" justify="center" py="2">
-                                    <Spinner size="sm"/>
+                                    <Spinner size="sm" />
                                 </Flex>
                             )}
                             {initialLoading && mergedOptions.length === 0 && (
                                 <Flex align="center" justify="center" py="3">
-                                    <Spinner size="sm"/>
+                                    <Spinner size="sm" />
                                 </Flex>
                             )}
                         </Combobox.Content>

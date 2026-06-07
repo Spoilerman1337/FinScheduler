@@ -1,12 +1,5 @@
-import {
-    Button,
-    CloseButton,
-    Dialog,
-    Portal,
-    Stack,
-    Text,
-} from "@chakra-ui/react";
-import type {ReactNode} from "react";
+import {Button, CloseButton, Dialog, Portal, Stack, Text} from '@chakra-ui/react';
+import type {ReactNode} from 'react';
 
 interface FormModalProps {
     isOpen: boolean;
@@ -28,16 +21,30 @@ export default function FormModal({
     loading = false,
 }: FormModalProps) {
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(details) => !details.open && onClose()} placement="center">
+        <Dialog.Root
+            open={isOpen}
+            onOpenChange={(details) => !details.open && onClose()}
+            placement="center"
+            lazyMount
+            unmountOnExit
+        >
             <Portal>
-                <Dialog.Backdrop/>
+                <Dialog.Backdrop />
                 <Dialog.Positioner>
-                    <Dialog.Content bg="bg.layer1" border="1px solid" borderColor="glass.border" maxW="600px">
+                    <Dialog.Content
+                        bg="bg.layer1"
+                        border="1px solid"
+                        borderColor="glass.border"
+                        maxW="600px"
+                    >
                         <Dialog.Header>
-                            <Dialog.Title color="neon.blue">
-                                {title}
-                            </Dialog.Title>
-                            <Dialog.CloseTrigger asChild bg="bg.layer1" border="1px solid" borderColor="neon.blue">
+                            <Dialog.Title color="neon.blue">{title}</Dialog.Title>
+                            <Dialog.CloseTrigger
+                                asChild
+                                bg="bg.layer1"
+                                border="1px solid"
+                                borderColor="neon.blue"
+                            >
                                 <CloseButton
                                     color="neon.blue"
                                     bg="transparent"
@@ -46,18 +53,18 @@ export default function FormModal({
                                     boxShadow="none"
                                     transition="all 0.3s ease-in-out"
                                     _hover={{
-                                        color: "neon.blue",
-                                        bg: "glass.bgHover",
-                                        backdropFilter: "blur(12px)",
-                                        borderColor: "neon.blue",
-                                        outline: "none",
-                                        filter: "drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))",
-                                        boxShadow: "0 0 12px rgba(0, 212, 255, 0.45)",
+                                        color: 'neon.blue',
+                                        bg: 'glass.bgHover',
+                                        backdropFilter: 'blur(12px)',
+                                        borderColor: 'neon.blue',
+                                        outline: 'none',
+                                        filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.55))',
+                                        boxShadow: '0 0 12px rgba(0, 212, 255, 0.45)',
                                     }}
                                     _focusVisible={{
-                                        bg: "transparent",
-                                        outline: "none",
-                                        boxShadow: "none",
+                                        bg: 'transparent',
+                                        outline: 'none',
+                                        boxShadow: 'none',
                                     }}
                                 />
                             </Dialog.CloseTrigger>
@@ -69,9 +76,7 @@ export default function FormModal({
                                     {error}
                                 </Text>
                             )}
-                            <Stack gap={4}>
-                                {children}
-                            </Stack>
+                            <Stack gap={4}>{children}</Stack>
                         </Dialog.Body>
 
                         <Dialog.Footer>

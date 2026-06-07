@@ -1,7 +1,12 @@
-import type {Lookup, PaginatedList, TagDto, TagFilter, TagLookupFilter, TagModification} from './types';
-import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
-
-export type TagStatusFilter = "All" | "Active" | "Inactive";
+import type {Lookup, PaginatedList} from './types';
+import type {
+    TagDto,
+    TagFilter,
+    TagLookupFilter,
+    TagModification,
+    TagStatusFilter,
+} from './tags.types.ts';
+import {FinschedulerApiClient} from './finscheduler-api-client.ts';
 
 export function buildTagFilter(params: {
     page: number;
@@ -18,8 +23,8 @@ export function buildTagFilter(params: {
         filter.name = params.searchTerm;
     }
 
-    if (params.statusFilter !== "All") {
-        filter.isActive = params.statusFilter === "Active";
+    if (params.statusFilter !== 'All') {
+        filter.isActive = params.statusFilter === 'Active';
     }
 
     return filter;
@@ -37,6 +42,25 @@ export default class TagsService extends FinschedulerApiClient {
 
         if (!response.ok) {
             throw new Error(`Failed to fetch tags: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async getTag(id: string): Promise<TagDto | null> {
+        const response = await fetch(`${this.baseUrl}/tags/${id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.status === 404) {
+            return null;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch tag: ${response.statusText}`);
         }
 
         return response.json();
@@ -93,5 +117,4 @@ export default class TagsService extends FinschedulerApiClient {
 
         return response.json();
     }
-};
-
+}

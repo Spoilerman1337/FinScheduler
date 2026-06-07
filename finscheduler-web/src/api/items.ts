@@ -1,15 +1,51 @@
-import type {ItemDto, PaginatedList, ItemFilter, ItemModification} from './types';
-import {FinschedulerApiClient} from "./finscheduler-api-client.ts";
+import {FinschedulerApiClient} from './finscheduler-api-client.ts';
+import type {PaginatedList} from './types.ts';
+import type {
+    ItemDateFilterValue,
+    ItemDto,
+    ItemFilter,
+    ItemModification,
+    ItemStatusFilter,
+} from './items.types.ts';
 
-export type ItemStatusFilter = "All" | "Active" | "Inactive";
+const itemDateFilterFields = {
+    created: {
+        from: 'createdFrom',
+        to: 'createdTo',
+    },
+    updated: {
+        from: 'updatedFrom',
+        to: 'updatedTo',
+    },
+} as const;
+
+function applyDateFilterRange(filter: ItemFilter, dateFilter?: ItemDateFilterValue): void {
+    if (!dateFilter) {
+        return;
+    }
+
+    const dateRange = FinschedulerApiClient.buildDateRange(dateFilter.from, dateFilter.to);
+    const fields = itemDateFilterFields[dateFilter.mode];
+
+    if (dateRange.from !== null) {
+        filter[fields.from] = FinschedulerApiClient.toLocalDayBoundaryIso(dateRange.from, false);
+    }
+
+    if (dateRange.to !== null) {
+        filter[fields.to] = FinschedulerApiClient.toLocalDayBoundaryIso(dateRange.to, true);
+    }
+}
 
 export function buildItemFilter(params: {
     page: number;
     pageSize: number;
     searchTerm: string;
     statusFilter: ItemStatusFilter;
+    dateFilter?: ItemDateFilterValue;
     priceFrom: string;
     priceTo: string;
+    cashbackFrom: string;
+    cashbackTo: string;
 }): ItemFilter {
     const filter: ItemFilter = {
         page: params.page - 1,
@@ -20,24 +56,36 @@ export function buildItemFilter(params: {
         filter.name = params.searchTerm;
     }
 
-    if (params.statusFilter !== "All") {
-        filter.isActive = params.statusFilter === "Active";
+    if (params.statusFilter !== 'All') {
+        filter.isActive = params.statusFilter === 'Active';
     }
 
-    if (params.priceFrom) {
-        const price = parseFloat(params.priceFrom);
+    applyDateFilterRange(filter, params.dateFilter);
 
-        if (!Number.isNaN(price)) {
-            filter.priceFrom = price;
-        }
+    const priceRange = FinschedulerApiClient.buildNonNegativeRange(
+        params.priceFrom,
+        params.priceTo,
+    );
+
+    if (priceRange.from !== null) {
+        filter.priceFrom = priceRange.from;
     }
 
-    if (params.priceTo) {
-        const price = parseFloat(params.priceTo);
+    if (priceRange.to !== null) {
+        filter.priceTo = priceRange.to;
+    }
 
-        if (!Number.isNaN(price)) {
-            filter.priceTo = price;
-        }
+    const cashbackRange = FinschedulerApiClient.buildNonNegativeRange(
+        params.cashbackFrom,
+        params.cashbackTo,
+    );
+
+    if (cashbackRange.from !== null) {
+        filter.cashbackFrom = cashbackRange.from;
+    }
+
+    if (cashbackRange.to !== null) {
+        filter.cashbackTo = cashbackRange.to;
     }
 
     return filter;
@@ -55,6 +103,25 @@ export default class ItemsService extends FinschedulerApiClient {
 
         if (!response.ok) {
             throw new Error(`Failed to fetch items: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async getItem(id: string): Promise<ItemDto | null> {
+        const response = await fetch(`${this.baseUrl}/items/${id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.status === 404) {
+            return null;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch item: ${response.statusText}`);
         }
 
         return response.json();
@@ -115,5 +182,4 @@ export default class ItemsService extends FinschedulerApiClient {
             throw new Error(`Failed to delete item: ${response.statusText}`);
         }
     }
-};
-
+}

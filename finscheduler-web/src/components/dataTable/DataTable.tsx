@@ -1,15 +1,15 @@
-import {Flex} from "@chakra-ui/react";
-import Paginator from "./subcomponents/Paginator.tsx";
-import DataTableActionButtons from "./subcomponents/DataTableActionButtons.tsx";
-import DataTableHeader from "./subcomponents/DataTableHeader.tsx";
-import DataTableRows from "./subcomponents/DataTableRows.tsx";
-import type {TableColumn} from "./models.ts";
+import {Flex} from '@chakra-ui/react';
+import ListingActionButtons from '../dataListing/actionButtons/ListingActionButtons.tsx';
+import ListingPaginator from '../dataListing/paginator/ListingPaginator.tsx';
+import type {DataListingColumn} from '../dataListing/types.ts';
+import DataTableHeader from './subcomponents/DataTableHeader.tsx';
+import DataTableRows from './subcomponents/DataTableRows.tsx';
 
-export type {TableColumn} from "./models.ts";
+export type {DataListingColumn} from '../dataListing/types.ts';
 
 interface DataTableProps<T> {
     data: T[];
-    columns: TableColumn<T>[];
+    columns: DataListingColumn<T>[];
     total: number;
     page?: number;
     pageSize?: number;
@@ -41,7 +41,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
             return getRowId(row);
         }
 
-        const fallbackId = row["id" as keyof T];
+        const fallbackId = row['id' as keyof T];
         return fallbackId ? String(fallbackId) : `row-${index}`;
     };
 
@@ -66,6 +66,7 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
         } else {
             newSelection.delete(rowId);
         }
+
         onSelectionChange(newSelection);
     };
 
@@ -76,9 +77,10 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
     };
 
     const selectedIds = Array.from(selectedRows);
-    const selectedRow = selectedIds.length === 1
-        ? data.find((row, index) => resolveRowId(row, index) === selectedIds[0])
-        : undefined;
+    const selectedRow =
+        selectedIds.length === 1
+            ? data.find((row, index) => resolveRowId(row, index) === selectedIds[0])
+            : undefined;
 
     const handleEditSelected = () => {
         if (selectedRow) {
@@ -92,7 +94,9 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
         }
     };
 
-    const allSelected = selectable && data.length > 0 &&
+    const allSelected =
+        selectable &&
+        data.length > 0 &&
         data.every((row, index) => selectedRows.has(resolveRowId(row, index)));
 
     return (
@@ -136,17 +140,15 @@ export default function DataTable<T extends object>(props: DataTableProps<T>) {
             </Flex>
 
             {props.total > 0 && (
-                <Paginator
+                <ListingPaginator
                     total={props.total}
                     page={props.page || 1}
                     pageSize={props.pageSize || 10}
-                    onPageChange={props.onPageChange || (() => {
-                    })}
-                    onPageSizeChange={props.onPageSizeChange || (() => {
-                    })}
+                    onPageChange={props.onPageChange || (() => {})}
+                    onPageSizeChange={props.onPageSizeChange || (() => {})}
                 />
             )}
-            <DataTableActionButtons
+            <ListingActionButtons
                 selectedCount={selectedIds.length}
                 onAdd={onAdd}
                 onEditSelected={onEdit && selectedRow ? handleEditSelected : undefined}
