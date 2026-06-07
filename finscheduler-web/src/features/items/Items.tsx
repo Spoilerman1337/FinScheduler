@@ -2,11 +2,17 @@ import DataShowcase, {type DataListingColumn} from '../../components/dataShowcas
 import {Badge, Flex, Spinner, Text} from '@chakra-ui/react';
 import {useCallback, useEffect, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import type {ItemDto, ItemFilter} from '../../api/types.ts';
-import ItemsService, {buildItemFilter, type ItemStatusFilter} from '../../api/items.ts';
+import type {
+    ItemDateFilterValue,
+    ItemDto,
+    ItemFilter,
+    ItemStatusFilter,
+} from '../../api/items.types.ts';
+import ItemsService, {buildItemFilter} from '../../api/items.ts';
 import type {NumberRangeValue} from '../../components/listingFilters/NumberRangeFilter.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {buildEditItemPath, newItemPath} from '../routes.ts';
+import {createDefaultItemDateFilter} from './types.ts';
 import ItemsFilters from './subcomponents/ItemsFilters.tsx';
 import {getCashbackColor} from './types.ts';
 
@@ -23,6 +29,7 @@ export default function Items() {
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>('Active');
+    const [dateFilter, setDateFilter] = useState<ItemDateFilterValue>(createDefaultItemDateFilter);
     const [priceRange, setPriceRange] = useState<NumberRangeValue>({from: '', to: ''});
     const [cashbackRange, setCashbackRange] = useState<NumberRangeValue>({from: '', to: ''});
 
@@ -103,6 +110,7 @@ export default function Items() {
                 pageSize,
                 searchTerm,
                 statusFilter,
+                dateFilter,
                 priceFrom: priceRange.from,
                 priceTo: priceRange.to,
                 cashbackFrom: cashbackRange.from,
@@ -122,6 +130,7 @@ export default function Items() {
         pageSize,
         searchTerm,
         statusFilter,
+        dateFilter,
         priceRange.from,
         priceRange.to,
         cashbackRange.from,
@@ -135,6 +144,7 @@ export default function Items() {
     const handleReset = () => {
         setSearchTerm('');
         setStatusFilter('All');
+        setDateFilter(createDefaultItemDateFilter());
         setPriceRange({from: '', to: ''});
         setCashbackRange({from: '', to: ''});
         setPage(1);
@@ -185,6 +195,7 @@ export default function Items() {
             <ItemsFilters
                 searchTerm={searchTerm}
                 statusFilter={statusFilter}
+                dateFilter={dateFilter}
                 priceRange={priceRange}
                 cashbackRange={cashbackRange}
                 onSearchTermChange={(value) => {
@@ -193,6 +204,10 @@ export default function Items() {
                 }}
                 onStatusFilterChange={(value) => {
                     setStatusFilter(value);
+                    setPage(1);
+                }}
+                onDateFilterChange={(value) => {
+                    setDateFilter(value);
                     setPage(1);
                 }}
                 onPriceRangeChange={(value) => {

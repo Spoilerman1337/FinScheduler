@@ -1,4 +1,4 @@
-import type {ItemDto, ItemModification} from '../../api/types.ts';
+import type {ItemDto, ItemModification} from '../../api/items.types.ts';
 import {categoryTranslations} from '../../models/items.ts';
 
 export interface ItemFormData {

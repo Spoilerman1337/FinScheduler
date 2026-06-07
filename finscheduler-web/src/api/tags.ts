@@ -1,14 +1,15 @@
 import type {
     Lookup,
     PaginatedList,
+} from './types';
+import type {
     TagDto,
     TagFilter,
     TagLookupFilter,
     TagModification,
-} from './types';
+    TagStatusFilter,
+} from './tags.types.ts';
 import {FinschedulerApiClient} from './finscheduler-api-client.ts';
-
-export type TagStatusFilter = 'All' | 'Active' | 'Inactive';
 
 export function buildTagFilter(params: {
     page: number;

@@ -2,8 +2,8 @@ import DataTable, {type DataListingColumn} from '../../components/dataTable/Data
 import {Badge, Flex, Spinner, Text} from '@chakra-ui/react';
 import {useCallback, useEffect, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import type {TagDto, TagFilter} from '../../api/types.ts';
-import TagsService, {buildTagFilter, type TagStatusFilter} from '../../api/tags.ts';
+import type {TagDto, TagFilter, TagStatusFilter} from '../../api/tags.types.ts';
+import TagsService, {buildTagFilter} from '../../api/tags.ts';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {buildEditTagPath, newTagPath} from '../routes.ts';
 import TagsFilters from './subcomponents/TagsFilters.tsx';

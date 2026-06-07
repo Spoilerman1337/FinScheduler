@@ -109,6 +109,72 @@ describe('items api', () => {
         });
     });
 
+    it('buildItemFilter normalizes reversed created date bounds and expands them to full days', () => {
+        // Arrange
+        const params = {
+            page: 1,
+            pageSize: 10,
+            searchTerm: '',
+            statusFilter: 'All' as const,
+            dateFilter: {
+                mode: 'created' as const,
+                from: '2026-02-15',
+                to: '2026-02-10',
+            },
+            priceFrom: '',
+            priceTo: '',
+            cashbackFrom: '',
+            cashbackTo: '',
+        };
+
+        const expectedCreatedFrom = new Date('2026-02-10T00:00:00.000').toISOString();
+        const expectedCreatedTo = new Date('2026-02-15T23:59:59.999').toISOString();
+
+        // Act
+        const filter = buildItemFilter(params);
+
+        // Assert
+        expect(filter).toEqual({
+            page: 0,
+            pageSize: 10,
+            createdFrom: expectedCreatedFrom,
+            createdTo: expectedCreatedTo,
+        });
+    });
+
+    it('buildItemFilter routes the selected updated date bounds to updated filter fields', () => {
+        // Arrange
+        const params = {
+            page: 1,
+            pageSize: 10,
+            searchTerm: '',
+            statusFilter: 'All' as const,
+            dateFilter: {
+                mode: 'updated' as const,
+                from: '2026-03-02',
+                to: '2026-03-05',
+            },
+            priceFrom: '',
+            priceTo: '',
+            cashbackFrom: '',
+            cashbackTo: '',
+        };
+
+        const expectedUpdatedFrom = new Date('2026-03-02T00:00:00.000').toISOString();
+        const expectedUpdatedTo = new Date('2026-03-05T23:59:59.999').toISOString();
+
+        // Act
+        const filter = buildItemFilter(params);
+
+        // Assert
+        expect(filter).toEqual({
+            page: 0,
+            pageSize: 10,
+            updatedFrom: expectedUpdatedFrom,
+            updatedTo: expectedUpdatedTo,
+        });
+    });
+
     it('getItem requests the item by id endpoint and returns the item', async () => {
         // Arrange
         const service = new ItemsService();

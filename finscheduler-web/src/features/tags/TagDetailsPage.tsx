@@ -2,7 +2,7 @@ import {Badge, Box, Button, Card, Flex, Spinner, Stack, Text} from '@chakra-ui/r
 import {CheckCircle2, Save, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import type {TagDto} from '../../api/types.ts';
+import type {TagDto} from '../../api/tags.types.ts';
 import TagsService from '../../api/tags.ts';
 import SwitchField from '../../components/formFields/SwitchField.tsx';
 import TextField from '../../components/formFields/TextField.tsx';

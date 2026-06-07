@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import {describe, expect, it} from 'vitest';
 import {Route, Routes} from 'react-router-dom';
-import type {ItemModification} from '../../api/types.ts';
+import type {ItemModification} from '../../api/items.types.ts';
 import {API_BASE_URL} from '../../config/api.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';

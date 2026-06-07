@@ -119,7 +119,7 @@ export default function NumberRangeFilter(props: NumberRangeFilterProps) {
 
     useEffect(() => {
         setDraftValue(props.value);
-    }, [props.value.from, props.value.to]);
+    }, [props.value]);
 
     const summary = useMemo(
         () =>
@@ -129,7 +129,7 @@ export default function NumberRangeFilter(props: NumberRangeFilterProps) {
                 suffix: props.suffix,
                 formatValue: props.formatValue,
             }),
-        [props.formatValue, props.label, props.suffix, props.value.from, props.value.to],
+        [props.formatValue, props.label, props.suffix, props.value],
     );
     const isActive = Boolean(props.value.from || props.value.to);
 

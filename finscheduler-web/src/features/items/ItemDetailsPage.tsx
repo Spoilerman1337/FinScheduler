@@ -2,7 +2,7 @@ import {Badge, Box, Button, Card, Flex, SimpleGrid, Spinner, Stack, Text} from '
 import {CheckCircle2, Save, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import type {ItemDto} from '../../api/types.ts';
+import type {ItemDto} from '../../api/items.types.ts';
 import ItemsService from '../../api/items.ts';
 import TagsService from '../../api/tags.ts';
 import AsyncSelectField from '../../components/formFields/AsyncSelectField.tsx';

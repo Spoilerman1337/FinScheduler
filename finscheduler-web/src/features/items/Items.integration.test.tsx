@@ -1,10 +1,10 @@
-import {screen, waitFor} from '@testing-library/react';
+import {fireEvent, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import {describe, expect, it, vi} from 'vitest';
 import {Route, Routes} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api.ts';
-import type {ItemDto} from '../../api/types.ts';
+import type {ItemDto} from '../../api/items.types.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';
 import {itemEditRoutePath, itemsListPath, newItemPath} from '../routes.ts';
@@ -248,6 +248,143 @@ describe('Items integration', () => {
             expect(lastRequest?.searchParams.get('cashbackTo')).toBe('15');
         });
         expect(screen.getByRole('button', {name: 'Кэшбэк: 5 - 15 %'})).toBeInTheDocument();
+    });
+
+    it('applies the created date range from a single filter control and delays reload until apply', async () => {
+        // Arrange
+        const requests: URL[] = [];
+        const expectedCreatedFrom = new Date('2025-02-10T00:00:00.000').toISOString();
+        const expectedCreatedTo = new Date('2025-02-15T23:59:59.999').toISOString();
+
+        server.use(
+            http.get(`${API_BASE_URL}/items`, ({request}) => {
+                const url = new URL(request.url);
+
+                requests.push(url);
+
+                if (
+                    url.searchParams.get('createdFrom') === expectedCreatedFrom &&
+                    url.searchParams.get('createdTo') === expectedCreatedTo
+                ) {
+                    return HttpResponse.json({
+                        data: [
+                            buildItem({
+                                id: 'item-6',
+                                name: 'Filtered by Date',
+                                createdAt: '2025-02-12T12:00:00.000Z',
+                            }),
+                        ],
+                        count: 1,
+                    });
+                }
+
+                return HttpResponse.json({
+                    data: [buildItem({name: 'Coffee'})],
+                    count: 1,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Items />);
+        await screen.findByText('Coffee');
+        await user.click(screen.getByRole('button', {name: 'Создан'}));
+        fireEvent.change(await screen.findByLabelText('Дата создания от'), {
+            target: {value: '15.02.2025'},
+        });
+        fireEvent.blur(screen.getByLabelText('Дата создания от'));
+        fireEvent.change(screen.getByLabelText('Дата создания до'), {
+            target: {value: '10.02.2025'},
+        });
+        fireEvent.blur(screen.getByLabelText('Дата создания до'));
+
+        // Assert
+        expect(requests).toHaveLength(1);
+
+        // Act
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
+
+        // Assert
+        expect(await screen.findByText('Filtered by Date')).toBeInTheDocument();
+        await waitFor(() => {
+            const lastRequest = requests.at(-1);
+
+            expect(lastRequest?.searchParams.get('createdFrom')).toBe(expectedCreatedFrom);
+            expect(lastRequest?.searchParams.get('createdTo')).toBe(expectedCreatedTo);
+        });
+        expect(screen.getByRole('button', {name: 'Создан: 10.02.2025 - 15.02.2025'})).toBeInTheDocument();
+    });
+
+    it('applies the updated date range after switching the active date mode', async () => {
+        // Arrange
+        const requests: URL[] = [];
+        const expectedUpdatedFrom = new Date('2025-03-10T00:00:00.000').toISOString();
+        const expectedUpdatedTo = new Date('2025-03-12T23:59:59.999').toISOString();
+
+        server.use(
+            http.get(`${API_BASE_URL}/items`, ({request}) => {
+                const url = new URL(request.url);
+
+                requests.push(url);
+
+                if (
+                    url.searchParams.get('updatedFrom') === expectedUpdatedFrom &&
+                    url.searchParams.get('updatedTo') === expectedUpdatedTo
+                ) {
+                    return HttpResponse.json({
+                        data: [
+                            buildItem({
+                                id: 'item-7',
+                                name: 'Filtered by Updated Date',
+                                updatedAt: '2025-03-11T09:00:00.000Z',
+                            }),
+                        ],
+                        count: 1,
+                    });
+                }
+
+                return HttpResponse.json({
+                    data: [buildItem({name: 'Coffee'})],
+                    count: 1,
+                });
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Items />);
+        await screen.findByText('Coffee');
+        await user.click(screen.getByRole('button', {name: 'Создан'}));
+        await user.click(screen.getByRole('button', {name: 'Обновлён'}));
+        fireEvent.change(await screen.findByLabelText('Дата обновления от'), {
+            target: {value: '10.03.2025'},
+        });
+        fireEvent.blur(screen.getByLabelText('Дата обновления от'));
+        fireEvent.change(screen.getByLabelText('Дата обновления до'), {
+            target: {value: '12.03.2025'},
+        });
+        fireEvent.blur(screen.getByLabelText('Дата обновления до'));
+
+        // Assert
+        expect(requests).toHaveLength(1);
+
+        // Act
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
+
+        // Assert
+        expect(await screen.findByText('Filtered by Updated Date')).toBeInTheDocument();
+        await waitFor(() => {
+            const lastRequest = requests.at(-1);
+
+            expect(lastRequest?.searchParams.get('updatedFrom')).toBe(expectedUpdatedFrom);
+            expect(lastRequest?.searchParams.get('updatedTo')).toBe(expectedUpdatedTo);
+            expect(lastRequest?.searchParams.get('createdFrom')).toBeNull();
+            expect(lastRequest?.searchParams.get('createdTo')).toBeNull();
+        });
+        expect(screen.getByRole('button', {name: 'Обновлён: 10.03.2025 - 12.03.2025'})).toBeInTheDocument();
     });
 
     it('navigates to the create page from the add button', async () => {

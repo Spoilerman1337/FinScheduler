@@ -1,43 +1,39 @@
-import type {ItemDto, PaginatedList, ItemFilter, ItemModification} from './types';
 import {FinschedulerApiClient} from './finscheduler-api-client.ts';
+import type {PaginatedList} from './types.ts';
+import type {
+    ItemDateFilterValue,
+    ItemDto,
+    ItemFilter,
+    ItemModification,
+    ItemStatusFilter,
+} from './items.types.ts';
 
-export type ItemStatusFilter = 'All' | 'Active' | 'Inactive';
+const itemDateFilterFields = {
+    created: {
+        from: 'createdFrom',
+        to: 'createdTo',
+    },
+    updated: {
+        from: 'updatedFrom',
+        to: 'updatedTo',
+    },
+} as const;
 
-function parseNonNegativeNumberValue(value: string): number | null {
-    if (!value) {
-        return null;
+function applyDateFilterRange(filter: ItemFilter, dateFilter?: ItemDateFilterValue): void {
+    if (!dateFilter) {
+        return;
     }
 
-    const normalized = value.replace(',', '.').trim();
+    const dateRange = FinschedulerApiClient.buildDateRange(dateFilter.from, dateFilter.to);
+    const fields = itemDateFilterFields[dateFilter.mode];
 
-    if (!normalized) {
-        return null;
+    if (dateRange.from !== null) {
+        filter[fields.from] = FinschedulerApiClient.toLocalDayBoundaryIso(dateRange.from, false);
     }
 
-    const parsed = Number(normalized);
-
-    if (!Number.isFinite(parsed) || parsed < 0) {
-        return null;
+    if (dateRange.to !== null) {
+        filter[fields.to] = FinschedulerApiClient.toLocalDayBoundaryIso(dateRange.to, true);
     }
-
-    return parsed;
-}
-
-function buildNonNegativeRange(fromValue: string, toValue: string): {
-    from: number | null;
-    to: number | null;
-} {
-    const from = parseNonNegativeNumberValue(fromValue);
-    const to = parseNonNegativeNumberValue(toValue);
-
-    if (from !== null && to !== null && from > to) {
-        return {
-            from: to,
-            to: from,
-        };
-    }
-
-    return {from, to};
 }
 
 export function buildItemFilter(params: {
@@ -45,6 +41,7 @@ export function buildItemFilter(params: {
     pageSize: number;
     searchTerm: string;
     statusFilter: ItemStatusFilter;
+    dateFilter?: ItemDateFilterValue;
     priceFrom: string;
     priceTo: string;
     cashbackFrom: string;
@@ -63,7 +60,9 @@ export function buildItemFilter(params: {
         filter.isActive = params.statusFilter === 'Active';
     }
 
-    const priceRange = buildNonNegativeRange(params.priceFrom, params.priceTo);
+    applyDateFilterRange(filter, params.dateFilter);
+
+    const priceRange = FinschedulerApiClient.buildNonNegativeRange(params.priceFrom, params.priceTo);
 
     if (priceRange.from !== null) {
         filter.priceFrom = priceRange.from;
@@ -73,7 +72,10 @@ export function buildItemFilter(params: {
         filter.priceTo = priceRange.to;
     }
 
-    const cashbackRange = buildNonNegativeRange(params.cashbackFrom, params.cashbackTo);
+    const cashbackRange = FinschedulerApiClient.buildNonNegativeRange(
+        params.cashbackFrom,
+        params.cashbackTo,
+    );
 
     if (cashbackRange.from !== null) {
         filter.cashbackFrom = cashbackRange.from;

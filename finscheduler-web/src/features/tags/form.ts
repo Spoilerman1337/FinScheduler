@@ -1,4 +1,4 @@
-import type {TagDto, TagModification} from '../../api/types.ts';
+import type {TagDto, TagModification} from '../../api/tags.types.ts';
 
 export interface TagFormData {
     name: string;
