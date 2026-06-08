@@ -1,4 +1,16 @@
-import {Badge, Box, Button, Card, Flex, Spinner, Stack, Text} from '@chakra-ui/react';
+import {
+    Badge,
+    Box,
+    Button,
+    Card,
+    CloseButton,
+    Dialog,
+    Flex,
+    Portal,
+    Spinner,
+    Stack,
+    Text,
+} from '@chakra-ui/react';
 import {CheckCircle2, Save, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
@@ -12,6 +24,7 @@ import {
     buildTagModification,
     createDefaultTagFormData,
     mapTagToFormData,
+    shouldConfirmTagDeactivation,
     type TagFormData,
     validateTagFormData,
 } from './form.ts';
@@ -19,6 +32,10 @@ import {buildEditTagPath, tagsListPath} from '../routes.ts';
 
 interface TagDetailsPageProps {
     mode: 'create' | 'edit';
+}
+
+interface PendingSaveAction {
+    closeAfterSave: boolean;
 }
 
 const tagsService = new TagsService();
@@ -31,6 +48,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pendingSaveAction, setPendingSaveAction] = useState<PendingSaveAction | null>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -91,16 +109,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
         navigate(tagsListPath);
     };
 
-    const handleSave = async (closeAfterSave: boolean) => {
-        setError(null);
-
-        const validationError = validateTagFormData(formData);
-
-        if (validationError) {
-            setError(validationError);
-            return;
-        }
-
+    const persistTag = async (closeAfterSave: boolean) => {
         setSaving(true);
 
         try {
@@ -153,6 +162,34 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleSave = async (closeAfterSave: boolean) => {
+        setError(null);
+
+        const validationError = validateTagFormData(formData);
+
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
+        if (shouldConfirmTagDeactivation(mode, tag, formData)) {
+            setPendingSaveAction({closeAfterSave});
+            return;
+        }
+
+        await persistTag(closeAfterSave);
+    };
+
+    const handleConfirmDeactivation = async () => {
+        if (!pendingSaveAction) {
+            return;
+        }
+
+        const {closeAfterSave} = pendingSaveAction;
+        setPendingSaveAction(null);
+        await persistTag(closeAfterSave);
     };
 
     const pageTitle = mode === 'create' ? 'Новый тег' : 'Редактирование тега';
@@ -272,6 +309,63 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                     />
                 </Card.Body>
             </Card.Root>
+
+            <Dialog.Root
+                open={pendingSaveAction !== null}
+                onOpenChange={(details) => {
+                    if (!details.open) {
+                        setPendingSaveAction(null);
+                    }
+                }}
+                placement="center"
+                lazyMount
+                unmountOnExit
+            >
+                <Portal>
+                    <Dialog.Backdrop />
+                    <Dialog.Positioner>
+                        <Dialog.Content
+                            bg="bg.layer1"
+                            border="1px solid"
+                            borderColor="border.error"
+                            boxShadow="0 0 24px rgba(255, 74, 122, 0.18)"
+                            maxW="560px"
+                        >
+                            <Dialog.Header>
+                                <Dialog.Title color="fg">Подтвердить деактивацию тега</Dialog.Title>
+                                <Dialog.CloseTrigger asChild>
+                                    <CloseButton
+                                        color="fg.error"
+                                        _hover={{bg: 'rgba(255, 74, 122, 0.12)'}}
+                                    />
+                                </Dialog.CloseTrigger>
+                            </Dialog.Header>
+                            <Dialog.Body>
+                                <Stack gap={3}>
+                                    <Text color="fg">
+                                        При деактивации тег будет отвязан от всех элементов
+                                        каталога.
+                                    </Text>
+                                    <Text color="fg.muted">Подтвердите сохранение изменений.</Text>
+                                </Stack>
+                            </Dialog.Body>
+                            <Dialog.Footer>
+                                <Button variant="ghost" onClick={() => setPendingSaveAction(null)}>
+                                    Отменить
+                                </Button>
+                                <Button
+                                    bg="neon.pink"
+                                    color="white"
+                                    _hover={{bg: 'neon.pink', opacity: 0.88}}
+                                    onClick={() => void handleConfirmDeactivation()}
+                                >
+                                    Подтвердить
+                                </Button>
+                            </Dialog.Footer>
+                        </Dialog.Content>
+                    </Dialog.Positioner>
+                </Portal>
+            </Dialog.Root>
         </Stack>
     );
 }

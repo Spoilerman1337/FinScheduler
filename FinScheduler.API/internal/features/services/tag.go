@@ -222,6 +222,15 @@ func (service *TagsService) Update(ctx context.Context, tagID uuid.UUID, update 
 		if err != nil {
 			return err
 		}
+		if !success {
+			return nil
+		}
+		if !update.IsActive {
+			_, err = repositories.TagToItems.DeleteByTagId(ctx, tagID)
+			if err != nil {
+				return err
+			}
+		}
 
 		return nil
 	})

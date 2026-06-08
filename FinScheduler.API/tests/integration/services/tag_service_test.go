@@ -177,6 +177,59 @@ func TestTagsServiceUpdateAndGet_ShouldNotErr(t *testing.T) {
 	assert.Equal(t, updatedIsActive, *tags[0].IsActive)
 }
 
+func TestTagsServiceUpdate_ShouldRemoveItemLinksWhenTagBecomesInactive(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	tagsService := services.NewTagsService(uow, testLogger)
+	itemsService := services.NewItemsService(uow, testLogger)
+	tagName := "Groceries"
+	itemName := "Milk"
+	countQuery := `SELECT COUNT(*) FROM tag_to_item WHERE tag_id = $1`
+
+	tagCreate := &domains.TagCreate{
+		Name:     tagName,
+		IsActive: true,
+	}
+
+	tagID, tagCreateErr := tagsService.Create(ctx, tagCreate)
+
+	itemCreate := &domains.ItemCreate{
+		Name:     itemName,
+		Category: "FoodDrinks",
+		TagIds:   []string{tagID.String()},
+	}
+
+	itemID, itemCreateErr := itemsService.Create(ctx, itemCreate)
+
+	update := &domains.TagUpdate{
+		Name:     tagName,
+		IsActive: false,
+	}
+
+	// Act
+	ok, updateErr := tagsService.Update(ctx, tagID, update)
+	item, getItemErr := itemsService.GetById(ctx, itemID)
+
+	var actualLinkCount int
+	countErr := testDB.Get(&actualLinkCount, countQuery, tagID)
+
+	// Assert
+	require.NoError(t, tagCreateErr)
+	require.NoError(t, itemCreateErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, getItemErr)
+	require.NoError(t, countErr)
+	require.True(t, ok)
+	require.NotNil(t, item)
+	assert.Empty(t, item.Tags)
+	assert.Zero(t, actualLinkCount)
+}
+
 func TestTagsServiceUpdateMissing_ShouldReturnFalseWithoutErr(t *testing.T) {
 	// Arrange
 	ctx := testContext

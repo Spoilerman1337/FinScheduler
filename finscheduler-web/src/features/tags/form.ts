@@ -37,3 +37,11 @@ export function buildTagModification(formData: TagFormData): TagModification {
         isActive: formData.isActive,
     };
 }
+
+export function shouldConfirmTagDeactivation(
+    mode: 'create' | 'edit',
+    tag: TagDto | null,
+    formData: TagFormData,
+): boolean {
+    return mode === 'edit' && tag?.isActive === true && formData.isActive === false;
+}

@@ -96,4 +96,89 @@ describe('TagDetailsPage integration', () => {
         });
         expect(await screen.findByText('Tags Listing Page')).toBeInTheDocument();
     });
+
+    it('does not send the update until tag deactivation is confirmed', async () => {
+        // Arrange
+        let updateRequests = 0;
+
+        server.use(
+            http.get(`${API_BASE_URL}/tags/tag-1`, () => {
+                return HttpResponse.json({
+                    id: 'tag-1',
+                    name: 'Old Tag',
+                    isActive: true,
+                });
+            }),
+            http.put(`${API_BASE_URL}/tags/tag-1`, async () => {
+                updateRequests += 1;
+
+                return new HttpResponse(null, {status: 200});
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderTagDetailsRoutes([buildEditTagPath('tag-1')]);
+        await screen.findByDisplayValue('Old Tag');
+        const [saveButton] = screen.getAllByRole('button');
+        await user.click(screen.getByRole('checkbox'));
+        await user.click(saveButton);
+
+        // Assert
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText(/элементов каталога\./i)).toBeInTheDocument();
+        expect(updateRequests).toBe(0);
+
+        // Act
+        const dialogButtons = within(dialog).getAllByRole('button');
+        await user.click(dialogButtons[1]);
+
+        // Assert
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+        expect(updateRequests).toBe(0);
+    });
+
+    it('sends the update after deactivation confirmation and keeps save-and-close flow', async () => {
+        // Arrange
+        let updatedPayload: TagModification | null = null;
+
+        server.use(
+            http.get(`${API_BASE_URL}/tags/tag-1`, () => {
+                return HttpResponse.json({
+                    id: 'tag-1',
+                    name: 'Old Tag',
+                    isActive: true,
+                });
+            }),
+            http.put(`${API_BASE_URL}/tags/tag-1`, async ({request}) => {
+                updatedPayload = (await request.json()) as TagModification;
+
+                return new HttpResponse(null, {status: 200});
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderTagDetailsRoutes([buildEditTagPath('tag-1')]);
+        await screen.findByDisplayValue('Old Tag');
+        const actionButtons = screen.getAllByRole('button');
+        await user.click(screen.getByRole('checkbox'));
+        await user.click(actionButtons[1]);
+        const dialog = await screen.findByRole('dialog');
+        const dialogButtons = within(dialog).getAllByRole('button');
+        await user.click(dialogButtons[2]);
+
+        // Assert
+        await waitFor(() => {
+            expect(updatedPayload).toEqual({
+                name: 'Old Tag',
+                isActive: false,
+            });
+        });
+        expect(await screen.findByText('Tags Listing Page')).toBeInTheDocument();
+    });
 });

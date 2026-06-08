@@ -145,3 +145,37 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err
 }
+
+func (repository *TagToItemsRepository) DeleteByTagId(ctx context.Context, tagID uuid.UUID) (bool, error) {
+	tracer := otel.Tracer("tag-to-items")
+	ctx, span := tracer.Start(ctx, "tag-to-items-repository")
+	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationDelete)
+	defer span.End()
+
+	query := "DELETE FROM public.tag_to_item WHERE tag_id = ?"
+	query = repository.db.Rebind(query)
+	repository.logger.InfoContext(ctx, "fetching delete tag to items by tag id:", "query", query, "tagId", tagID)
+	start := time.Now()
+	result, err := repository.db.ExecContext(ctx, query, tagID)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err == nil, metrics.DatabaseOperationDelete)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error on DELETE operation", "error", err, "tagId", tagID)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	success := rowsAffected > 0
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, true, metrics.DatabaseOperationDelete)
+
+	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
+	return success, err
+}

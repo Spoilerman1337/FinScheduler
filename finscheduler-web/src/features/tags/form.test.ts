@@ -68,4 +68,54 @@ describe('tags form', () => {
             isActive: false,
         });
     });
+
+    it('returns true when an active tag is being deactivated in edit mode', () => {
+        // Arrange
+        const tag = {
+            name: 'Transport',
+            isActive: true,
+        };
+        const formData = {
+            name: 'Transport',
+            isActive: false,
+        };
+
+        // Act
+        const shouldConfirm = shouldConfirmTagDeactivation('edit', tag, formData);
+
+        // Assert
+        expect(shouldConfirm).toBe(true);
+    });
+
+    it('returns false when the tag remains active', () => {
+        // Arrange
+        const tag = {
+            name: 'Transport',
+            isActive: true,
+        };
+        const formData = {
+            name: 'Transport',
+            isActive: true,
+        };
+
+        // Act
+        const shouldConfirm = shouldConfirmTagDeactivation('edit', tag, formData);
+
+        // Assert
+        expect(shouldConfirm).toBe(false);
+    });
+
+    it('returns false when creating an inactive tag', () => {
+        // Arrange
+        const formData = {
+            name: 'Transport',
+            isActive: false,
+        };
+
+        // Act
+        const shouldConfirm = shouldConfirmTagDeactivation('create', null, formData);
+
+        // Assert
+        expect(shouldConfirm).toBe(false);
+    });
 });
