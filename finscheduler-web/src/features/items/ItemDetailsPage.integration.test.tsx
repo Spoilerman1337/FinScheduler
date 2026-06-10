@@ -2,23 +2,24 @@ import {screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import {describe, expect, it} from 'vitest';
-import {Route, Routes} from 'react-router-dom';
+import type {RouteObject} from 'react-router-dom';
 import type {ItemModification} from '../../api/items.types.ts';
 import {API_BASE_URL} from '../../config/api.ts';
-import {renderWithProviders} from '../../test/render.tsx';
+import {renderWithDataRouter} from '../../test/renderDataRouter.tsx';
 import {server} from '../../test/msw/server.ts';
 import {buildEditItemPath, itemEditRoutePath, itemsListPath, newItemPath} from '../routes.ts';
 import ItemDetailsPage from './ItemDetailsPage.tsx';
 
 function renderItemDetailsRoutes(initialEntries: string[]) {
-    return renderWithProviders(
-        <Routes>
-            <Route path={itemsListPath} element={<div>Items Listing Page</div>} />
-            <Route path={newItemPath} element={<ItemDetailsPage mode="create" />} />
-            <Route path={itemEditRoutePath} element={<ItemDetailsPage mode="edit" />} />
-        </Routes>,
-        {initialEntries},
-    );
+    const routes: RouteObject[] = [
+        {path: itemsListPath, element: <div>Items Listing Page</div>},
+        {path: newItemPath, element: <ItemDetailsPage mode="create" />},
+        {path: itemEditRoutePath, element: <ItemDetailsPage mode="edit" />},
+    ];
+
+    return renderWithDataRouter(routes, {
+        initialEntries,
+    });
 }
 
 describe('ItemDetailsPage integration', () => {
@@ -117,5 +118,30 @@ describe('ItemDetailsPage integration', () => {
             });
         });
         expect(await screen.findByText('Items Listing Page')).toBeInTheDocument();
+    });
+
+    it('shows a warning on cancel when the form has unsaved changes', async () => {
+        // Arrange
+        const user = userEvent.setup();
+
+        renderItemDetailsRoutes([newItemPath]);
+
+        // Act
+        await user.type(screen.getByLabelText('Название'), 'Draft Item');
+        await user.click(screen.getByRole('button', {name: 'Отмена'}));
+
+        // Assert
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Есть несохранённые изменения')).toBeInTheDocument();
+        expect(screen.queryByText('Items Listing Page')).not.toBeInTheDocument();
+
+        // Act
+        await user.click(screen.getByRole('button', {name: 'Остаться'}));
+
+        // Assert
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+        expect(screen.getByLabelText('Название')).toHaveValue('Draft Item');
     });
 });

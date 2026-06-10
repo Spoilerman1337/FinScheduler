@@ -11,9 +11,12 @@ import SelectField from '../../components/formFields/SelectField.tsx';
 import SwitchField from '../../components/formFields/SwitchField.tsx';
 import TextAreaField from '../../components/formFields/TextAreaField.tsx';
 import TextField from '../../components/formFields/TextField.tsx';
+import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
+import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {categoryOptions} from '../../models/items.ts';
+import {buildEditItemPath, itemsListPath} from '../routes.ts';
 import {mapLookupsToSelectOptions} from '../shared.ts';
 import {
     buildItemModification,
@@ -22,7 +25,6 @@ import {
     type ItemFormData,
     validateItemFormData,
 } from './form.ts';
-import {buildEditItemPath, itemsListPath} from '../routes.ts';
 
 interface ItemDetailsPageProps {
     mode: 'create' | 'edit';
@@ -40,6 +42,11 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
+    const {isDialogOpen, leavePage, scheduleNavigation, stayOnPage} = useUnsavedChangesGuard({
+        isDirty,
+        isDisabled: loading || saving,
+    });
 
     useEffect(() => {
         let isMounted = true;
@@ -50,6 +57,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                 setFormData(createDefaultItemFormData());
                 setLoading(false);
                 setError(null);
+                setIsDirty(false);
                 return;
             }
 
@@ -71,6 +79,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
 
                 setItem(loadedItem);
                 setFormData(mapItemToFormData(loadedItem));
+                setIsDirty(false);
             } catch (err) {
                 if (!isMounted) {
                     return;
@@ -93,6 +102,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     }, [itemId, mode]);
 
     const updateFormData = <K extends keyof ItemFormData>(field: K, value: ItemFormData[K]) => {
+        setIsDirty(true);
         setFormData((prev) => ({...prev, [field]: value}));
     };
 
@@ -118,6 +128,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             if (mode === 'create') {
                 const createdItemId = await itemsService.createItem(payload);
 
+                setIsDirty(false);
                 toaster.create({
                     title: 'Успешно',
                     description: 'Предмет успешно добавлен',
@@ -125,11 +136,11 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                 });
 
                 if (closeAfterSave) {
-                    navigate(itemsListPath);
+                    scheduleNavigation(itemsListPath);
                     return;
                 }
 
-                navigate(buildEditItemPath(createdItemId), {replace: true});
+                scheduleNavigation(buildEditItemPath(createdItemId), {replace: true});
                 return;
             }
 
@@ -138,6 +149,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             }
 
             await itemsService.updateItem(itemId, payload);
+            setIsDirty(false);
             setItem((currentItem) =>
                 currentItem
                     ? {
@@ -160,7 +172,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             });
 
             if (closeAfterSave) {
-                navigate(itemsListPath);
+                scheduleNavigation(itemsListPath);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Ошибка при сохранении');
@@ -366,6 +378,8 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                     </Card.Body>
                 </Card.Root>
             </SimpleGrid>
+
+            <UnsavedChangesDialog open={isDialogOpen} onStay={stayOnPage} onLeave={leavePage} />
         </Stack>
     );
 }

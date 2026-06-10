@@ -18,8 +18,11 @@ import type {TagDto} from '../../api/tags.types.ts';
 import TagsService from '../../api/tags.ts';
 import SwitchField from '../../components/formFields/SwitchField.tsx';
 import TextField from '../../components/formFields/TextField.tsx';
+import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
+import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
 import Breadcrumbs from '../../components/ui/Breadcrumbs.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
+import {buildEditTagPath, tagsListPath} from '../routes.ts';
 import {
     buildTagModification,
     createDefaultTagFormData,
@@ -28,7 +31,6 @@ import {
     type TagFormData,
     validateTagFormData,
 } from './form.ts';
-import {buildEditTagPath, tagsListPath} from '../routes.ts';
 
 interface TagDetailsPageProps {
     mode: 'create' | 'edit';
@@ -48,7 +50,12 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
     const [pendingSaveAction, setPendingSaveAction] = useState<PendingSaveAction | null>(null);
+    const {isDialogOpen, leavePage, scheduleNavigation, stayOnPage} = useUnsavedChangesGuard({
+        isDirty,
+        isDisabled: loading || saving,
+    });
 
     useEffect(() => {
         let isMounted = true;
@@ -59,6 +66,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                 setFormData(createDefaultTagFormData());
                 setLoading(false);
                 setError(null);
+                setIsDirty(false);
                 return;
             }
 
@@ -80,6 +88,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
 
                 setTag(loadedTag);
                 setFormData(mapTagToFormData(loadedTag));
+                setIsDirty(false);
             } catch (err) {
                 if (!isMounted) {
                     return;
@@ -102,6 +111,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     }, [mode, tagId]);
 
     const updateFormData = <K extends keyof TagFormData>(field: K, value: TagFormData[K]) => {
+        setIsDirty(true);
         setFormData((prev) => ({...prev, [field]: value}));
     };
 
@@ -118,6 +128,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             if (mode === 'create') {
                 const createdTagId = await tagsService.createTag(payload);
 
+                setIsDirty(false);
                 toaster.create({
                     title: 'Успешно',
                     description: 'Тег успешно добавлен',
@@ -125,11 +136,11 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                 });
 
                 if (closeAfterSave) {
-                    navigate(tagsListPath);
+                    scheduleNavigation(tagsListPath);
                     return;
                 }
 
-                navigate(buildEditTagPath(createdTagId), {replace: true});
+                scheduleNavigation(buildEditTagPath(createdTagId), {replace: true});
                 return;
             }
 
@@ -138,6 +149,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             }
 
             await tagsService.updateTag(tagId, payload);
+            setIsDirty(false);
             setTag((currentTag) =>
                 currentTag
                     ? {
@@ -155,7 +167,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             });
 
             if (closeAfterSave) {
-                navigate(tagsListPath);
+                scheduleNavigation(tagsListPath);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Ошибка при сохранении');
@@ -366,6 +378,8 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                     </Dialog.Positioner>
                 </Portal>
             </Dialog.Root>
+
+            <UnsavedChangesDialog open={isDialogOpen} onStay={stayOnPage} onLeave={leavePage} />
         </Stack>
     );
 }

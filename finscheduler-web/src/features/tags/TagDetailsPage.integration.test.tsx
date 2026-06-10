@@ -1,24 +1,25 @@
-import {screen, waitFor} from '@testing-library/react';
+import {screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import {describe, expect, it} from 'vitest';
-import {Route, Routes} from 'react-router-dom';
+import type {RouteObject} from 'react-router-dom';
 import type {TagModification} from '../../api/tags.types.ts';
 import {API_BASE_URL} from '../../config/api.ts';
-import {renderWithProviders} from '../../test/render.tsx';
+import {renderWithDataRouter} from '../../test/renderDataRouter.tsx';
 import {server} from '../../test/msw/server.ts';
 import {buildEditTagPath, newTagPath, tagEditRoutePath, tagsListPath} from '../routes.ts';
 import TagDetailsPage from './TagDetailsPage.tsx';
 
 function renderTagDetailsRoutes(initialEntries: string[]) {
-    return renderWithProviders(
-        <Routes>
-            <Route path={tagsListPath} element={<div>Tags Listing Page</div>} />
-            <Route path={newTagPath} element={<TagDetailsPage mode="create" />} />
-            <Route path={tagEditRoutePath} element={<TagDetailsPage mode="edit" />} />
-        </Routes>,
-        {initialEntries},
-    );
+    const routes: RouteObject[] = [
+        {path: tagsListPath, element: <div>Tags Listing Page</div>},
+        {path: newTagPath, element: <TagDetailsPage mode="create" />},
+        {path: tagEditRoutePath, element: <TagDetailsPage mode="edit" />},
+    ];
+
+    return renderWithDataRouter(routes, {
+        initialEntries,
+    });
 }
 
 describe('TagDetailsPage integration', () => {
@@ -179,6 +180,28 @@ describe('TagDetailsPage integration', () => {
                 isActive: false,
             });
         });
+        expect(await screen.findByText('Tags Listing Page')).toBeInTheDocument();
+    });
+
+    it('shows a warning for breadcrumb navigation when the form has unsaved changes', async () => {
+        // Arrange
+        const user = userEvent.setup();
+
+        renderTagDetailsRoutes([newTagPath]);
+
+        // Act
+        await user.type(screen.getByLabelText('Название'), 'Draft Tag');
+        await user.click(screen.getByRole('link', {name: 'Теги'}));
+
+        // Assert
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Есть несохранённые изменения')).toBeInTheDocument();
+        expect(screen.queryByText('Tags Listing Page')).not.toBeInTheDocument();
+
+        // Act
+        await user.click(screen.getByRole('button', {name: 'Закрыть без сохранения'}));
+
+        // Assert
         expect(await screen.findByText('Tags Listing Page')).toBeInTheDocument();
     });
 });
