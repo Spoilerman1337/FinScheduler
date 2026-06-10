@@ -1,7 +1,7 @@
 import {Badge, Box, Button, Card, Flex, Stack, Text} from '@chakra-ui/react';
 import {CheckCircle2, Save, X} from 'lucide-react';
 import type {ReactNode} from 'react';
-import Breadcrumbs, {type BreadcrumbItem} from '../../components/ui/Breadcrumbs.tsx';
+import Breadcrumbs, {type BreadcrumbItem} from '../../components/breadcrumbs/Breadcrumbs.tsx';
 
 interface DetailsPageLayoutProps {
     breadcrumbItems: BreadcrumbItem[];

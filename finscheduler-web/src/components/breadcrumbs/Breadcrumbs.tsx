@@ -1,6 +1,6 @@
-import {Fragment} from 'react';
 import {HStack, Link, Text} from '@chakra-ui/react';
 import {ChevronRight} from 'lucide-react';
+import {Fragment} from 'react';
 import {Link as RouterLink} from 'react-router-dom';
 
 export interface BreadcrumbItem {
