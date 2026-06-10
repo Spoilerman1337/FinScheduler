@@ -1,8 +1,8 @@
 import {screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
-import {describe, expect, it} from 'vitest';
 import type {RouteObject} from 'react-router-dom';
+import {describe, expect, it} from 'vitest';
 import type {TagModification} from '../../api/tags.types.ts';
 import {API_BASE_URL} from '../../config/api.ts';
 import {renderWithDataRouter} from '../../test/renderDataRouter.tsx';
@@ -23,6 +23,20 @@ function renderTagDetailsRoutes(initialEntries: string[]) {
 }
 
 describe('TagDetailsPage integration', () => {
+    it('shows only the back action while the form is clean', async () => {
+        // Arrange
+        renderTagDetailsRoutes([newTagPath]);
+
+        // Act
+        const backButton = screen.getByRole('button', {name: 'Назад'});
+
+        // Assert
+        expect(backButton).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить и закрыть'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Отмена'})).not.toBeInTheDocument();
+    });
+
     it('creates a new tag and stays on the detail page after saving', async () => {
         // Arrange
         let createdPayload: TagModification | null = null;
@@ -58,6 +72,9 @@ describe('TagDetailsPage integration', () => {
         });
         expect(await screen.findByText('Редактирование тега')).toBeInTheDocument();
         expect(screen.getByLabelText('Название')).toHaveValue('New Tag');
+        expect(screen.getByRole('button', {name: 'Назад'})).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить и закрыть'})).not.toBeInTheDocument();
     });
 
     it('updates an existing tag and returns to the list after save and close', async () => {
@@ -84,6 +101,9 @@ describe('TagDetailsPage integration', () => {
         // Act
         renderTagDetailsRoutes([buildEditTagPath('tag-1')]);
         await screen.findByText('Редактирование тега');
+        expect(screen.getByRole('button', {name: 'Назад'})).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить и закрыть'})).not.toBeInTheDocument();
         await user.clear(screen.getByLabelText('Название'));
         await user.type(screen.getByLabelText('Название'), 'Updated Tag');
         await user.click(screen.getByRole('button', {name: 'Сохранить и закрыть'}));
@@ -122,9 +142,8 @@ describe('TagDetailsPage integration', () => {
         // Act
         renderTagDetailsRoutes([buildEditTagPath('tag-1')]);
         await screen.findByDisplayValue('Old Tag');
-        const [saveButton] = screen.getAllByRole('button');
         await user.click(screen.getByRole('checkbox'));
-        await user.click(saveButton);
+        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
 
         // Assert
         const dialog = await screen.findByRole('dialog');
@@ -132,8 +151,7 @@ describe('TagDetailsPage integration', () => {
         expect(updateRequests).toBe(0);
 
         // Act
-        const dialogButtons = within(dialog).getAllByRole('button');
-        await user.click(dialogButtons[1]);
+        await user.click(within(dialog).getByRole('button', {name: 'Отменить'}));
 
         // Assert
         await waitFor(() => {
@@ -166,12 +184,10 @@ describe('TagDetailsPage integration', () => {
         // Act
         renderTagDetailsRoutes([buildEditTagPath('tag-1')]);
         await screen.findByDisplayValue('Old Tag');
-        const actionButtons = screen.getAllByRole('button');
         await user.click(screen.getByRole('checkbox'));
-        await user.click(actionButtons[1]);
+        await user.click(screen.getByRole('button', {name: 'Сохранить и закрыть'}));
         const dialog = await screen.findByRole('dialog');
-        const dialogButtons = within(dialog).getAllByRole('button');
-        await user.click(dialogButtons[2]);
+        await user.click(within(dialog).getByRole('button', {name: 'Подтвердить'}));
 
         // Assert
         await waitFor(() => {

@@ -266,28 +266,37 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                         </Stack>
 
                         <Flex wrap="wrap" gap={3}>
-                            <Button onClick={() => void handleSave(false)} loading={saving}>
-                                <Save />
-                                Сохранить
-                            </Button>
-                            <Button
-                                variant="surface"
-                                borderColor="app.cardBorderActive"
-                                boxShadow="app.glowViolet"
-                                _hover={{
-                                    bg: 'rgba(143, 120, 255, 0.18)',
-                                    borderColor: 'app.cardBorderActive',
-                                }}
-                                onClick={() => void handleSave(true)}
-                                loading={saving}
-                            >
-                                <CheckCircle2 />
-                                Сохранить и закрыть
-                            </Button>
-                            <Button variant="outline" onClick={handleCancel} disabled={saving}>
-                                <X />
-                                Отмена
-                            </Button>
+                            {isDirty ? (
+                                <>
+                                    <Button onClick={() => void handleSave(false)} loading={saving}>
+                                        <Save />
+                                        Сохранить
+                                    </Button>
+                                    <Button
+                                        variant="surface"
+                                        borderColor="app.cardBorderActive"
+                                        boxShadow="app.glowViolet"
+                                        _hover={{
+                                            bg: 'rgba(143, 120, 255, 0.18)',
+                                            borderColor: 'app.cardBorderActive',
+                                        }}
+                                        onClick={() => void handleSave(true)}
+                                        loading={saving}
+                                    >
+                                        <CheckCircle2 />
+                                        Сохранить и закрыть
+                                    </Button>
+                                    <Button variant="outline" onClick={handleCancel} disabled={saving}>
+                                        <X />
+                                        Отмена
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button variant="outline" onClick={handleCancel} disabled={saving}>
+                                    <X />
+                                    Назад
+                                </Button>
+                            )}
                         </Flex>
                     </Flex>
                 </Card.Body>

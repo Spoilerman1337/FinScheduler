@@ -1,8 +1,8 @@
 import {screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
-import {describe, expect, it} from 'vitest';
 import type {RouteObject} from 'react-router-dom';
+import {describe, expect, it} from 'vitest';
 import type {ItemModification} from '../../api/items.types.ts';
 import {API_BASE_URL} from '../../config/api.ts';
 import {renderWithDataRouter} from '../../test/renderDataRouter.tsx';
@@ -23,6 +23,20 @@ function renderItemDetailsRoutes(initialEntries: string[]) {
 }
 
 describe('ItemDetailsPage integration', () => {
+    it('shows only the back action while the form is clean', async () => {
+        // Arrange
+        renderItemDetailsRoutes([newItemPath]);
+
+        // Act
+        const backButton = screen.getByRole('button', {name: 'Назад'});
+
+        // Assert
+        expect(backButton).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить и закрыть'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Отмена'})).not.toBeInTheDocument();
+    });
+
     it('creates a new item and stays on the detail page after saving', async () => {
         // Arrange
         let createdPayload: ItemModification | null = null;
@@ -70,6 +84,9 @@ describe('ItemDetailsPage integration', () => {
         });
         expect(await screen.findByText('Редактирование предмета')).toBeInTheDocument();
         expect(screen.getByLabelText('Название')).toHaveValue('New Item');
+        expect(screen.getByRole('button', {name: 'Назад'})).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить и закрыть'})).not.toBeInTheDocument();
     });
 
     it('updates an existing item and returns to the list after save and close', async () => {
@@ -101,6 +118,9 @@ describe('ItemDetailsPage integration', () => {
         // Act
         renderItemDetailsRoutes([buildEditItemPath('item-1')]);
         await screen.findByText('Редактирование предмета');
+        expect(screen.getByRole('button', {name: 'Назад'})).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Сохранить и закрыть'})).not.toBeInTheDocument();
         await user.clear(screen.getByLabelText('Название'));
         await user.type(screen.getByLabelText('Название'), 'Updated Item');
         await user.click(screen.getByRole('button', {name: 'Сохранить и закрыть'}));
