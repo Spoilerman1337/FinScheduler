@@ -1,17 +1,4 @@
-import {
-    Badge,
-    Box,
-    Button,
-    Card,
-    CloseButton,
-    Dialog,
-    Flex,
-    Portal,
-    Spinner,
-    Stack,
-    Text,
-} from '@chakra-ui/react';
-import {CheckCircle2, Save, X} from 'lucide-react';
+import {Button, Card, CloseButton, Dialog, Flex, Portal, Spinner, Stack, Text} from '@chakra-ui/react';
 import {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
 import type {TagDto} from '../../api/tags.types.ts';
@@ -19,9 +6,9 @@ import TagsService from '../../api/tags.ts';
 import SwitchField from '../../components/formFields/SwitchField.tsx';
 import TextField from '../../components/formFields/TextField.tsx';
 import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
-import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
-import Breadcrumbs from '../../components/ui/Breadcrumbs.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
+import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
+import DetailsPageLayout from '../../layout/details/DetailsPageLayout.tsx';
 import {buildEditTagPath, tagsListPath} from '../routes.ts';
 import {
     buildTagModification,
@@ -204,9 +191,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
         await persistTag(closeAfterSave);
     };
 
-    const pageTitle = mode === 'create' ? 'Новый тег' : 'Редактирование тега';
-    const pageSubtitle =
-        formData.name.trim() || tag?.name || 'Заполните данные тега для сохранения';
+    const pageSubtitle = formData.name.trim() || tag?.name || 'Заполните данные тега для сохранения';
 
     if (loading) {
         return (
@@ -217,99 +202,21 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     }
 
     return (
-        <Stack width="100%" gap={6} pb={6}>
-            <Breadcrumbs
-                items={[
-                    {label: 'Теги', to: tagsListPath},
-                    {label: mode === 'create' ? 'Создание' : 'Редактирование'},
-                ]}
-            />
-
-            <Card.Root overflow="visible">
-                <Box
-                    position="absolute"
-                    inset="0"
-                    pointerEvents="none"
-                    borderRadius="inherit"
-                    background="linear-gradient(90deg, rgba(32, 208, 255, 0.08), rgba(143, 120, 255, 0.04))"
-                />
-                <Card.Body position="relative" gap={6} pb={{base: 7, xl: 6}}>
-                    <Flex
-                        direction={{base: 'column', xl: 'row'}}
-                        align="flex-start"
-                        justify="space-between"
-                        gap={6}
-                    >
-                        <Stack gap={2} flex="1" minW={0}>
-                            <Text
-                                textStyle="3xl"
-                                color="fg"
-                                fontWeight="700"
-                                letterSpacing="tight"
-                                lineHeight="tight"
-                            >
-                                {pageTitle}
-                            </Text>
-                            <Text color="fg.muted" textStyle="lg" lineHeight="snug">
-                                {pageSubtitle}
-                            </Text>
-                            <Badge
-                                alignSelf="flex-start"
-                                px={3}
-                                py={1}
-                                borderRadius="full"
-                                bg={formData.isActive ? 'neon.green' : 'neon.pink'}
-                                color="bg.base"
-                            >
-                                {formData.isActive ? 'Активен' : 'Неактивен'}
-                            </Badge>
-                        </Stack>
-
-                        <Flex wrap="wrap" gap={3}>
-                            {isDirty ? (
-                                <>
-                                    <Button onClick={() => void handleSave(false)} loading={saving}>
-                                        <Save />
-                                        Сохранить
-                                    </Button>
-                                    <Button
-                                        variant="surface"
-                                        borderColor="app.cardBorderActive"
-                                        boxShadow="app.glowViolet"
-                                        _hover={{
-                                            bg: 'rgba(143, 120, 255, 0.18)',
-                                            borderColor: 'app.cardBorderActive',
-                                        }}
-                                        onClick={() => void handleSave(true)}
-                                        loading={saving}
-                                    >
-                                        <CheckCircle2 />
-                                        Сохранить и закрыть
-                                    </Button>
-                                    <Button variant="outline" onClick={handleCancel} disabled={saving}>
-                                        <X />
-                                        Отмена
-                                    </Button>
-                                </>
-                            ) : (
-                                <Button variant="outline" onClick={handleCancel} disabled={saving}>
-                                    <X />
-                                    Назад
-                                </Button>
-                            )}
-                        </Flex>
-                    </Flex>
-                </Card.Body>
-            </Card.Root>
-
-            {error ? (
-                <Card.Root borderColor="border.error">
-                    <Card.Body>
-                        <Text color="fg.error">{error}</Text>
-                    </Card.Body>
-                </Card.Root>
-            ) : null}
-
+        <DetailsPageLayout
+            breadcrumbItems={[
+                {label: 'Теги', to: tagsListPath},
+                {label: mode === 'create' ? 'Создание' : 'Редактирование'},
+            ]}
+            title={mode === 'create' ? 'Новый тег' : 'Редактирование тега'}
+            subtitle={pageSubtitle}
+            isActive={formData.isActive}
+            isDirty={isDirty}
+            saving={saving}
+            error={error}
+            onSave={() => void handleSave(false)}
+            onSaveAndClose={() => void handleSave(true)}
+            onBack={handleCancel}
+        >
             <Card.Root>
                 <Card.Header>
                     <Card.Title>1. Основная информация</Card.Title>
@@ -363,10 +270,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                             </Dialog.Header>
                             <Dialog.Body>
                                 <Stack gap={3}>
-                                    <Text color="fg">
-                                        При деактивации тег будет отвязан от всех элементов
-                                        каталога.
-                                    </Text>
+                                    <Text color="fg">При деактивации тег будет отвязан от всех элементов каталога.</Text>
                                     <Text color="fg.muted">Подтвердите сохранение изменений.</Text>
                                 </Stack>
                             </Dialog.Body>
@@ -389,6 +293,6 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             </Dialog.Root>
 
             <UnsavedChangesDialog open={isDialogOpen} onStay={stayOnPage} onLeave={leavePage} />
-        </Stack>
+        </DetailsPageLayout>
     );
 }
