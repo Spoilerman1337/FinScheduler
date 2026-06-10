@@ -1,4 +1,3 @@
-import {Flex} from '@chakra-ui/react';
 import {screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {describe, expect, it, vi} from 'vitest';
@@ -9,9 +8,14 @@ import {
     itemsListPath,
     tagsListPath,
 } from '../../features/routes.ts';
-import Main from './Main.tsx';
-import Sidebar from '../sidebar/Sidebar.tsx';
-import {renderWithProviders} from '../../test/render.tsx';
+import {
+    catalogNavigationLabel,
+    dashboardNavigationLabel,
+    dashboardRouteTitle,
+    tagsNavigationLabel,
+} from '../navigationLabels.ts';
+import {appRoutes} from '../../router.tsx';
+import {renderWithDataRouter} from '../../test/renderDataRouter.tsx';
 
 vi.mock('framer-motion', async () => {
     const React = await import('react');
@@ -90,28 +94,19 @@ vi.mock('../../components/ui/toaster.tsx', () => {
     };
 });
 
-function ShellUnderTest() {
-    return (
-        <Flex w="100vw" h="100vh">
-            <Sidebar />
-            <Main />
-        </Flex>
-    );
-}
-
 describe('Main and Sidebar integration', () => {
     it('renders the current route title, page content, and active sidebar link', () => {
         // Arrange
-        renderWithProviders(<ShellUnderTest />, {route: itemsListPath});
+        renderWithDataRouter(appRoutes, {initialEntries: [itemsListPath]});
 
         // Assert
         expect(screen.getByText('Items Page')).toBeInTheDocument();
-        expect(screen.getAllByText('Каталог')).toHaveLength(2);
-        expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
+        expect(screen.getAllByText(catalogNavigationLabel)).toHaveLength(2);
+        expect(screen.getByRole('link', {name: catalogNavigationLabel, hidden: true})).toHaveAttribute(
             'href',
             itemsListPath,
         );
-        expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
+        expect(screen.getByRole('link', {name: catalogNavigationLabel, hidden: true})).toHaveAttribute(
             'aria-current',
             'page',
         );
@@ -120,16 +115,16 @@ describe('Main and Sidebar integration', () => {
     it('navigates between routes and updates the header and active link', async () => {
         // Arrange
         const user = userEvent.setup();
-        renderWithProviders(<ShellUnderTest />, {route: itemsListPath});
+        renderWithDataRouter(appRoutes, {initialEntries: [itemsListPath]});
 
         // Act
-        await user.click(screen.getByRole('link', {name: 'Теги', hidden: true}));
+        await user.click(screen.getByRole('link', {name: tagsNavigationLabel, hidden: true}));
 
         // Assert
-        expect(screen.getByText('Tags Page')).toBeInTheDocument();
-        expect(screen.getAllByText('Теги')).toHaveLength(2);
+        expect(await screen.findByText('Tags Page')).toBeInTheDocument();
+        expect(await screen.findAllByText(tagsNavigationLabel)).toHaveLength(2);
         expect(screen.queryByText('Items Page')).not.toBeInTheDocument();
-        expect(screen.getByRole('link', {name: 'Теги', hidden: true})).toHaveAttribute(
+        expect(screen.getByRole('link', {name: tagsNavigationLabel, hidden: true})).toHaveAttribute(
             'aria-current',
             'page',
         );
@@ -137,12 +132,12 @@ describe('Main and Sidebar integration', () => {
 
     it('keeps catalog route active for nested item detail pages', () => {
         // Arrange
-        renderWithProviders(<ShellUnderTest />, {route: buildEditItemPath('item-1')});
+        renderWithDataRouter(appRoutes, {initialEntries: [buildEditItemPath('item-1')]});
 
         // Assert
         expect(screen.getByText('Item Details Page')).toBeInTheDocument();
-        expect(screen.getAllByText('Каталог')).toHaveLength(2);
-        expect(screen.getByRole('link', {name: 'Каталог', hidden: true})).toHaveAttribute(
+        expect(screen.getAllByText(catalogNavigationLabel)).toHaveLength(2);
+        expect(screen.getByRole('link', {name: catalogNavigationLabel, hidden: true})).toHaveAttribute(
             'aria-current',
             'page',
         );
@@ -150,12 +145,12 @@ describe('Main and Sidebar integration', () => {
 
     it('keeps tags route active for nested tag detail pages', () => {
         // Arrange
-        renderWithProviders(<ShellUnderTest />, {route: buildEditTagPath('tag-1')});
+        renderWithDataRouter(appRoutes, {initialEntries: [buildEditTagPath('tag-1')]});
 
         // Assert
         expect(screen.getByText('Tag Details Page')).toBeInTheDocument();
-        expect(screen.getAllByText('Теги')).toHaveLength(2);
-        expect(screen.getByRole('link', {name: 'Теги', hidden: true})).toHaveAttribute(
+        expect(screen.getAllByText(tagsNavigationLabel)).toHaveLength(2);
+        expect(screen.getByRole('link', {name: tagsNavigationLabel, hidden: true})).toHaveAttribute(
             'aria-current',
             'page',
         );
@@ -164,17 +159,18 @@ describe('Main and Sidebar integration', () => {
     it('keeps navigation usable after collapsing the sidebar', async () => {
         // Arrange
         const user = userEvent.setup();
-        renderWithProviders(<ShellUnderTest />, {route: tagsListPath});
-        const collapseButton = screen.getByRole('button', {hidden: true});
-        const dashboardLink = screen.getByRole('link', {name: 'Dashboard', hidden: true});
+        renderWithDataRouter(appRoutes, {initialEntries: [tagsListPath]});
 
         // Act
-        await user.click(collapseButton);
-        await user.click(dashboardLink);
+        await user.click(screen.getByRole('button', {hidden: true}));
+        await user.click(screen.getByRole('link', {name: dashboardNavigationLabel, hidden: true}));
 
         // Assert
-        expect(screen.getByText('Dashboard Page')).toBeInTheDocument();
-        expect(screen.getByText('Дашборды')).toBeInTheDocument();
-        expect(dashboardLink).toHaveAttribute('href', dashboardPath);
+        expect(await screen.findByText('Dashboard Page')).toBeInTheDocument();
+        expect(screen.getByText(dashboardRouteTitle)).toBeInTheDocument();
+        expect(screen.getByRole('link', {name: dashboardNavigationLabel, hidden: true})).toHaveAttribute(
+            'href',
+            dashboardPath,
+        );
     });
 });

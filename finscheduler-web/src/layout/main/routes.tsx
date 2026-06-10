@@ -1,3 +1,4 @@
+import type {RouteObject} from 'react-router-dom';
 import Dashboard from '../../features/dashboard/Dashboard.tsx';
 import {
     dashboardPath,
@@ -12,41 +13,60 @@ import ItemDetailsPage from '../../features/items/ItemDetailsPage.tsx';
 import Items from '../../features/items/Items.tsx';
 import TagDetailsPage from '../../features/tags/TagDetailsPage.tsx';
 import Tags from '../../features/tags/Tags.tsx';
+import {
+    catalogNavigationLabel,
+    dashboardRouteTitle,
+    tagsNavigationLabel,
+} from '../navigationLabels.ts';
 
-export const routes = [
+export const mainRouteChildren: RouteObject[] = [
     {
         path: dashboardPath,
-        title: 'Дашборды',
+        handle: {
+            title: dashboardRouteTitle,
+        },
         element: <Dashboard />,
     },
     {
         path: itemsListPath,
-        title: 'Каталог',
+        handle: {
+            title: catalogNavigationLabel,
+        },
         element: <Items />,
     },
     {
         path: newItemPath,
-        title: 'Каталог',
+        handle: {
+            title: catalogNavigationLabel,
+        },
         element: <ItemDetailsPage mode="create" />,
     },
     {
         path: itemEditRoutePath,
-        title: 'Каталог',
+        handle: {
+            title: catalogNavigationLabel,
+        },
         element: <ItemDetailsPage mode="edit" />,
     },
     {
         path: tagsListPath,
-        title: 'Теги',
+        handle: {
+            title: tagsNavigationLabel,
+        },
         element: <Tags />,
     },
     {
         path: newTagPath,
-        title: 'Теги',
+        handle: {
+            title: tagsNavigationLabel,
+        },
         element: <TagDetailsPage mode="create" />,
     },
     {
         path: tagEditRoutePath,
-        title: 'Теги',
+        handle: {
+            title: tagsNavigationLabel,
+        },
         element: <TagDetailsPage mode="edit" />,
     },
 ];

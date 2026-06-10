@@ -1,16 +1,20 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import {Theme} from '@chakra-ui/react';
 import './index.css';
-import App from './App.tsx';
+import {Provider} from './components/ui/provider.tsx';
 import {initializeFaroSdk} from './observability/faro.ts';
-import {BrowserRouter} from 'react-router-dom';
+import {RouterProvider} from 'react-router-dom';
+import {appRouter} from './router.tsx';
 
 initializeFaroSdk();
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
-        <BrowserRouter>
-            <App />
-        </BrowserRouter>
+        <Provider>
+            <Theme appearance="dark">
+                <RouterProvider router={appRouter} />
+            </Theme>
+        </Provider>
     </StrictMode>,
 );

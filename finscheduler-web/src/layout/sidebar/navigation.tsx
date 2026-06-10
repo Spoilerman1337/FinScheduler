@@ -1,6 +1,11 @@
 import type {LucideIcon} from 'lucide-react';
 import {LayoutDashboard, ShoppingBag, Tag} from 'lucide-react';
 import {dashboardPath, itemsListPath, tagsListPath} from '../../features/routes.ts';
+import {
+    catalogNavigationLabel,
+    dashboardNavigationLabel,
+    tagsNavigationLabel,
+} from '../navigationLabels.ts';
 
 export interface NavigationItem {
     id: string;
@@ -13,19 +18,19 @@ export interface NavigationItem {
 export const routedNavigationItems: NavigationItem[] = [
     {
         id: 'dashboard',
-        label: 'Dashboard',
+        label: dashboardNavigationLabel,
         path: dashboardPath,
         icon: LayoutDashboard,
     },
     {
         id: 'catalog',
-        label: 'Каталог',
+        label: catalogNavigationLabel,
         path: itemsListPath,
         icon: ShoppingBag,
     },
     {
         id: 'tags',
-        label: 'Теги',
+        label: tagsNavigationLabel,
         path: tagsListPath,
         icon: Tag,
     },
