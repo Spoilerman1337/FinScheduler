@@ -1,7 +1,8 @@
 import type {Lookup, PaginatedList} from './types';
 import type {
-    TagDto,
+    TagDetailedDto,
     TagFilter,
+    TagListingDto,
     TagLookupFilter,
     TagModification,
     TagStatusFilter,
@@ -31,7 +32,7 @@ export function buildTagFilter(params: {
 }
 
 export default class TagsService extends FinschedulerApiClient {
-    async getTags(filter?: TagFilter): Promise<PaginatedList<TagDto>> {
+    async getListingInfo(filter?: TagFilter): Promise<PaginatedList<TagListingDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';
         const response = await fetch(`${this.baseUrl}/tags${queryString}`, {
             method: 'GET',
@@ -47,7 +48,7 @@ export default class TagsService extends FinschedulerApiClient {
         return response.json();
     }
 
-    async getTag(id: string): Promise<TagDto | null> {
+    async getDetailedInfo(id: string): Promise<TagDetailedDto | null> {
         const response = await fetch(`${this.baseUrl}/tags/${id}`, {
             method: 'GET',
             headers: {

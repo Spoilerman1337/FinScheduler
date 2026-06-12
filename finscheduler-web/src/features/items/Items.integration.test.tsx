@@ -4,14 +4,16 @@ import {http, HttpResponse} from 'msw';
 import {describe, expect, it, vi} from 'vitest';
 import {Route, Routes} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api.ts';
-import type {ItemDto} from '../../api/items.types.ts';
+import type {ItemDetailedDto, ItemListingDto} from '../../api/items.types.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';
 import {itemEditRoutePath, itemsListPath, newItemPath} from '../routes.ts';
 import ItemDetailsPage from './ItemDetailsPage.tsx';
 import Items from './Items.tsx';
 
-function buildItem(overrides: Partial<ItemDto> = {}): ItemDto {
+type ItemTestData = ItemListingDto & ItemDetailedDto;
+
+function buildItem(overrides: Partial<ItemTestData> = {}): ItemTestData {
     return {
         id: 'item-1',
         name: 'Coffee',
@@ -20,7 +22,6 @@ function buildItem(overrides: Partial<ItemDto> = {}): ItemDto {
         isActive: true,
         cashback: 5,
         category: 'FoodDrinks',
-        createdAt: '2025-01-01T00:00:00.000Z',
         tags: [],
         ...overrides,
     };
@@ -273,7 +274,6 @@ describe('Items integration', () => {
                             buildItem({
                                 id: 'item-6',
                                 name: 'Filtered by Date',
-                                createdAt: '2025-02-12T12:00:00.000Z',
                             }),
                         ],
                         count: 1,

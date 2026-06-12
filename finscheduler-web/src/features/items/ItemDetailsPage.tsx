@@ -1,7 +1,7 @@
 import {Card, Flex, SimpleGrid, Spinner} from '@chakra-ui/react';
 import {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import type {ItemDto} from '../../api/items.types.ts';
+import type {ItemDetailedDto} from '../../api/items.types.ts';
 import ItemsService from '../../api/items.ts';
 import TagsService from '../../api/tags.ts';
 import AsyncSelectField from '../../components/formFields/AsyncSelectField.tsx';
@@ -36,7 +36,7 @@ const tagsService = new TagsService();
 export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     const navigate = useNavigate();
     const {itemId} = useParams<{itemId: string}>();
-    const [item, setItem] = useState<ItemDto | null>(null);
+    const [item, setItem] = useState<ItemDetailedDto | null>(null);
     const [formData, setFormData] = useState<ItemFormData>(createDefaultItemFormData);
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
@@ -64,7 +64,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             setError(null);
 
             try {
-                const loadedItem = await itemsService.getItem(itemId);
+                const loadedItem = await itemsService.getDetailedInfo(itemId);
 
                 if (!isMounted) {
                     return;

@@ -109,10 +109,9 @@ func TestNewItemFilter_ShouldReturnErrorOnInvalidQueryParam(t *testing.T) {
 	assert.Contains(t, err.Error(), `invalid query parameter "page"`)
 }
 
-func TestNewItemDto_ShouldMapUpdatedAtAndTags(t *testing.T) {
+func TestNewItemListingDto_ShouldMapOnlyListingFields(t *testing.T) {
 	// Arrange
 	itemID := uuid.New()
-	tagID := uuid.New()
 	createdAt := time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2026, 1, 11, 13, 0, 0, 0, time.UTC)
 	price := decimal.RequireFromString("99.95")
@@ -128,38 +127,27 @@ func TestNewItemDto_ShouldMapUpdatedAtAndTags(t *testing.T) {
 		Cashback:    7,
 		Category:    Subscriptions,
 	}
-	tags := []Tag{
-		{
-			Id:       tagID,
-			Name:     "Recurring",
-			IsActive: true,
-		},
-	}
-
 	// Act
-	dto := NewItemDto(item, tags)
+	dto := NewItemListingDto(item)
 
 	// Assert
 	require.NotNil(t, dto)
+	require.NotNil(t, dto.Id)
+	require.NotNil(t, dto.Name)
 	require.NotNil(t, dto.UpdatedAt)
-	require.Len(t, dto.Tags, 1)
 	require.NotNil(t, dto.Price)
-	require.NotNil(t, dto.Category)
+	require.NotNil(t, dto.IsActive)
+	require.NotNil(t, dto.Cashback)
 
 	assert.Equal(t, itemID, *dto.Id)
 	assert.Equal(t, "Subscription", *dto.Name)
 	assert.Equal(t, 99.95, *dto.Price)
-	assert.Equal(t, "Monthly", *dto.Description)
 	assert.True(t, *dto.IsActive)
-	assert.Equal(t, createdAt, *dto.CreatedAt)
 	assert.Equal(t, updatedAt, *dto.UpdatedAt)
 	assert.Equal(t, int32(7), *dto.Cashback)
-	assert.Equal(t, Subscriptions, *dto.Category)
-	assert.Equal(t, "Recurring", *dto.Tags[0].Label)
-	assert.Equal(t, tagID.String(), *dto.Tags[0].Value)
 }
 
-func TestNewItemDto_ShouldNilUpdatedAtAndTags(t *testing.T) {
+func TestNewItemListingDto_ShouldNilUpdatedAt(t *testing.T) {
 	// Arrange
 	item := Item{
 		Id:          uuid.New(),
@@ -174,12 +162,55 @@ func TestNewItemDto_ShouldNilUpdatedAtAndTags(t *testing.T) {
 	}
 
 	// Act
-	dto := NewItemDto(item, nil)
+	dto := NewItemListingDto(item)
 
 	// Assert
 	require.NotNil(t, dto)
 	assert.Nil(t, dto.UpdatedAt)
-	assert.Nil(t, dto.Tags)
+}
+
+func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
+	// Arrange
+	tagID := uuid.New()
+	price := decimal.RequireFromString("99.95")
+	item := Item{
+		Id:          uuid.New(),
+		Name:        "Subscription",
+		Price:       price,
+		Description: "Monthly",
+		IsActive:    true,
+		CreatedAt:   time.Now().UTC(),
+		Cashback:    7,
+		Category:    Subscriptions,
+	}
+	tags := []Tag{
+		{
+			Id:       tagID,
+			Name:     "Recurring",
+			IsActive: true,
+		},
+	}
+
+	// Act
+	dto := NewItemDetailedDto(item, tags)
+
+	// Assert
+	require.NotNil(t, dto)
+	require.NotNil(t, dto.Name)
+	require.NotNil(t, dto.Price)
+	require.NotNil(t, dto.Description)
+	require.NotNil(t, dto.IsActive)
+	require.NotNil(t, dto.Cashback)
+	require.NotNil(t, dto.Category)
+	require.Len(t, dto.Tags, 1)
+	assert.Equal(t, "Subscription", *dto.Name)
+	assert.Equal(t, 99.95, *dto.Price)
+	assert.Equal(t, "Monthly", *dto.Description)
+	assert.True(t, *dto.IsActive)
+	assert.Equal(t, int32(7), *dto.Cashback)
+	assert.Equal(t, Subscriptions, *dto.Category)
+	assert.Equal(t, "Recurring", *dto.Tags[0].Label)
+	assert.Equal(t, tagID.String(), *dto.Tags[0].Value)
 }
 
 func TestItemCreateValidate(t *testing.T) {

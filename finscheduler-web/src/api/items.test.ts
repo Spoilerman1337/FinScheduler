@@ -175,7 +175,7 @@ describe('items api', () => {
         });
     });
 
-    it('getItem requests the item by id endpoint and returns the item', async () => {
+    it('getDetailedInfo requests the item by id endpoint and returns the item', async () => {
         // Arrange
         const service = new ItemsService();
         const fetchMock = vi.fn().mockResolvedValue(
@@ -188,7 +188,7 @@ describe('items api', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         // Act
-        const item = await service.getItem('item-1');
+        const item = await service.getDetailedInfo('item-1');
 
         // Assert
         expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/items/item-1`, {
@@ -200,7 +200,7 @@ describe('items api', () => {
         expect(item).toEqual({id: 'item-1', name: 'Coffee'});
     });
 
-    it('getItem returns null when the item endpoint responds with 404', async () => {
+    it('getDetailedInfo returns null when the item endpoint responds with 404', async () => {
         // Arrange
         const service = new ItemsService();
         const fetchMock = vi.fn().mockResolvedValue(
@@ -213,7 +213,7 @@ describe('items api', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         // Act
-        const item = await service.getItem('missing-item');
+        const item = await service.getDetailedInfo('missing-item');
 
         // Assert
         expect(item).toBeNull();

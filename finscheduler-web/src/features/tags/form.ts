@@ -1,4 +1,4 @@
-import type {TagDto, TagModification} from '../../api/tags.types.ts';
+import type {TagDetailedDto, TagModification} from '../../api/tags.types.ts';
 
 export interface TagFormData {
     name: string;
@@ -12,7 +12,7 @@ export function createDefaultTagFormData(): TagFormData {
     };
 }
 
-export function mapTagToFormData(item?: TagDto | null): TagFormData {
+export function mapTagToFormData(item?: TagDetailedDto | null): TagFormData {
     if (!item) {
         return createDefaultTagFormData();
     }
@@ -40,7 +40,7 @@ export function buildTagModification(formData: TagFormData): TagModification {
 
 export function shouldConfirmTagDeactivation(
     mode: 'create' | 'edit',
-    tag: TagDto | null,
+    tag: TagDetailedDto | null,
     formData: TagFormData,
 ): boolean {
     return mode === 'edit' && tag?.isActive === true && formData.isActive === false;

@@ -4,8 +4,8 @@ import {useCallback, useEffect, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import type {
     ItemDateFilterValue,
-    ItemDto,
     ItemFilter,
+    ItemListingDto,
     ItemStatusFilter,
 } from '../../api/items.types.ts';
 import ItemsService, {buildItemFilter} from '../../api/items.ts';
@@ -20,7 +20,7 @@ const itemsService = new ItemsService();
 
 export default function Items() {
     const navigate = useNavigate();
-    const [items, setItems] = useState<ItemDto[]>([]);
+    const [items, setItems] = useState<ItemListingDto[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -33,11 +33,11 @@ export default function Items() {
     const [priceRange, setPriceRange] = useState<NumberRangeValue>({from: '', to: ''});
     const [cashbackRange, setCashbackRange] = useState<NumberRangeValue>({from: '', to: ''});
 
-    const itemColumns: DataListingColumn<ItemDto>[] = [
+    const itemColumns: DataListingColumn<ItemListingDto>[] = [
         {
             header: 'Название',
             key: 'name',
-            render: (row: ItemDto) => (
+            render: (row: ItemListingDto) => (
                 <Text fontWeight="semibold" color="neon.blue">
                     {row.name || '-'}
                 </Text>
@@ -47,7 +47,7 @@ export default function Items() {
         {
             header: 'Цена',
             key: 'price',
-            render: (row: ItemDto) => (
+            render: (row: ItemListingDto) => (
                 <Text color="neon.blue" fontWeight="medium">
                     {row.price !== undefined
                         ? `${row.price.toLocaleString('ru-RU', {
@@ -63,7 +63,7 @@ export default function Items() {
         {
             header: 'Кэшбэк (%)',
             key: 'cashback',
-            render: (row: ItemDto) => (
+            render: (row: ItemListingDto) => (
                 <Text color={getCashbackColor(row.cashback)} fontWeight="bold">
                     {row.cashback !== undefined ? `${row.cashback}%` : '-'}
                 </Text>
@@ -74,7 +74,7 @@ export default function Items() {
         {
             header: 'Статус',
             key: 'isActive',
-            render: (row: ItemDto) => (
+            render: (row: ItemListingDto) => (
                 <Badge
                     fontSize="sm"
                     px={3}
@@ -91,7 +91,7 @@ export default function Items() {
         {
             header: 'Обновлён',
             key: 'updatedAt',
-            render: (row: ItemDto) => (
+            render: (row: ItemListingDto) => (
                 <Text color="neon.blue" fontSize="sm">
                     {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString('ru-RU') : '-'}
                 </Text>
@@ -116,7 +116,7 @@ export default function Items() {
                 cashbackFrom: cashbackRange.from,
                 cashbackTo: cashbackRange.to,
             });
-            const result = await itemsService.getItems(filter);
+            const result = await itemsService.getListingInfo(filter);
             setItems(result.data);
             setTotal(result.count);
         } catch (err) {
@@ -154,7 +154,7 @@ export default function Items() {
         navigate(newItemPath);
     };
 
-    const handleOpenEditPage = (item: ItemDto) => {
+    const handleOpenEditPage = (item: ItemListingDto) => {
         if (!item.id) {
             toaster.create({
                 title: 'Ошибка',
@@ -186,7 +186,7 @@ export default function Items() {
         }
     };
 
-    const getRowId = (row: ItemDto): string => {
+    const getRowId = (row: ItemListingDto): string => {
         return row.id ?? '';
     };
 

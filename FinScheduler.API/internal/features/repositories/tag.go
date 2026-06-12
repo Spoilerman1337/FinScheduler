@@ -25,7 +25,7 @@ func NewTagsRepository(db DBTX, logger *slog.Logger) *TagsRepository {
 	return &TagsRepository{db: db, logger: logger}
 }
 
-func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFilter) ([]domains.Tag, int64, error) {
+func (repository *TagsRepository) GetListingInfo(ctx context.Context, filter *domains.TagFilter) ([]domains.Tag, int64, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
@@ -76,7 +76,7 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 	}
 	offset := page * pageSize
 
-	selectQuery := fmt.Sprintf("SELECT * %s ORDER BY id DESC LIMIT ? OFFSET ?", query)
+	selectQuery := fmt.Sprintf("SELECT id, name, is_active %s ORDER BY id DESC LIMIT ? OFFSET ?", query)
 	selectQuery = repository.db.Rebind(selectQuery)
 	selectArgs := append(make([]interface{}, 0), args...)
 	selectArgs = append(selectArgs, pageSize, offset)
@@ -115,7 +115,7 @@ func (repository *TagsRepository) Get(ctx context.Context, filter *domains.TagFi
 	return tags, count, err
 }
 
-func (repository *TagsRepository) GetById(ctx context.Context, id uuid.UUID) (*domains.Tag, error) {
+func (repository *TagsRepository) GetDetailedInfo(ctx context.Context, id uuid.UUID) (*domains.Tag, error) {
 	tracer := otel.Tracer("tags")
 	ctx, span := tracer.Start(ctx, "tags-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
@@ -132,7 +132,7 @@ func (repository *TagsRepository) GetById(ctx context.Context, id uuid.UUID) (*d
 		return nil, err
 	}
 
-	query := "SELECT * FROM public.tags WHERE id = ?"
+	query := "SELECT name, is_active FROM public.tags WHERE id = ?"
 	query = repository.db.Rebind(query)
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)

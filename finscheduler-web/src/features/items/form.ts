@@ -1,4 +1,4 @@
-import type {ItemDto, ItemModification} from '../../api/items.types.ts';
+import type {ItemDetailedDto, ItemModification} from '../../api/items.types.ts';
 import {categoryTranslations} from '../../models/items.ts';
 
 export interface ItemFormData {
@@ -23,7 +23,7 @@ export function createDefaultItemFormData(): ItemFormData {
     };
 }
 
-export function mapItemToFormData(item?: ItemDto | null): ItemFormData {
+export function mapItemToFormData(item?: ItemDetailedDto | null): ItemFormData {
     if (!item) {
         return createDefaultItemFormData();
     }

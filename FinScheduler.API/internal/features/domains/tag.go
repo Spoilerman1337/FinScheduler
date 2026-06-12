@@ -14,10 +14,15 @@ type Tag struct {
 	IsActive bool      `db:"is_active"`
 }
 
-type TagDto struct {
+type TagListingDto struct {
 	Id       *uuid.UUID `json:"id"`
 	Name     *string    `json:"name"`
 	IsActive *bool      `json:"isActive"`
+}
+
+type TagDetailedDto struct {
+	Name     *string `json:"name"`
+	IsActive *bool   `json:"isActive"`
 }
 
 type TagFilter struct {
@@ -44,7 +49,7 @@ type TagUpdate struct {
 	IsActive bool   `json:"isActive"`
 }
 
-func NewTagsFilter(r *http.Request) (TagFilter, error) {
+func NewTagFilter(r *http.Request) (TagFilter, error) {
 	queryParams := r.URL.Query()
 
 	ids, err := qh.ParseUUIDs(queryParams, "ids")
@@ -94,9 +99,16 @@ func NewTagLookupFilter(r *http.Request) (TagLookupFilter, error) {
 	}, nil
 }
 
-func NewTagDto(tag Tag) *TagDto {
-	return &TagDto{
+func NewTagListingDto(tag Tag) *TagListingDto {
+	return &TagListingDto{
 		Id:       &tag.Id,
+		Name:     &tag.Name,
+		IsActive: &tag.IsActive,
+	}
+}
+
+func NewTagDetailedDto(tag Tag) *TagDetailedDto {
+	return &TagDetailedDto{
 		Name:     &tag.Name,
 		IsActive: &tag.IsActive,
 	}

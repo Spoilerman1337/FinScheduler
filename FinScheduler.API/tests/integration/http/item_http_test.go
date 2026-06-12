@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ItemsHandler_Get_ShouldReturnPaginatedItems(t *testing.T) {
+func Test_ItemsHandler_GetListingInfo_ShouldReturnPaginatedItems(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -44,7 +44,7 @@ func Test_ItemsHandler_Get_ShouldReturnPaginatedItems(t *testing.T) {
 	response := recorder.Result()
 	defer response.Body.Close()
 
-	var actualResponse domains.PaginatedList[domains.ItemDto]
+	var actualResponse domains.PaginatedList[domains.ItemListingDto]
 	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
 
 	// Assert
@@ -56,7 +56,7 @@ func Test_ItemsHandler_Get_ShouldReturnPaginatedItems(t *testing.T) {
 	assert.Equal(t, expectedName, *actualResponse.Data[0].Name)
 }
 
-func Test_ItemsHandler_GetById_ShouldReturnItem(t *testing.T) {
+func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -82,20 +82,22 @@ func Test_ItemsHandler_GetById_ShouldReturnItem(t *testing.T) {
 	response := recorder.Result()
 	defer response.Body.Close()
 
-	var actualResponse domains.ItemDto
+	var actualResponse domains.ItemDetailedDto
 	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
 
 	// Assert
 	require.NoError(t, createErr)
 	require.NoError(t, decodeErr)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	require.NotNil(t, actualResponse.Id)
 	require.NotNil(t, actualResponse.Name)
-	assert.Equal(t, itemID, *actualResponse.Id)
+	require.NotNil(t, actualResponse.Price)
+	require.NotNil(t, actualResponse.Category)
 	assert.Equal(t, expectedName, *actualResponse.Name)
+	assert.Equal(t, 12.5, *actualResponse.Price)
+	assert.Equal(t, domains.ItemCategory("FoodDrinks"), *actualResponse.Category)
 }
 
-func Test_ItemsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
+func Test_ItemsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -115,7 +117,7 @@ func Test_ItemsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_ItemsHandler_GetById_ShouldReturnNotFoundForMissingItem(t *testing.T) {
+func Test_ItemsHandler_GetDetailedInfo_ShouldReturnNotFoundForMissingItem(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -136,7 +138,7 @@ func Test_ItemsHandler_GetById_ShouldReturnNotFoundForMissingItem(t *testing.T) 
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_ItemsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
+func Test_ItemsHandler_GetListingInfo_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -156,7 +158,7 @@ func Test_ItemsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_ItemsHandler_Get_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+func Test_ItemsHandler_GetListingInfo_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
 	// Arrange
 	closedDB := newClosedDB(t)
 	app := newTestApplicationWithDB(closedDB)

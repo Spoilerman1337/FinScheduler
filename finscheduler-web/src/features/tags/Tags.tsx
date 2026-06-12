@@ -2,7 +2,7 @@ import DataTable, {type DataListingColumn} from '../../components/dataTable/Data
 import {Badge, Flex, Spinner, Text} from '@chakra-ui/react';
 import {useCallback, useEffect, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import type {TagDto, TagFilter, TagStatusFilter} from '../../api/tags.types.ts';
+import type {TagFilter, TagListingDto, TagStatusFilter} from '../../api/tags.types.ts';
 import TagsService, {buildTagFilter} from '../../api/tags.ts';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {buildEditTagPath, newTagPath} from '../routes.ts';
@@ -12,7 +12,7 @@ const tagsService = new TagsService();
 
 export default function Tags() {
     const navigate = useNavigate();
-    const [tags, setTags] = useState<TagDto[]>([]);
+    const [tags, setTags] = useState<TagListingDto[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -22,11 +22,11 @@ export default function Tags() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<TagStatusFilter>('Active');
 
-    const tagColumns: DataListingColumn<TagDto>[] = [
+    const tagColumns: DataListingColumn<TagListingDto>[] = [
         {
             header: 'Название',
             key: 'name',
-            render: (row: TagDto) => (
+            render: (row: TagListingDto) => (
                 <Text fontWeight="semibold" color="neon.blue">
                     {row.name || '-'}
                 </Text>
@@ -36,7 +36,7 @@ export default function Tags() {
         {
             header: 'Статус',
             key: 'isActive',
-            render: (row: TagDto) => (
+            render: (row: TagListingDto) => (
                 <Badge
                     fontSize="sm"
                     px={3}
@@ -63,7 +63,7 @@ export default function Tags() {
                 searchTerm,
                 statusFilter,
             });
-            const result = await tagsService.getTags(filter);
+            const result = await tagsService.getListingInfo(filter);
             setTags(result.data);
             setTotal(result.count);
         } catch (err) {
@@ -88,7 +88,7 @@ export default function Tags() {
         navigate(newTagPath);
     };
 
-    const handleOpenEditPage = (tag: TagDto) => {
+    const handleOpenEditPage = (tag: TagListingDto) => {
         if (!tag.id) {
             toaster.create({
                 title: 'Ошибка',
@@ -101,7 +101,7 @@ export default function Tags() {
         navigate(buildEditTagPath(tag.id));
     };
 
-    const getRowId = (row: TagDto): string => {
+    const getRowId = (row: TagListingDto): string => {
         return row.id ?? '';
     };
 

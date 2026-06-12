@@ -3,6 +3,7 @@ import {
     buildTagModification,
     createDefaultTagFormData,
     mapTagToFormData,
+    shouldConfirmTagDeactivation,
     validateTagFormData,
 } from './form.ts';
 

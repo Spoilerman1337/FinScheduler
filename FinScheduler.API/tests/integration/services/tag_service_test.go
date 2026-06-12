@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTagsServiceCreateAndGet_ShouldNotErr(t *testing.T) {
+func TestTagsServiceCreateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "tags")
@@ -43,7 +43,7 @@ func TestTagsServiceCreateAndGet_ShouldNotErr(t *testing.T) {
 		PageSize: &pageSize,
 	}
 
-	tags, count, getErr := service.Get(ctx, filter)
+	tags, count, getErr := service.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.NoError(t, createErr)
@@ -54,7 +54,7 @@ func TestTagsServiceCreateAndGet_ShouldNotErr(t *testing.T) {
 	assert.Equal(t, tagIsActive, *tags[0].IsActive)
 }
 
-func TestTagsServiceGetById_ShouldReturnCreatedTag(t *testing.T) {
+func TestTagsServiceGetDetailedInfo_ShouldReturnCreatedTag(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "tags")
@@ -73,13 +73,12 @@ func TestTagsServiceGetById_ShouldReturnCreatedTag(t *testing.T) {
 	tagID, createErr := service.Create(ctx, create)
 
 	// Act
-	tag, getErr := service.GetById(ctx, tagID)
+	tag, getErr := service.GetDetailedInfo(ctx, tagID)
 
 	// Assert
 	require.NoError(t, createErr)
 	require.NoError(t, getErr)
 	require.NotNil(t, tag)
-	assert.Equal(t, tagID, *tag.Id)
 	assert.Equal(t, tagName, *tag.Name)
 	assert.Equal(t, tagIsActive, *tag.IsActive)
 }
@@ -128,7 +127,7 @@ func TestTagsServiceGetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	assert.Equal(t, activeName, *lookups[0].Label)
 }
 
-func TestTagsServiceUpdateAndGet_ShouldNotErr(t *testing.T) {
+func TestTagsServiceUpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "tags")
@@ -164,7 +163,7 @@ func TestTagsServiceUpdateAndGet_ShouldNotErr(t *testing.T) {
 		PageSize: &pageSize,
 	}
 
-	tags, count, getErr := service.Get(ctx, filter)
+	tags, count, getErr := service.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.NoError(t, createErr)
@@ -213,7 +212,7 @@ func TestTagsServiceUpdate_ShouldRemoveItemLinksWhenTagBecomesInactive(t *testin
 
 	// Act
 	ok, updateErr := tagsService.Update(ctx, tagID, update)
-	item, getItemErr := itemsService.GetById(ctx, itemID)
+	item, getItemErr := itemsService.GetDetailedInfo(ctx, itemID)
 
 	var actualLinkCount int
 	countErr := testDB.Get(&actualLinkCount, countQuery, tagID)

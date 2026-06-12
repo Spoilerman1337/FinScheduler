@@ -2,8 +2,9 @@ import {FinschedulerApiClient} from './finscheduler-api-client.ts';
 import type {PaginatedList} from './types.ts';
 import type {
     ItemDateFilterValue,
-    ItemDto,
+    ItemDetailedDto,
     ItemFilter,
+    ItemListingDto,
     ItemModification,
     ItemStatusFilter,
 } from './items.types.ts';
@@ -92,7 +93,7 @@ export function buildItemFilter(params: {
 }
 
 export default class ItemsService extends FinschedulerApiClient {
-    async getItems(filter?: ItemFilter): Promise<PaginatedList<ItemDto>> {
+    async getListingInfo(filter?: ItemFilter): Promise<PaginatedList<ItemListingDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';
         const response = await fetch(`${this.baseUrl}/items${queryString}`, {
             method: 'GET',
@@ -108,7 +109,7 @@ export default class ItemsService extends FinschedulerApiClient {
         return response.json();
     }
 
-    async getItem(id: string): Promise<ItemDto | null> {
+    async getDetailedInfo(id: string): Promise<ItemDetailedDto | null> {
         const response = await fetch(`${this.baseUrl}/items/${id}`, {
             method: 'GET',
             headers: {

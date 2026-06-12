@@ -23,14 +23,20 @@ type Item struct {
 	Category    ItemCategory    `db:"category"`
 }
 
-type ItemDto struct {
-	Id          *uuid.UUID    `json:"id"`
+type ItemListingDto struct {
+	Id        *uuid.UUID `json:"id"`
+	Name      *string    `json:"name"`
+	Price     *float64   `json:"price"`
+	IsActive  *bool      `json:"isActive"`
+	UpdatedAt *time.Time `json:"updatedAt"`
+	Cashback  *int32     `json:"cashback"`
+}
+
+type ItemDetailedDto struct {
 	Name        *string       `json:"name"`
 	Price       *float64      `json:"price"`
 	Description *string       `json:"description"`
 	IsActive    *bool         `json:"isActive"`
-	CreatedAt   *time.Time    `json:"createdAt"`
-	UpdatedAt   *time.Time    `json:"updatedAt"`
 	Cashback    *int32        `json:"cashback"`
 	Category    *ItemCategory `json:"category"`
 	Tags        []*Lookup     `json:"tags"`
@@ -157,7 +163,7 @@ func NewItemFilter(r *http.Request) (ItemFilter, error) {
 	}, nil
 }
 
-func NewItemDto(item Item, tags []Tag) *ItemDto {
+func NewItemListingDto(item Item) *ItemListingDto {
 	var updatedAt *time.Time
 	if item.UpdatedAt.Valid {
 		updatedAt = &item.UpdatedAt.Time
@@ -167,6 +173,19 @@ func NewItemDto(item Item, tags []Tag) *ItemDto {
 
 	price, _ := item.Price.Float64()
 
+	return &ItemListingDto{
+		Id:        &item.Id,
+		Name:      &item.Name,
+		IsActive:  &item.IsActive,
+		Price:     &price,
+		UpdatedAt: updatedAt,
+		Cashback:  &item.Cashback,
+	}
+}
+
+func NewItemDetailedDto(item Item, tags []Tag) *ItemDetailedDto {
+	price, _ := item.Price.Float64()
+
 	var tagLookups []*Lookup
 	for _, tag := range tags {
 		value := tag.Id.String()
@@ -174,14 +193,11 @@ func NewItemDto(item Item, tags []Tag) *ItemDto {
 		tagLookups = append(tagLookups, &tagLookup)
 	}
 
-	return &ItemDto{
-		Id:          &item.Id,
+	return &ItemDetailedDto{
 		Name:        &item.Name,
 		Description: &item.Description,
 		IsActive:    &item.IsActive,
-		CreatedAt:   &item.CreatedAt,
 		Price:       &price,
-		UpdatedAt:   updatedAt,
 		Cashback:    &item.Cashback,
 		Category:    &item.Category,
 		Tags:        tagLookups,

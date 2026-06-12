@@ -4,14 +4,16 @@ import {http, HttpResponse} from 'msw';
 import {describe, expect, it, vi} from 'vitest';
 import {Route, Routes} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api.ts';
-import type {TagDto} from '../../api/tags.types.ts';
+import type {TagDetailedDto, TagListingDto} from '../../api/tags.types.ts';
 import {renderWithProviders} from '../../test/render.tsx';
 import {server} from '../../test/msw/server.ts';
 import {buildEditTagPath, newTagPath, tagEditRoutePath, tagsListPath} from '../routes.ts';
 import Tags from './Tags.tsx';
 import TagDetailsPage from './TagDetailsPage.tsx';
 
-function buildTag(overrides: Partial<TagDto> = {}): TagDto {
+type TagTestData = TagListingDto & TagDetailedDto;
+
+function buildTag(overrides: Partial<TagTestData> = {}): TagTestData {
     return {
         id: 'tag-1',
         name: 'Food',

@@ -29,82 +29,42 @@ func NewItemsService(uow *persistence.UnitOfWork, logger *slog.Logger) *ItemsSer
 	}
 }
 
-func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter) ([]domains.ItemDto, int64, error) {
+func (service *ItemsService) GetListingInfo(ctx context.Context, filter *domains.ItemFilter) ([]domains.ItemListingDto, int64, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
-	traces.RecordServiceSpan(span, "Get")
+	traces.RecordServiceSpan(span, "GetListingInfo")
 	defer span.End()
 
 	if filter == nil {
 		service.logger.ErrorContext(ctx, "filter is nil")
 		err := fmt.Errorf("filter is nil")
 		traces.EnrichFailedServiceSpan(span, err)
-		metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetListingInfo", err)
 		return nil, 0, err
 	}
 
-	var items []domains.ItemDto
+	var items []domains.ItemListingDto
 	var count int64
 
 	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
-		rawItems, rawItemsCount, err := repositories.Items.Get(ctx, filter)
+		rawItems, rawItemsCount, err := repositories.Items.GetListingInfo(ctx, filter)
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetListingInfo", err)
 			return err
 		}
 
 		count = rawItemsCount
 
 		if len(rawItems) == 0 {
-			items = make([]domains.ItemDto, 0)
+			items = make([]domains.ItemListingDto, 0)
 			return nil
 		}
 
-		var itemIds []uuid.UUID
+		items = make([]domains.ItemListingDto, 0, len(rawItems))
 		for _, item := range rawItems {
-			itemIds = append(itemIds, item.Id)
-		}
-
-		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, itemIds)
-		if err != nil {
-			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
-			return err
-		}
-
-		tagIds := make([]uuid.UUID, len(rawTagToItems))
-		if len(rawTagToItems) > 0 {
-			for i, tag := range rawTagToItems {
-				tagIds[i] = tag.TagId
-			}
-		}
-
-		rawTags, err := repositories.Tags.GetByIds(ctx, tagIds)
-		if err != nil {
-			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
-			return err
-		}
-
-		tagsById := make(map[uuid.UUID]domains.Tag, len(rawTags))
-		for _, tag := range rawTags {
-			tagsById[tag.Id] = tag
-		}
-
-		itemsWithTags := make(map[uuid.UUID][]domains.Tag)
-		for _, tti := range rawTagToItems {
-			if tag, exists := tagsById[tti.TagId]; exists {
-				itemsWithTags[tti.ItemId] = append(itemsWithTags[tti.ItemId], tag)
-			}
-		}
-
-		items = make([]domains.ItemDto, 0)
-		for _, item := range rawItems {
-			items = append(items, *domains.NewItemDto(item, itemsWithTags[item.Id]))
+			items = append(items, *domains.NewItemListingDto(item))
 		}
 
 		return nil
@@ -117,36 +77,36 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 	return items, count, err
 }
 
-func (service *ItemsService) GetById(ctx context.Context, itemID uuid.UUID) (*domains.ItemDto, error) {
+func (service *ItemsService) GetDetailedInfo(ctx context.Context, itemID uuid.UUID) (*domains.ItemDetailedDto, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
-	traces.RecordServiceSpan(span, "GetById")
+	traces.RecordServiceSpan(span, "GetDetailedInfo")
 	defer span.End()
 
 	if itemID == uuid.Nil {
 		service.logger.ErrorContext(ctx, "itemID is nil")
 		err := fmt.Errorf("itemID is nil")
 		traces.EnrichFailedServiceSpan(span, err)
-		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 		return nil, err
 	}
 
-	var item *domains.ItemDto
+	var item *domains.ItemDetailedDto
 
 	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
-		rawItem, err := repositories.Items.GetById(ctx, itemID)
+		rawItem, err := repositories.Items.GetDetailedInfo(ctx, itemID)
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get item by id failed", "itemID", itemID, "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 			return err
 		}
 
-		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{rawItem.Id})
+		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{itemID})
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "itemID", itemID, "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 			return err
 		}
 
@@ -159,11 +119,11 @@ func (service *ItemsService) GetById(ctx context.Context, itemID uuid.UUID) (*do
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tags by ids failed", "itemID", itemID, "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 			return err
 		}
 
-		item = domains.NewItemDto(*rawItem, rawTags)
+		item = domains.NewItemDetailedDto(*rawItem, rawTags)
 		return nil
 	})
 	if err != nil {

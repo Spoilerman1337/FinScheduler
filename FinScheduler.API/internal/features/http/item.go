@@ -31,14 +31,14 @@ func NewItemsHandler(service *services.ItemsService, logger *slog.Logger) *Items
 }
 
 func (handler *ItemsHandler) RegisterEndpoints(router chi.Router) {
-	router.Get("/", handler.Get)
-	router.Get("/{id}", handler.GetById)
+	router.Get("/", handler.GetListingInfo)
+	router.Get("/{id}", handler.GetDetailedInfo)
 	router.Post("/", handler.Create)
 	router.Put("/{id}", handler.Update)
 	router.Delete("/{id}", handler.Delete)
 }
 
-func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (handler *ItemsHandler) GetListingInfo(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	statusCode := http.StatusOK
 	tracer := otel.Tracer("items")
@@ -73,7 +73,7 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, count, err := handler.service.Get(ctx, &filter)
+	items, count, err := handler.service.GetListingInfo(ctx, &filter)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Items filtering ended in failure", "error", err)
 		statusCode = http.StatusInternalServerError
@@ -90,7 +90,7 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handler *ItemsHandler) GetById(w http.ResponseWriter, r *http.Request) {
+func (handler *ItemsHandler) GetDetailedInfo(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	statusCode := http.StatusOK
 	tracer := otel.Tracer("items")
@@ -118,7 +118,7 @@ func (handler *ItemsHandler) GetById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := handler.service.GetById(ctx, idParam)
+	item, err := handler.service.GetDetailedInfo(ctx, idParam)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Get item by id ended in failure", "id", id, "error", err)
 

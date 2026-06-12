@@ -1,5 +1,10 @@
-export interface TagDto {
+export interface TagListingDto {
     id?: string;
+    name?: string;
+    isActive?: boolean;
+}
+
+export interface TagDetailedDto {
     name?: string;
     isActive?: boolean;
 }

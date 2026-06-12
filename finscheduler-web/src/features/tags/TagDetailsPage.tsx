@@ -1,7 +1,7 @@
 import {Button, Card, CloseButton, Dialog, Flex, Portal, Spinner, Stack, Text} from '@chakra-ui/react';
 import {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import type {TagDto} from '../../api/tags.types.ts';
+import type {TagDetailedDto} from '../../api/tags.types.ts';
 import TagsService from '../../api/tags.ts';
 import SwitchField from '../../components/formFields/SwitchField.tsx';
 import TextField from '../../components/formFields/TextField.tsx';
@@ -32,7 +32,7 @@ const tagsService = new TagsService();
 export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     const navigate = useNavigate();
     const {tagId} = useParams<{tagId: string}>();
-    const [tag, setTag] = useState<TagDto | null>(null);
+    const [tag, setTag] = useState<TagDetailedDto | null>(null);
     const [formData, setFormData] = useState<TagFormData>(createDefaultTagFormData);
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
@@ -61,7 +61,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             setError(null);
 
             try {
-                const loadedTag = await tagsService.getTag(tagId);
+                const loadedTag = await tagsService.getDetailedInfo(tagId);
 
                 if (!isMounted) {
                     return;

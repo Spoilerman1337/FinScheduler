@@ -22,7 +22,7 @@ func TestNewTagsFilter_ShouldParseAllSupportedFields(t *testing.T) {
 	request := httptest.NewRequest("GET", requestURL, nil)
 
 	// Act
-	filter, err := NewTagsFilter(request)
+	filter, err := NewTagFilter(request)
 
 	// Assert
 	require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestNewTagsFilter_ShouldReturnZeroValueWhenQueryIsEmpty(t *testing.T) {
 	request := httptest.NewRequest("GET", requestURL, nil)
 
 	// Act
-	filter, err := NewTagsFilter(request)
+	filter, err := NewTagFilter(request)
 
 	// Assert
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestNewTagsFilter_ShouldReturnErrorOnInvalidQueryParam(t *testing.T) {
 	request := httptest.NewRequest("GET", requestURL, nil)
 
 	// Act
-	filter, err := NewTagsFilter(request)
+	filter, err := NewTagFilter(request)
 
 	// Assert
 	require.Error(t, err)
@@ -113,7 +113,7 @@ func TestNewTagLookupFilter_ShouldReturnErrorOnInvalidQueryParam(t *testing.T) {
 	assert.Contains(t, err.Error(), `invalid query parameter "page"`)
 }
 
-func TestNewTagDto_ShouldMapTagFields(t *testing.T) {
+func TestNewTagListingDto_ShouldMapTagFields(t *testing.T) {
 	// Arrange
 	tagID := uuid.New()
 	tag := Tag{
@@ -123,7 +123,7 @@ func TestNewTagDto_ShouldMapTagFields(t *testing.T) {
 	}
 
 	// Act
-	dto := NewTagDto(tag)
+	dto := NewTagListingDto(tag)
 
 	// Assert
 	require.NotNil(t, dto)
@@ -132,6 +132,25 @@ func TestNewTagDto_ShouldMapTagFields(t *testing.T) {
 	require.NotNil(t, dto.IsActive)
 
 	assert.Equal(t, tagID, *dto.Id)
+	assert.Equal(t, "Recurring", *dto.Name)
+	assert.True(t, *dto.IsActive)
+}
+
+func TestNewTagDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
+	// Arrange
+	tag := Tag{
+		Id:       uuid.New(),
+		Name:     "Recurring",
+		IsActive: true,
+	}
+
+	// Act
+	dto := NewTagDetailedDto(tag)
+
+	// Assert
+	require.NotNil(t, dto)
+	require.NotNil(t, dto.Name)
+	require.NotNil(t, dto.IsActive)
 	assert.Equal(t, "Recurring", *dto.Name)
 	assert.True(t, *dto.IsActive)
 }

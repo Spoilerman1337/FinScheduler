@@ -26,7 +26,7 @@ func NewItemsRepository(db DBTX, logger *slog.Logger) *ItemsRepository {
 	return &ItemsRepository{db: db, logger: logger}
 }
 
-func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.ItemFilter) ([]domains.Item, int64, error) {
+func (repository *ItemsRepository) GetListingInfo(ctx context.Context, filter *domains.ItemFilter) ([]domains.Item, int64, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
@@ -153,7 +153,10 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	}
 	offset := page * pageSize
 
-	itemsSelectQuery := fmt.Sprintf("SELECT * %s ORDER BY i.created_at DESC, i.id DESC LIMIT ? OFFSET ?", itemsQuery)
+	itemsSelectQuery := fmt.Sprintf(
+		"SELECT i.id, i.name, i.price, i.is_active, i.updated_at, i.cashback %s ORDER BY i.created_at DESC, i.id DESC LIMIT ? OFFSET ?",
+		itemsQuery,
+	)
 	itemsSelectQuery = repository.db.Rebind(itemsSelectQuery)
 	itemsSelectArgs := append(make([]interface{}, 0), args...)
 	itemsSelectArgs = append(itemsSelectArgs, pageSize, offset)
@@ -192,7 +195,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	return rh.DereferenceSlice(items), count, err
 }
 
-func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*domains.Item, error) {
+func (repository *ItemsRepository) GetDetailedInfo(ctx context.Context, id uuid.UUID) (*domains.Item, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
@@ -209,7 +212,7 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 		return nil, err
 	}
 
-	query := "SELECT * FROM public.items WHERE id = ?"
+	query := "SELECT name, price, description, is_active, cashback, category FROM public.items WHERE id = ?"
 	query = repository.db.Rebind(query)
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)

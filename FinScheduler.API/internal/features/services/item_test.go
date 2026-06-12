@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestItemsServiceGet_ShouldReturnErrorOnNilFilter(t *testing.T) {
+func TestItemsServiceGetListingInfo_ShouldReturnErrorOnNilFilter(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	logger := slog.Default()
@@ -21,7 +21,7 @@ func TestItemsServiceGet_ShouldReturnErrorOnNilFilter(t *testing.T) {
 	service := NewItemsService(uow, logger)
 
 	// Act
-	items, count, err := service.Get(ctx, filter)
+	items, count, err := service.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.EqualError(t, err, "filter is nil")
