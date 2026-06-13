@@ -218,4 +218,60 @@ describe('items api', () => {
         // Assert
         expect(item).toBeNull();
     });
+
+    it('updateCashbackByTag sends a PATCH request with the selected tag and cashback', async () => {
+        // Arrange
+        const service = new ItemsService();
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(null, {
+                status: 204,
+                statusText: 'No Content',
+            }),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+
+        // Act
+        await service.updateCashbackByTag('tag-1', 17);
+
+        // Assert
+        expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/items/cashback/tag`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tagId: 'tag-1',
+                cashback: 17,
+            }),
+        });
+    });
+
+    it('updateCashbackByItems sends a PATCH request with selected item ids and cashback', async () => {
+        // Arrange
+        const service = new ItemsService();
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(null, {
+                status: 204,
+                statusText: 'No Content',
+            }),
+        );
+
+        vi.stubGlobal('fetch', fetchMock);
+
+        // Act
+        await service.updateCashbackByItems(['item-1', 'item-2'], 23);
+
+        // Assert
+        expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/items/cashback/items`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                itemIds: ['item-1', 'item-2'],
+                cashback: 23,
+            }),
+        });
+    });
 });

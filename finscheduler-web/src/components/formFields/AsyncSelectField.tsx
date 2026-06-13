@@ -206,6 +206,16 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         }
     };
 
+    const handleInputValueChange = (details: {inputValue: string; reason?: string}) => {
+        if (details.reason === 'item-select') {
+            searchRef.current = '';
+            setInputValue('');
+            return;
+        }
+
+        setInputValue(details.inputValue);
+    };
+
     const handleRemove = (valueToRemove: string) => {
         if (!props.multiple) {
             return;
@@ -218,6 +228,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         setOpen(details.open);
 
         if (!details.open) {
+            searchRef.current = '';
             setInputValue('');
         }
     };
@@ -253,7 +264,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                 openOnChange
                 selectionBehavior={props.multiple ? 'clear' : 'replace'}
                 onOpenChange={handleOpenChange}
-                onInputValueChange={(details) => setInputValue(details.inputValue)}
+                onInputValueChange={handleInputValueChange}
                 onValueChange={(details) => handleValueChange(details.value)}
             >
                 <Combobox.Control
@@ -423,7 +434,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                             borderColor="glass.borderStrong"
                             backdropFilter="blur(16px)"
                             boxShadow="lg"
-                            zIndex="popover"
+                            zIndex="toast"
                             width="var(--reference-width)"
                             maxH="200px"
                             overflowY="auto"

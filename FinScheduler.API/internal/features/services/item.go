@@ -156,7 +156,7 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 	}
 
 	var newId uuid.UUID
-	updateTagIds := parseTagIDs(create.TagIds)
+	updateTagIds := parseUUIDs(create.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
 		var err error
@@ -253,7 +253,7 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 	}
 
 	var success bool
-	updateTagIds := parseTagIDs(update.TagIds)
+	updateTagIds := parseUUIDs(update.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
 		var err error
@@ -355,14 +355,101 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 	return success, nil
 }
 
-func parseTagIDs(tagIDs []string) []uuid.UUID {
-	if tagIDs == nil {
+func (service *ItemsService) UpdateCashbackByTag(ctx context.Context, update *domains.ItemCashbackByTagUpdate) (int64, error) {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-service")
+	traces.RecordServiceSpan(span, "UpdateCashbackByTag")
+	defer span.End()
+
+	if update == nil {
+		service.logger.ErrorContext(ctx, "update is nil")
+		err := fmt.Errorf("update is nil")
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	if err := update.Validate(); err != nil {
+		service.logger.ErrorContext(ctx, "update validation failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	tagID, err := uuid.Parse(update.TagId)
+	if err != nil {
+		service.logger.ErrorContext(ctx, "failed to parse tag id", "tagId", update.TagId, "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	var affected int64
+
+	err = service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var repositoryErr error
+		affected, repositoryErr = repositories.Items.UpdateCashbackByTag(ctx, tagID, update.Cashback)
+		return repositoryErr
+	})
+	if err != nil {
+		service.logger.ErrorContext(ctx, "error updating cashback by tag", "tagId", update.TagId, "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	traces.EnrichSuccessServiceSpan(span)
+	return affected, nil
+}
+
+func (service *ItemsService) UpdateCashbackByIds(ctx context.Context, update *domains.ItemCashbackByIdsUpdate) (int64, error) {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-service")
+	traces.RecordServiceSpan(span, "UpdateCashbackByIds")
+	defer span.End()
+
+	if update == nil {
+		service.logger.ErrorContext(ctx, "update is nil")
+		err := fmt.Errorf("update is nil")
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByIds", err)
+		return 0, err
+	}
+
+	if err := update.Validate(); err != nil {
+		service.logger.ErrorContext(ctx, "update validation failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByIds", err)
+		return 0, err
+	}
+
+	var affected int64
+	itemIDs := parseUUIDs(update.ItemIds)
+
+	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var repositoryErr error
+		affected, repositoryErr = repositories.Items.UpdateCashbackByIds(ctx, itemIDs, update.Cashback)
+		return repositoryErr
+	})
+	if err != nil {
+		service.logger.ErrorContext(ctx, "error updating cashback by ids", "itemIds", update.ItemIds, "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByIds", err)
+		return 0, err
+	}
+
+	traces.EnrichSuccessServiceSpan(span)
+	return affected, nil
+}
+
+func parseUUIDs(ids []string) []uuid.UUID {
+	if ids == nil {
 		return nil
 	}
 
-	result := make([]uuid.UUID, len(tagIDs))
-	for i, tagID := range tagIDs {
-		result[i] = uuid.MustParse(tagID)
+	result := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		result[i] = uuid.MustParse(id)
 	}
 
 	return result

@@ -174,6 +174,40 @@ export default class ItemsService extends FinschedulerApiClient {
         }
     }
 
+    async updateCashbackByTag(tagId: string, cashback: number): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/items/cashback/tag`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tagId,
+                cashback,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update cashback by tag: ${response.statusText}`);
+        }
+    }
+
+    async updateCashbackByItems(itemIds: string[], cashback: number): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/items/cashback/items`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                itemIds,
+                cashback,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update cashback by items: ${response.statusText}`);
+        }
+    }
+
     async deleteItem(id: string): Promise<void> {
         const response = await fetch(`${this.baseUrl}/items/${id}`, {
             method: 'DELETE',

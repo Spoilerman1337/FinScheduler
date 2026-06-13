@@ -11,8 +11,12 @@ import type {
 import ItemsService, {buildItemFilter} from '../../api/items.ts';
 import type {NumberRangeValue} from '../../components/listingFilters/NumberRangeFilter.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
+import ListingBulkCashbackButton from '../../components/dataListing/actionButtons/ListingBulkCashbackButton.tsx';
 import {buildEditItemPath, newItemPath} from '../routes.ts';
 import {createDefaultItemDateFilter} from './types.ts';
+import BulkCashbackModal, {
+    type BulkCashbackSubmitPayload,
+} from './subcomponents/BulkCashbackModal.tsx';
 import ItemsFilters from './subcomponents/ItemsFilters.tsx';
 import {getCashbackColor} from './types.ts';
 
@@ -27,11 +31,15 @@ export default function Items() {
     const [page, setPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(12);
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+    const [selectedItemLabels, setSelectedItemLabels] = useState<Record<string, string>>({});
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>('Active');
     const [dateFilter, setDateFilter] = useState<ItemDateFilterValue>(createDefaultItemDateFilter);
     const [priceRange, setPriceRange] = useState<NumberRangeValue>({from: '', to: ''});
     const [cashbackRange, setCashbackRange] = useState<NumberRangeValue>({from: '', to: ''});
+    const [isBulkCashbackModalOpen, setIsBulkCashbackModalOpen] = useState(false);
+    const [bulkCashbackLoading, setBulkCashbackLoading] = useState(false);
+    const [bulkCashbackError, setBulkCashbackError] = useState<string | null>(null);
 
     const itemColumns: DataListingColumn<ItemListingDto>[] = [
         {
@@ -150,8 +158,57 @@ export default function Items() {
         setPage(1);
     };
 
+    const handleSelectionChange = useCallback(
+        (nextSelectedRows: Set<string>) => {
+            setSelectedRows(nextSelectedRows);
+            setSelectedItemLabels((prev) => {
+                const next: Record<string, string> = {};
+
+                nextSelectedRows.forEach((id) => {
+                    const currentItem = items.find((item) => item.id === id);
+
+                    if (currentItem?.name) {
+                        next[id] = currentItem.name;
+                        return;
+                    }
+
+                    if (prev[id]) {
+                        next[id] = prev[id];
+                    }
+                });
+
+                const prevKeys = Object.keys(prev);
+                const nextKeys = Object.keys(next);
+
+                if (
+                    prevKeys.length === nextKeys.length &&
+                    nextKeys.every((key) => prev[key] === next[key])
+                ) {
+                    return prev;
+                }
+
+                return next;
+            });
+        },
+        [items],
+    );
+
     const handleOpenCreatePage = () => {
         navigate(newItemPath);
+    };
+
+    const handleOpenBulkCashbackModal = () => {
+        setBulkCashbackError(null);
+        setIsBulkCashbackModalOpen(true);
+    };
+
+    const handleCloseBulkCashbackModal = () => {
+        if (bulkCashbackLoading) {
+            return;
+        }
+
+        setBulkCashbackError(null);
+        setIsBulkCashbackModalOpen(false);
     };
 
     const handleOpenEditPage = (item: ItemListingDto) => {
@@ -176,6 +233,7 @@ export default function Items() {
                 type: 'success',
             });
             setSelectedRows(new Set());
+            setSelectedItemLabels({});
             await loadItems();
         } catch (err) {
             toaster.create({
@@ -186,9 +244,50 @@ export default function Items() {
         }
     };
 
+    const handleBulkCashbackSubmit = async (payload: BulkCashbackSubmitPayload) => {
+        setBulkCashbackLoading(true);
+        setBulkCashbackError(null);
+
+        try {
+            let successDescription = 'Кешбек успешно обновлен';
+
+            if (payload.itemIds && payload.itemIds.length > 0) {
+                await itemsService.updateCashbackByItems(payload.itemIds, payload.cashback);
+                successDescription = `Кешбек обновлен у выбранных элементов: ${payload.itemIds.length}`;
+                setSelectedRows(new Set());
+                setSelectedItemLabels({});
+            } else if (payload.tagId) {
+                await itemsService.updateCashbackByTag(payload.tagId, payload.cashback);
+                successDescription = 'Кешбек обновлен у элементов выбранного тега';
+            } else {
+                setBulkCashbackError('Не удалось определить сценарий массового обновления');
+                return;
+            }
+
+            setIsBulkCashbackModalOpen(false);
+            await loadItems();
+            toaster.create({
+                title: 'Успешно',
+                description: successDescription,
+                type: 'success',
+            });
+        } catch (err) {
+            setBulkCashbackError(
+                err instanceof Error ? err.message : 'Не удалось массово обновить кешбек',
+            );
+        } finally {
+            setBulkCashbackLoading(false);
+        }
+    };
+
     const getRowId = (row: ItemListingDto): string => {
         return row.id ?? '';
     };
+
+    const selectedItems = Array.from(selectedRows).map((id) => ({
+        id,
+        label: selectedItemLabels[id] ?? id,
+    }));
 
     return (
         <Flex direction="column" width="100%">
@@ -250,14 +349,25 @@ export default function Items() {
                         }}
                         selectable={true}
                         selectedRows={selectedRows}
-                        onSelectionChange={setSelectedRows}
+                        onSelectionChange={handleSelectionChange}
                         onAdd={handleOpenCreatePage}
                         onEdit={handleOpenEditPage}
                         onDelete={handleDeleteItems}
                         getRowId={getRowId}
+                        footerActions={
+                            <ListingBulkCashbackButton onClick={handleOpenBulkCashbackModal} />
+                        }
                     />
                 </>
             )}
+            <BulkCashbackModal
+                isOpen={isBulkCashbackModalOpen}
+                selectedItems={selectedItems}
+                loading={bulkCashbackLoading}
+                error={bulkCashbackError}
+                onClose={handleCloseBulkCashbackModal}
+                onSubmit={handleBulkCashbackSubmit}
+            />
         </Flex>
     );
 }

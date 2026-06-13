@@ -487,6 +487,152 @@ func TestItemFilterValidate(t *testing.T) {
 	}
 }
 
+func TestItemCashbackByTagUpdateValidate(t *testing.T) {
+	valid := ItemCashbackByTagUpdate{
+		Cashback: 5,
+		TagId:    uuid.New().String(),
+	}
+
+	tests := []struct {
+		name        string
+		mutate      func(item *ItemCashbackByTagUpdate)
+		expectedErr string
+	}{
+		{
+			name:        "valid",
+			mutate:      func(item *ItemCashbackByTagUpdate) {},
+			expectedErr: "",
+		},
+		{
+			name: "cashback is negative",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.Cashback = -1
+			},
+			expectedErr: "cashback is negative",
+		},
+		{
+			name: "tag id is empty",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.TagId = ""
+			},
+			expectedErr: "tagId is empty",
+		},
+		{
+			name: "tag id is invalid",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.TagId = "bad-uuid"
+			},
+			expectedErr: "tagId is invalid: bad-uuid",
+		},
+		{
+			name: "tag id is nil",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.TagId = uuid.Nil.String()
+			},
+			expectedErr: "tagId is nil",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			item := valid
+			tt.mutate(&item)
+
+			// Act
+			err := item.Validate()
+
+			// Assert
+			if tt.expectedErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tt.expectedErr)
+			}
+		})
+	}
+}
+
+func TestItemCashbackByIdsUpdateValidate(t *testing.T) {
+	duplicateItemID := uuid.New().String()
+	valid := ItemCashbackByIdsUpdate{
+		Cashback: 5,
+		ItemIds:  []string{uuid.New().String(), uuid.New().String()},
+	}
+
+	tests := []struct {
+		name        string
+		mutate      func(item *ItemCashbackByIdsUpdate)
+		expectedErr string
+	}{
+		{
+			name:        "valid",
+			mutate:      func(item *ItemCashbackByIdsUpdate) {},
+			expectedErr: "",
+		},
+		{
+			name: "cashback is negative",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.Cashback = -1
+			},
+			expectedErr: "cashback is negative",
+		},
+		{
+			name: "item ids are empty",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = nil
+			},
+			expectedErr: "itemIds are empty",
+		},
+		{
+			name: "item id is empty",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{""}
+			},
+			expectedErr: "itemId is empty",
+		},
+		{
+			name: "item id is invalid",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{"bad-uuid"}
+			},
+			expectedErr: "itemId is invalid: bad-uuid",
+		},
+		{
+			name: "item id is nil",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{uuid.Nil.String()}
+			},
+			expectedErr: "itemId is nil",
+		},
+		{
+			name: "item ids contain duplicates",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{duplicateItemID, duplicateItemID}
+			},
+			expectedErr: "itemId is duplicated: " + duplicateItemID,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			item := valid
+			item.ItemIds = append([]string(nil), valid.ItemIds...)
+			tt.mutate(&item)
+
+			// Act
+			err := item.Validate()
+
+			// Assert
+			if tt.expectedErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tt.expectedErr)
+			}
+		})
+	}
+}
+
 func TestItemCategoryIsValid(t *testing.T) {
 	// Arrange
 	validCategoryOne := FoodDrinks

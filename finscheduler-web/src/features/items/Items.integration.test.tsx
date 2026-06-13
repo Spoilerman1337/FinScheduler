@@ -1,4 +1,4 @@
-import {fireEvent, screen, waitFor} from '@testing-library/react';
+import {fireEvent, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import {describe, expect, it, vi} from 'vitest';
@@ -185,7 +185,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Применить'}));
+        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Price')).toBeInTheDocument();
@@ -240,7 +240,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Применить'}));
+        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Cashback')).toBeInTheDocument();
@@ -307,7 +307,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Применить'}));
+        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Date')).toBeInTheDocument();
@@ -376,7 +376,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Применить'}));
+        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Updated Date')).toBeInTheDocument();
@@ -544,6 +544,126 @@ describe('Items integration', () => {
         });
         expect(screen.queryByText('Coffee')).not.toBeInTheDocument();
         expect(await screen.findByText('Tea')).toBeInTheDocument();
+    });
+
+    it('updates cashback by tag when no items are selected', async () => {
+        // Arrange
+        const currentItems = [
+            buildItem({id: 'item-1', name: 'Coffee', cashback: 5}),
+            buildItem({id: 'item-2', name: 'Tea', cashback: 7}),
+        ];
+        const tagPayloads: Array<{tagId: string; cashback: number}> = [];
+
+        server.use(
+            http.get(`${API_BASE_URL}/items`, () => {
+                return HttpResponse.json({
+                    data: currentItems,
+                    count: currentItems.length,
+                });
+            }),
+            http.get(`${API_BASE_URL}/tags/lookup`, () => {
+                return HttpResponse.json({
+                    data: [{label: 'Groceries', value: 'tag-1'}],
+                    count: 1,
+                });
+            }),
+            http.patch(`${API_BASE_URL}/items/cashback/tag`, async ({request}) => {
+                const payload = (await request.json()) as {tagId: string; cashback: number};
+
+                tagPayloads.push(payload);
+                currentItems.forEach((item) => {
+                    item.cashback = payload.cashback;
+                });
+
+                return new HttpResponse(null, {status: 204});
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Items />);
+        await screen.findByText('Coffee');
+        await user.click(screen.getByRole('button', {name: 'Массовое обновление кешбека'}));
+
+        const dialog = await screen.findByRole('dialog');
+        await user.click(within(dialog).getByPlaceholderText('Выберите тег'));
+        await user.click(await screen.findByText('Groceries'));
+        const cashbackInput = within(dialog).getByRole('spinbutton', {name: 'Кешбек (%)'});
+        await user.clear(cashbackInput);
+        await user.type(cashbackInput, '12');
+        await user.click(within(dialog).getByRole('button', {name: 'Сохранить'}));
+
+        // Assert
+        await waitFor(() => {
+            expect(tagPayloads).toEqual([{tagId: 'tag-1', cashback: 12}]);
+        });
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+        expect(
+            (await screen.findAllByText((_, element) => element?.textContent?.trim() === '12%'))
+                .length,
+        ).toBeGreaterThanOrEqual(2);
+    });
+
+    it('updates cashback for selected items when rows are selected', async () => {
+        // Arrange
+        const currentItems = [
+            buildItem({id: 'item-1', name: 'Coffee', cashback: 5}),
+            buildItem({id: 'item-2', name: 'Tea', cashback: 7}),
+        ];
+        const itemPayloads: Array<{itemIds: string[]; cashback: number}> = [];
+
+        server.use(
+            http.get(`${API_BASE_URL}/items`, () => {
+                return HttpResponse.json({
+                    data: currentItems,
+                    count: currentItems.length,
+                });
+            }),
+            http.patch(`${API_BASE_URL}/items/cashback/items`, async ({request}) => {
+                const payload = (await request.json()) as {
+                    itemIds: string[];
+                    cashback: number;
+                };
+
+                itemPayloads.push(payload);
+                currentItems.forEach((item) => {
+                    if (payload.itemIds.includes(item.id ?? '')) {
+                        item.cashback = payload.cashback;
+                    }
+                });
+
+                return new HttpResponse(null, {status: 204});
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        // Act
+        renderWithProviders(<Items />);
+        await screen.findByText('Coffee');
+        const checkboxes = await screen.findAllByRole('checkbox');
+        await user.click(checkboxes[1]);
+        await user.click(screen.getByRole('button', {name: 'Массовое обновление кешбека'}));
+
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText('Coffee')).toBeInTheDocument();
+        expect(within(dialog).queryByLabelText('Тег')).not.toBeInTheDocument();
+
+        const cashbackInput = within(dialog).getByRole('spinbutton', {name: 'Кешбек (%)'});
+        await user.clear(cashbackInput);
+        await user.type(cashbackInput, '18');
+        await user.click(within(dialog).getByRole('button', {name: 'Сохранить'}));
+
+        // Assert
+        await waitFor(() => {
+            expect(itemPayloads).toEqual([{itemIds: ['item-1'], cashback: 18}]);
+        });
+        expect(await screen.findByRole('button', {name: 'Добавить'})).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Удалить (1)'})).not.toBeInTheDocument();
+        expect(await screen.findByText('18%')).toBeInTheDocument();
     });
 
     it('changes the page when the paginator is used', async () => {

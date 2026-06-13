@@ -1,4 +1,5 @@
 import {Card, Flex, Stack, Text} from '@chakra-ui/react';
+import type {ReactNode} from 'react';
 import ListingActionButtons from '../dataListing/actionButtons/ListingActionButtons.tsx';
 import ListingPaginator from '../dataListing/paginator/ListingPaginator.tsx';
 import ListingSelectionCheckbox from '../dataListing/selectionCheckbox/ListingSelectionCheckbox.tsx';
@@ -22,6 +23,7 @@ interface DataShowcaseProps<T> {
     onEdit?: (row: T) => void;
     onDelete?: (ids: string[]) => void;
     getRowId?: (row: T) => string;
+    footerActions?: ReactNode;
 }
 
 export default function DataShowcase<T extends object>(props: DataShowcaseProps<T>) {
@@ -146,6 +148,7 @@ export default function DataShowcase<T extends object>(props: DataShowcaseProps<
                 selectedCount={selectedIds.length}
                 onAdd={onAdd}
                 onDeleteSelected={onDelete ? handleDeleteSelected : undefined}
+                additionalActions={props.footerActions}
             />
         </Stack>
     );

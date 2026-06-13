@@ -81,6 +81,16 @@ type ItemUpdate struct {
 	TagIds      []string        `json:"tagIds"`
 }
 
+type ItemCashbackByTagUpdate struct {
+	Cashback int32  `json:"cashback"`
+	TagId    string `json:"tagId"`
+}
+
+type ItemCashbackByIdsUpdate struct {
+	Cashback int32    `json:"cashback"`
+	ItemIds  []string `json:"itemIds"`
+}
+
 func NewItemFilter(r *http.Request) (ItemFilter, error) {
 	queryParams := r.URL.Query()
 
@@ -267,6 +277,28 @@ func (item *ItemFilter) Validate() error {
 	return nil
 }
 
+func (item *ItemCashbackByTagUpdate) Validate() error {
+	if item.Cashback < 0 {
+		return fmt.Errorf("cashback is negative")
+	}
+	if err := validateRequiredUUID(item.TagId, "tagId"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (item *ItemCashbackByIdsUpdate) Validate() error {
+	if item.Cashback < 0 {
+		return fmt.Errorf("cashback is negative")
+	}
+	if err := validateItemIds(item.ItemIds); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type ItemCategory string
 
 const (
@@ -307,6 +339,53 @@ func validateTagIds(tagIds []string) error {
 		}
 
 		seen[parsedTagID] = struct{}{}
+	}
+
+	return nil
+}
+
+func validateRequiredUUID(value string, fieldName string) error {
+	if len(value) == 0 {
+		return fmt.Errorf("%s is empty", fieldName)
+	}
+
+	parsedValue, err := uuid.Parse(value)
+	if err != nil {
+		return fmt.Errorf("%s is invalid: %s", fieldName, value)
+	}
+	if parsedValue == uuid.Nil {
+		return fmt.Errorf("%s is nil", fieldName)
+	}
+
+	return nil
+}
+
+func validateItemIds(itemIds []string) error {
+	if len(itemIds) == 0 {
+		return fmt.Errorf("itemIds are empty")
+	}
+
+	seen := make(map[uuid.UUID]struct{}, len(itemIds))
+
+	for _, itemId := range itemIds {
+		if len(itemId) == 0 {
+			return fmt.Errorf("itemId is empty")
+		}
+
+		parsedItemID, err := uuid.Parse(itemId)
+		if err != nil {
+			return fmt.Errorf("itemId is invalid: %s", itemId)
+		}
+
+		if parsedItemID == uuid.Nil {
+			return fmt.Errorf("itemId is nil")
+		}
+
+		if _, exists := seen[parsedItemID]; exists {
+			return fmt.Errorf("itemId is duplicated: %s", itemId)
+		}
+
+		seen[parsedItemID] = struct{}{}
 	}
 
 	return nil
