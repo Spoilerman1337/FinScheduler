@@ -161,7 +161,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                     ? {
                           ...currentItem,
                           name: payload.name,
-                          description: payload.description,
+                          description: normalizedFormData.description,
                           price: payload.price,
                           cashback: payload.cashback,
                           isActive: payload.isActive,

@@ -20,6 +20,7 @@ function buildItem(overrides: Partial<ItemTestData> = {}): ItemTestData {
         price: 199.5,
         description: 'Morning drink',
         isActive: true,
+        updatedAt: null,
         cashback: 5,
         category: 'FoodDrinks',
         tags: [],
