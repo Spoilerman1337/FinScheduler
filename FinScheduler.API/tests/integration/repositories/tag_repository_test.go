@@ -266,8 +266,8 @@ func TestTagsRepositoryGetLookup_ShouldReturnActiveMatchesOrderedAndCount(t *tes
 	require.NoError(t, getErr)
 	require.Len(t, lookups, 2)
 	assert.Equal(t, int64(2), count)
-	assert.Equal(t, expectedLabels[0], *lookups[0].Label)
-	assert.Equal(t, expectedLabels[1], *lookups[1].Label)
+	assert.Equal(t, expectedLabels[0], lookups[0].Label)
+	assert.Equal(t, expectedLabels[1], lookups[1].Label)
 }
 
 func TestTagsRepositoryGetLookup_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {

@@ -50,7 +50,7 @@ func Test_ItemsService_Flow_CreateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	require.NoError(t, getErr)
 	require.Len(t, items, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, expectedName, *items[0].Name)
+	assert.Equal(t, expectedName, items[0].Name)
 }
 
 func Test_ItemsService_CreateAndGetDetailedInfo_ShouldReturnAssignedTags(t *testing.T) {
@@ -85,8 +85,8 @@ func Test_ItemsService_CreateAndGetDetailedInfo_ShouldReturnAssignedTags(t *test
 	require.NoError(t, getErr)
 	require.NotNil(t, item)
 	require.Len(t, item.Tags, 1)
-	assert.Equal(t, tagName, *item.Tags[0].Label)
-	assert.Equal(t, tagID.String(), *item.Tags[0].Value)
+	assert.Equal(t, tagName, item.Tags[0].Label)
+	assert.Equal(t, tagID.String(), item.Tags[0].Value)
 }
 
 func Test_ItemsService_UpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
@@ -134,8 +134,8 @@ func Test_ItemsService_UpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, items, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, updatedName, *items[0].Name)
-	assert.Equal(t, updatedPrice, *items[0].Price)
+	assert.Equal(t, updatedName, items[0].Name)
+	assert.Equal(t, updatedPrice, items[0].Price)
 }
 
 func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
@@ -188,9 +188,9 @@ func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, item)
 	require.Len(t, item.Tags, 1)
-	assert.Equal(t, updatedItemName, *item.Name)
-	assert.Equal(t, secondTagName, *item.Tags[0].Label)
-	assert.Equal(t, secondTagID.String(), *item.Tags[0].Value)
+	assert.Equal(t, updatedItemName, item.Name)
+	assert.Equal(t, secondTagName, item.Tags[0].Label)
+	assert.Equal(t, secondTagID.String(), item.Tags[0].Value)
 	assert.Equal(t, []uuid.UUID{secondTagID}, actualTagIDs)
 }
 

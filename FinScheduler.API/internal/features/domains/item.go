@@ -24,22 +24,22 @@ type Item struct {
 }
 
 type ItemListingDto struct {
-	Id        *uuid.UUID `json:"id"`
-	Name      *string    `json:"name"`
-	Price     *float64   `json:"price"`
-	IsActive  *bool      `json:"isActive"`
+	Id        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Price     float64    `json:"price"`
+	IsActive  bool       `json:"isActive"`
 	UpdatedAt *time.Time `json:"updatedAt"`
-	Cashback  *int32     `json:"cashback"`
+	Cashback  int32      `json:"cashback"`
 }
 
 type ItemDetailedDto struct {
-	Name        *string       `json:"name"`
-	Price       *float64      `json:"price"`
-	Description *string       `json:"description"`
-	IsActive    *bool         `json:"isActive"`
-	Cashback    *int32        `json:"cashback"`
-	Category    *ItemCategory `json:"category"`
-	Tags        []*Lookup     `json:"tags"`
+	Name        string       `json:"name"`
+	Price       float64      `json:"price"`
+	Description string       `json:"description"`
+	IsActive    bool         `json:"isActive"`
+	Cashback    int32        `json:"cashback"`
+	Category    ItemCategory `json:"category"`
+	Tags        []Lookup     `json:"tags"`
 }
 
 type ItemFilter struct {
@@ -184,32 +184,35 @@ func NewItemListingDto(item Item) *ItemListingDto {
 	price, _ := item.Price.Float64()
 
 	return &ItemListingDto{
-		Id:        &item.Id,
-		Name:      &item.Name,
-		IsActive:  &item.IsActive,
-		Price:     &price,
+		Id:        item.Id,
+		Name:      item.Name,
+		IsActive:  item.IsActive,
+		Price:     price,
 		UpdatedAt: updatedAt,
-		Cashback:  &item.Cashback,
+		Cashback:  item.Cashback,
 	}
 }
 
 func NewItemDetailedDto(item Item, tags []Tag) *ItemDetailedDto {
 	price, _ := item.Price.Float64()
 
-	var tagLookups []*Lookup
+	tagLookups := make([]Lookup, 0, len(tags))
 	for _, tag := range tags {
-		value := tag.Id.String()
-		tagLookup := Lookup{Label: &tag.Name, Value: &value}
-		tagLookups = append(tagLookups, &tagLookup)
+		tagLookup := Lookup{
+			Label: tag.Name,
+			Value: tag.Id.String(),
+		}
+
+		tagLookups = append(tagLookups, tagLookup)
 	}
 
 	return &ItemDetailedDto{
-		Name:        &item.Name,
-		Description: &item.Description,
-		IsActive:    &item.IsActive,
-		Price:       &price,
-		Cashback:    &item.Cashback,
-		Category:    &item.Category,
+		Name:        item.Name,
+		Description: item.Description,
+		IsActive:    item.IsActive,
+		Price:       price,
+		Cashback:    item.Cashback,
+		Category:    item.Category,
 		Tags:        tagLookups,
 	}
 }

@@ -53,7 +53,7 @@ func Test_ItemsHandler_GetListingInfo_ShouldReturnPaginatedItems(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, actualResponse.Data, 1)
 	assert.Equal(t, expectedCount, actualResponse.Count)
-	assert.Equal(t, expectedName, *actualResponse.Data[0].Name)
+	assert.Equal(t, expectedName, actualResponse.Data[0].Name)
 }
 
 func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
@@ -89,12 +89,9 @@ func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	require.NoError(t, createErr)
 	require.NoError(t, decodeErr)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	require.NotNil(t, actualResponse.Name)
-	require.NotNil(t, actualResponse.Price)
-	require.NotNil(t, actualResponse.Category)
-	assert.Equal(t, expectedName, *actualResponse.Name)
-	assert.Equal(t, 12.5, *actualResponse.Price)
-	assert.Equal(t, domains.ItemCategory("FoodDrinks"), *actualResponse.Category)
+	assert.Equal(t, expectedName, actualResponse.Name)
+	assert.Equal(t, 12.5, actualResponse.Price)
+	assert.Equal(t, domains.ItemCategory("FoodDrinks"), actualResponse.Category)
 }
 
 func Test_ItemsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
@@ -458,9 +455,9 @@ func Test_ItemsHandler_UpdateCashbackByTag_ShouldReturnNoContentAndUpdateTaggedI
 	require.NotNil(t, firstTaggedItem)
 	require.NotNil(t, secondTaggedItem)
 	require.NotNil(t, untouchedItem)
-	assert.Equal(t, int32(7), *firstTaggedItem.Cashback)
-	assert.Equal(t, int32(7), *secondTaggedItem.Cashback)
-	assert.Equal(t, int32(0), *untouchedItem.Cashback)
+	assert.Equal(t, int32(7), firstTaggedItem.Cashback)
+	assert.Equal(t, int32(7), secondTaggedItem.Cashback)
+	assert.Equal(t, int32(0), untouchedItem.Cashback)
 }
 
 func Test_ItemsHandler_UpdateCashbackByItems_ShouldReturnNoContentAndUpdateSelectedItems(t *testing.T) {
@@ -510,9 +507,9 @@ func Test_ItemsHandler_UpdateCashbackByItems_ShouldReturnNoContentAndUpdateSelec
 	require.NotNil(t, firstItem)
 	require.NotNil(t, secondItem)
 	require.NotNil(t, thirdItem)
-	assert.Equal(t, int32(11), *firstItem.Cashback)
-	assert.Equal(t, int32(0), *secondItem.Cashback)
-	assert.Equal(t, int32(11), *thirdItem.Cashback)
+	assert.Equal(t, int32(11), firstItem.Cashback)
+	assert.Equal(t, int32(0), secondItem.Cashback)
+	assert.Equal(t, int32(11), thirdItem.Cashback)
 }
 
 func Test_ItemsHandler_UpdateCashbackByItems_ShouldReturnBadRequestOnInvalidPayload(t *testing.T) {

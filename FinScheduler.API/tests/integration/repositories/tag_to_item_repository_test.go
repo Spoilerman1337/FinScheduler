@@ -73,11 +73,9 @@ func TestTagToItemsRepositoryBulkInsertAndGetByItemIDs_ShouldNotErr(t *testing.T
 	itemInsertArgs := []any{itemID, "Apple", "FoodDrinks"}
 	tagInsertQuery := `INSERT INTO tags (id, name, is_active) VALUES ($1, $2, $3), ($4, $5, $6)`
 	tagInsertArgs := []any{firstTagID, "Fruit", true, secondTagID, "Food", true}
-	firstTagIDPointer := &firstTagID
-	secondTagIDPointer := &secondTagID
 	create := &domains.TagToItemCreate{
-		ItemId: &itemID,
-		TagIds: []*uuid.UUID{firstTagIDPointer, secondTagIDPointer},
+		ItemId: itemID,
+		TagIds: []uuid.UUID{firstTagID, secondTagID},
 	}
 	itemIDs := []uuid.UUID{itemID}
 
@@ -173,10 +171,9 @@ func TestTagToItemsRepositoryBulkInsert_ShouldReturnErrorOnInvalidReference(t *t
 	itemInsertQuery := `INSERT INTO items (id, name, category) VALUES ($1, $2, $3)`
 	itemInsertArgs := []any{itemID, "Apple", "FoodDrinks"}
 	countQuery := `SELECT COUNT(*) FROM tag_to_item WHERE item_id = $1`
-	missingTagIDPointer := &missingTagID
 	create := &domains.TagToItemCreate{
-		ItemId: &itemID,
-		TagIds: []*uuid.UUID{missingTagIDPointer},
+		ItemId: itemID,
+		TagIds: []uuid.UUID{missingTagID},
 	}
 
 	_, itemInsertErr := testDB.Exec(itemInsertQuery, itemInsertArgs...)
@@ -206,8 +203,8 @@ func TestTagToItemsRepositoryBulkInsert_ShouldReturnErrorOnEmptyTagIDs(t *testin
 	itemInsertQuery := `INSERT INTO items (id, name, category) VALUES ($1, $2, $3)`
 	itemInsertArgs := []any{itemID, "Apple", "FoodDrinks"}
 	create := &domains.TagToItemCreate{
-		ItemId: &itemID,
-		TagIds: []*uuid.UUID{},
+		ItemId: itemID,
+		TagIds: []uuid.UUID{},
 	}
 
 	_, itemInsertErr := testDB.Exec(itemInsertQuery, itemInsertArgs...)
@@ -236,15 +233,13 @@ func TestTagToItemsRepositoryBulkDelete_ShouldRemoveOnlySelectedTags(t *testing.
 	itemInsertArgs := []any{itemID, "Book", "Entertainments"}
 	tagInsertQuery := `INSERT INTO tags (id, name, is_active) VALUES ($1, $2, $3), ($4, $5, $6)`
 	tagInsertArgs := []any{firstTagID, "Paper", true, secondTagID, "Gift", true}
-	firstTagIDPointer := &firstTagID
-	secondTagIDPointer := &secondTagID
 	create := &domains.TagToItemCreate{
-		ItemId: &itemID,
-		TagIds: []*uuid.UUID{firstTagIDPointer, secondTagIDPointer},
+		ItemId: itemID,
+		TagIds: []uuid.UUID{firstTagID, secondTagID},
 	}
 	deleteInput := &domains.TagToItemDelete{
-		ItemId: &itemID,
-		TagIds: []*uuid.UUID{firstTagIDPointer},
+		ItemId: itemID,
+		TagIds: []uuid.UUID{firstTagID},
 	}
 	itemIDs := []uuid.UUID{itemID}
 
@@ -285,10 +280,9 @@ func TestTagToItemsRepositoryBulkDelete_ShouldReturnFalseWhenNothingDeleted(t *t
 	tagInsertArgs := []any{existingTagID, "Dairy", true, missingTagID, "Unused", true}
 	linkInsertQuery := `INSERT INTO tag_to_item (item_id, tag_id) VALUES ($1, $2)`
 	linkInsertArgs := []any{itemID, existingTagID}
-	missingTagIDPointer := &missingTagID
 	deleteInput := &domains.TagToItemDelete{
-		ItemId: &itemID,
-		TagIds: []*uuid.UUID{missingTagIDPointer},
+		ItemId: itemID,
+		TagIds: []uuid.UUID{missingTagID},
 	}
 	countQuery := `SELECT COUNT(*) FROM tag_to_item WHERE item_id = $1`
 
@@ -317,8 +311,8 @@ func TestTagToItemsRepositoryBulkDelete_ShouldReturnFalseOnEmptyTagIDs(t *testin
 	repo := repositories.NewTagToItemsRepository(testDB, testLogger)
 	itemID := uuid.New()
 	deleteInput := &domains.TagToItemDelete{
-		ItemId: &itemID,
-		TagIds: []*uuid.UUID{},
+		ItemId: itemID,
+		TagIds: []uuid.UUID{},
 	}
 
 	// Act
@@ -329,22 +323,19 @@ func TestTagToItemsRepositoryBulkDelete_ShouldReturnFalseOnEmptyTagIDs(t *testin
 	assert.False(t, ok)
 }
 
-func TestTagToItemsRepositoryBulkDelete_ShouldPanicOnNilItemID(t *testing.T) {
+func TestTagToItemsRepositoryBulkDelete_ShouldReturnErrorOnNilItemID(t *testing.T) {
 	// Arrange
 	ctx := testContext
 	repo := repositories.NewTagToItemsRepository(testDB, testLogger)
-	tagID := uuid.New()
-	tagIDPointer := &tagID
 	deleteInput := &domains.TagToItemDelete{
-		ItemId: nil,
-		TagIds: []*uuid.UUID{tagIDPointer},
+		ItemId: uuid.Nil,
+		TagIds: []uuid.UUID{uuid.New()},
 	}
 
 	// Act
-	action := func() {
-		_, _ = repo.BulkDelete(ctx, deleteInput)
-	}
+	ok, err := repo.BulkDelete(ctx, deleteInput)
 
 	// Assert
-	assert.Panics(t, action)
+	require.EqualError(t, err, "itemId should not be nil")
+	assert.False(t, ok)
 }

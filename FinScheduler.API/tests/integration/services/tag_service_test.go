@@ -50,8 +50,8 @@ func TestTagsServiceCreateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	require.NoError(t, getErr)
 	require.Len(t, tags, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, tagName, *tags[0].Name)
-	assert.Equal(t, tagIsActive, *tags[0].IsActive)
+	assert.Equal(t, tagName, tags[0].Name)
+	assert.Equal(t, tagIsActive, tags[0].IsActive)
 }
 
 func TestTagsServiceGetDetailedInfo_ShouldReturnCreatedTag(t *testing.T) {
@@ -79,8 +79,8 @@ func TestTagsServiceGetDetailedInfo_ShouldReturnCreatedTag(t *testing.T) {
 	require.NoError(t, createErr)
 	require.NoError(t, getErr)
 	require.NotNil(t, tag)
-	assert.Equal(t, tagName, *tag.Name)
-	assert.Equal(t, tagIsActive, *tag.IsActive)
+	assert.Equal(t, tagName, tag.Name)
+	assert.Equal(t, tagIsActive, tag.IsActive)
 }
 
 func TestTagsServiceGetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
@@ -124,7 +124,7 @@ func TestTagsServiceGetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	require.NoError(t, getErr)
 	require.Len(t, lookups, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, activeName, *lookups[0].Label)
+	assert.Equal(t, activeName, lookups[0].Label)
 }
 
 func TestTagsServiceUpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
@@ -172,8 +172,8 @@ func TestTagsServiceUpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, tags, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, updatedName, *tags[0].Name)
-	assert.Equal(t, updatedIsActive, *tags[0].IsActive)
+	assert.Equal(t, updatedName, tags[0].Name)
+	assert.Equal(t, updatedIsActive, tags[0].IsActive)
 }
 
 func TestTagsServiceUpdate_ShouldRemoveItemLinksWhenTagBecomesInactive(t *testing.T) {

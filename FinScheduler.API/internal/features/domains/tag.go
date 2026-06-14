@@ -15,14 +15,14 @@ type Tag struct {
 }
 
 type TagListingDto struct {
-	Id       *uuid.UUID `json:"id"`
-	Name     *string    `json:"name"`
-	IsActive *bool      `json:"isActive"`
+	Id       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	IsActive bool      `json:"isActive"`
 }
 
 type TagDetailedDto struct {
-	Name     *string `json:"name"`
-	IsActive *bool   `json:"isActive"`
+	Name     string `json:"name"`
+	IsActive bool   `json:"isActive"`
 }
 
 type TagFilter struct {
@@ -101,16 +101,16 @@ func NewTagLookupFilter(r *http.Request) (TagLookupFilter, error) {
 
 func NewTagListingDto(tag Tag) *TagListingDto {
 	return &TagListingDto{
-		Id:       &tag.Id,
-		Name:     &tag.Name,
-		IsActive: &tag.IsActive,
+		Id:       tag.Id,
+		Name:     tag.Name,
+		IsActive: tag.IsActive,
 	}
 }
 
 func NewTagDetailedDto(tag Tag) *TagDetailedDto {
 	return &TagDetailedDto{
-		Name:     &tag.Name,
-		IsActive: &tag.IsActive,
+		Name:     tag.Name,
+		IsActive: tag.IsActive,
 	}
 }
 

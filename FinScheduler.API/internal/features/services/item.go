@@ -7,7 +7,6 @@ import (
 	"finscheduler/internal/persistence"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/dh"
-	"finscheduler/pkg/rh"
 	"fmt"
 	"log/slog"
 
@@ -173,7 +172,7 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 			return nil
 		}
 
-		success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(createTagIds)})
+		success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: newId, TagIds: createTagIds})
 		if err != nil {
 			if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
 				return domains.ErrInvalidReference
@@ -259,7 +258,7 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 		if len(toDelete) > 0 {
-			tagSuccess, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
+			tagSuccess, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: itemID, TagIds: toDelete})
 			if err != nil {
 				return err
 			}
@@ -269,7 +268,7 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		}
 
 		if len(toInsert) > 0 {
-			tagSuccess, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
+			tagSuccess, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: itemID, TagIds: toInsert})
 			if err != nil {
 				if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
 					return domains.ErrInvalidReference

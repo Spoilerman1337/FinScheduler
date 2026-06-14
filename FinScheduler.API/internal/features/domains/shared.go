@@ -14,6 +14,6 @@ func NewPaginatedList[T any](data []T, count int64) *PaginatedList[T] {
 }
 
 type Lookup struct {
-	Value *string `json:"value" db:"value"`
-	Label *string `json:"label" db:"label"`
+	Value string `json:"value" db:"value"`
+	Label string `json:"label" db:"label"`
 }

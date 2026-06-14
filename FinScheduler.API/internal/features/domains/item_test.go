@@ -132,19 +132,14 @@ func TestNewItemListingDto_ShouldMapOnlyListingFields(t *testing.T) {
 
 	// Assert
 	require.NotNil(t, dto)
-	require.NotNil(t, dto.Id)
-	require.NotNil(t, dto.Name)
 	require.NotNil(t, dto.UpdatedAt)
-	require.NotNil(t, dto.Price)
-	require.NotNil(t, dto.IsActive)
-	require.NotNil(t, dto.Cashback)
 
-	assert.Equal(t, itemID, *dto.Id)
-	assert.Equal(t, "Subscription", *dto.Name)
-	assert.Equal(t, 99.95, *dto.Price)
-	assert.True(t, *dto.IsActive)
+	assert.Equal(t, itemID, dto.Id)
+	assert.Equal(t, "Subscription", dto.Name)
+	assert.Equal(t, 99.95, dto.Price)
+	assert.True(t, dto.IsActive)
 	assert.Equal(t, updatedAt, *dto.UpdatedAt)
-	assert.Equal(t, int32(7), *dto.Cashback)
+	assert.Equal(t, int32(7), dto.Cashback)
 }
 
 func TestNewItemListingDto_ShouldNilUpdatedAt(t *testing.T) {
@@ -196,21 +191,37 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 
 	// Assert
 	require.NotNil(t, dto)
-	require.NotNil(t, dto.Name)
-	require.NotNil(t, dto.Price)
-	require.NotNil(t, dto.Description)
-	require.NotNil(t, dto.IsActive)
-	require.NotNil(t, dto.Cashback)
-	require.NotNil(t, dto.Category)
 	require.Len(t, dto.Tags, 1)
-	assert.Equal(t, "Subscription", *dto.Name)
-	assert.Equal(t, 99.95, *dto.Price)
-	assert.Equal(t, "Monthly", *dto.Description)
-	assert.True(t, *dto.IsActive)
-	assert.Equal(t, int32(7), *dto.Cashback)
-	assert.Equal(t, Subscriptions, *dto.Category)
-	assert.Equal(t, "Recurring", *dto.Tags[0].Label)
-	assert.Equal(t, tagID.String(), *dto.Tags[0].Value)
+	assert.Equal(t, "Subscription", dto.Name)
+	assert.Equal(t, 99.95, dto.Price)
+	assert.Equal(t, "Monthly", dto.Description)
+	assert.True(t, dto.IsActive)
+	assert.Equal(t, int32(7), dto.Cashback)
+	assert.Equal(t, Subscriptions, dto.Category)
+	assert.Equal(t, "Recurring", dto.Tags[0].Label)
+	assert.Equal(t, tagID.String(), dto.Tags[0].Value)
+}
+
+func TestNewItemDetailedDto_ShouldUseEmptyTagsSliceWhenNoTagsProvided(t *testing.T) {
+	// Arrange
+	item := Item{
+		Id:          uuid.New(),
+		Name:        "Subscription",
+		Price:       decimal.RequireFromString("99.95"),
+		Description: "Monthly",
+		IsActive:    true,
+		CreatedAt:   time.Now().UTC(),
+		Cashback:    7,
+		Category:    Subscriptions,
+	}
+
+	// Act
+	dto := NewItemDetailedDto(item, nil)
+
+	// Assert
+	require.NotNil(t, dto)
+	require.NotNil(t, dto.Tags)
+	assert.Empty(t, dto.Tags)
 }
 
 func TestItemCreateValidate(t *testing.T) {

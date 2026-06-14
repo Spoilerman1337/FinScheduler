@@ -8,11 +8,11 @@ type TagToItem struct {
 }
 
 type TagToItemCreate struct {
-	ItemId *uuid.UUID   `json:"itemId"`
-	TagIds []*uuid.UUID `json:"tagId"`
+	ItemId uuid.UUID   `json:"itemId"`
+	TagIds []uuid.UUID `json:"tagIds"`
 }
 
 type TagToItemDelete struct {
-	ItemId *uuid.UUID   `json:"itemId"`
-	TagIds []*uuid.UUID `json:"tagId"`
+	ItemId uuid.UUID   `json:"itemId"`
+	TagIds []uuid.UUID `json:"tagIds"`
 }

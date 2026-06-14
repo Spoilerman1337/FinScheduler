@@ -127,13 +127,10 @@ func TestNewTagListingDto_ShouldMapTagFields(t *testing.T) {
 
 	// Assert
 	require.NotNil(t, dto)
-	require.NotNil(t, dto.Id)
-	require.NotNil(t, dto.Name)
-	require.NotNil(t, dto.IsActive)
 
-	assert.Equal(t, tagID, *dto.Id)
-	assert.Equal(t, "Recurring", *dto.Name)
-	assert.True(t, *dto.IsActive)
+	assert.Equal(t, tagID, dto.Id)
+	assert.Equal(t, "Recurring", dto.Name)
+	assert.True(t, dto.IsActive)
 }
 
 func TestNewTagDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
@@ -149,10 +146,8 @@ func TestNewTagDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 
 	// Assert
 	require.NotNil(t, dto)
-	require.NotNil(t, dto.Name)
-	require.NotNil(t, dto.IsActive)
-	assert.Equal(t, "Recurring", *dto.Name)
-	assert.True(t, *dto.IsActive)
+	assert.Equal(t, "Recurring", dto.Name)
+	assert.True(t, dto.IsActive)
 }
 
 func TestTagCreateValidate(t *testing.T) {

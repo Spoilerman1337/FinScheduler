@@ -48,7 +48,7 @@ func Test_TagsHandler_GetListingInfo_ShouldReturnPaginatedTags(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, actualResponse.Data, 1)
 	assert.Equal(t, expectedCount, actualResponse.Count)
-	assert.Equal(t, expectedName, *actualResponse.Data[0].Name)
+	assert.Equal(t, expectedName, actualResponse.Data[0].Name)
 }
 
 func Test_TagsHandler_GetListingInfo_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
@@ -119,8 +119,8 @@ func Test_TagsHandler_GetDetailedInfo_ShouldReturnTag(t *testing.T) {
 	require.NoError(t, createErr)
 	require.NoError(t, decodeErr)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, expectedName, *actualResponse.Name)
-	assert.Equal(t, expectedIsActive, *actualResponse.IsActive)
+	assert.Equal(t, expectedName, actualResponse.Name)
+	assert.Equal(t, expectedIsActive, actualResponse.IsActive)
 }
 
 func Test_TagsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
@@ -218,7 +218,7 @@ func Test_TagsHandler_GetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, actualResponse.Data, 1)
 	assert.Equal(t, int64(1), actualResponse.Count)
-	assert.Equal(t, activeName, *actualResponse.Data[0].Label)
+	assert.Equal(t, activeName, actualResponse.Data[0].Label)
 }
 
 func Test_TagsHandler_GetLookup_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
