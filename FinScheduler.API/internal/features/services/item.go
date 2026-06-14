@@ -156,7 +156,7 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 	}
 
 	var newId uuid.UUID
-	updateTagIds := parseUUIDs(create.TagIds)
+	createTagIds := parseUUIDs(create.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
 		var err error
@@ -169,41 +169,19 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 			return fmt.Errorf("failed to create item: repository returned nil uuid")
 		}
 
-		tagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{newId})
+		if len(createTagIds) == 0 {
+			return nil
+		}
+
+		success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(createTagIds)})
 		if err != nil {
+			if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
+				return domains.ErrInvalidReference
+			}
 			return err
 		}
-
-		var currentTagIds []uuid.UUID
-		if tagToItems != nil && len(tagToItems) > 0 {
-			for _, tagToItem := range tagToItems {
-				currentTagIds = append(currentTagIds, tagToItem.TagId)
-			}
-		}
-
-		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
-
-		if len(toDelete) > 0 {
-			success, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
-			if err != nil {
-				return err
-			}
-			if !success {
-				return fmt.Errorf("failed to create item: tag to item delete affected no rows")
-			}
-		}
-
-		if len(toInsert) > 0 {
-			success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
-			if err != nil {
-				if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
-					return domains.ErrInvalidReference
-				}
-				return err
-			}
-			if !success {
-				return fmt.Errorf("failed to create item: tag to item insert affected no rows")
-			}
+		if !success {
+			return fmt.Errorf("failed to create item: tag to item insert affected no rows")
 		}
 
 		return nil
