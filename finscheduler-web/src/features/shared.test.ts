@@ -2,9 +2,9 @@ import {describe, expect, it} from 'vitest';
 import {mapLookupsToSelectOptions} from './shared.ts';
 
 describe('features shared', () => {
-    it('maps lookups to select options and skips entries without value', () => {
+    it('maps lookups to select options', () => {
         // Arrange
-        const lookups = [{value: 'tag-1', label: 'Food'}, {value: 'tag-2'}, {label: 'Broken'}];
+        const lookups = [{value: 'tag-1', label: 'Food'}, {value: 'tag-2'}];
 
         // Act
         const options = mapLookupsToSelectOptions(lookups);

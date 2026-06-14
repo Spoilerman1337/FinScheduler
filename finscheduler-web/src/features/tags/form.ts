@@ -1,26 +1,9 @@
 import type {TagDetailedDto, TagModification} from '../../api/tags.types.ts';
+import {type FieldValidator, runFieldValidators} from '../shared.ts';
 
 export interface TagFormData {
     name: string;
     isActive: boolean;
-}
-
-export interface FieldValidator<TValue> {
-    validate: (value: TValue) => boolean;
-    errorMessage: string;
-}
-
-export function runFieldValidators<TValue>(
-    value: TValue,
-    validators: FieldValidator<TValue>[],
-): true | string {
-    for (const validator of validators) {
-        if (!validator.validate(value)) {
-            return validator.errorMessage;
-        }
-    }
-
-    return true;
 }
 
 export const tagNameValidators: FieldValidator<string>[] = [

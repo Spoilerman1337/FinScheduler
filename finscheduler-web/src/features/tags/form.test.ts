@@ -4,11 +4,11 @@ import {
     createDefaultTagFormData,
     mapTagToFormData,
     normalizeTagFormData,
-    runFieldValidators,
     shouldConfirmTagDeactivation,
     tagFormValidators,
     tagNameValidators,
 } from './form.ts';
+import {runFieldValidators} from '../shared.ts';
 
 describe('tags form', () => {
     it('creates the default tag form data', () => {

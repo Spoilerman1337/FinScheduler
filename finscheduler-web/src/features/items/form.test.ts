@@ -9,8 +9,8 @@ import {
     itemPriceValidators,
     mapItemToFormData,
     normalizeItemFormData,
-    runFieldValidators,
 } from './form.ts';
+import {runFieldValidators} from '../shared.ts';
 
 describe('items form', () => {
     it('creates the default item form data', () => {

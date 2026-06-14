@@ -1,5 +1,6 @@
 import type {ItemDetailedDto, ItemModification} from '../../api/items.types.ts';
 import {categoryTranslations} from '../../models/items.ts';
+import {type FieldValidator, runFieldValidators} from '../shared.ts';
 
 export interface ItemFormData {
     name: string;
@@ -9,24 +10,6 @@ export interface ItemFormData {
     isActive: boolean;
     category: string;
     tagIds: string[];
-}
-
-export interface FieldValidator<TValue> {
-    validate: (value: TValue) => boolean;
-    errorMessage: string;
-}
-
-export function runFieldValidators<TValue>(
-    value: TValue,
-    validators: FieldValidator<TValue>[],
-): true | string {
-    for (const validator of validators) {
-        if (!validator.validate(value)) {
-            return validator.errorMessage;
-        }
-    }
-
-    return true;
 }
 
 export const itemNameValidators: FieldValidator<string>[] = [

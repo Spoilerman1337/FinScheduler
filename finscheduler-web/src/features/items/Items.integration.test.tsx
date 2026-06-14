@@ -553,7 +553,7 @@ describe('Items integration', () => {
             buildItem({id: 'item-1', name: 'Coffee', cashback: 5}),
             buildItem({id: 'item-2', name: 'Tea', cashback: 7}),
         ];
-        const tagPayloads: Array<{tagId: string; cashback: number}> = [];
+        const tagPayloads: {tagId: string; cashback: number}[] = [];
 
         server.use(
             http.get(`${API_BASE_URL}/items`, () => {
@@ -614,7 +614,7 @@ describe('Items integration', () => {
             buildItem({id: 'item-1', name: 'Coffee', cashback: 5}),
             buildItem({id: 'item-2', name: 'Tea', cashback: 7}),
         ];
-        const itemPayloads: Array<{itemIds: string[]; cashback: number}> = [];
+        const itemPayloads: {itemIds: string[]; cashback: number}[] = [];
 
         server.use(
             http.get(`${API_BASE_URL}/items`, () => {
