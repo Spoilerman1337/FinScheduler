@@ -1,12 +1,12 @@
 export interface TagListingDto {
-    id?: string;
-    name?: string;
-    isActive?: boolean;
+    id: string;
+    name: string;
+    isActive: boolean;
 }
 
 export interface TagDetailedDto {
-    name?: string;
-    isActive?: boolean;
+    name: string;
+    isActive: boolean;
 }
 
 export interface TagFilter {

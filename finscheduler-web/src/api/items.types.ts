@@ -7,22 +7,22 @@ export interface ItemDateFilterValue {
 }
 
 export interface ItemListingDto {
-    id?: string;
-    name?: string;
-    price?: number;
-    isActive?: boolean;
-    updatedAt?: string | null;
-    cashback?: number;
+    id: string;
+    name: string;
+    price: number;
+    isActive: boolean;
+    updatedAt: string | null;
+    cashback: number;
 }
 
 export interface ItemDetailedDto {
-    name?: string;
-    price?: number;
-    description?: string;
-    isActive?: boolean;
-    cashback?: number;
-    category?: string;
-    tags?: Lookup[];
+    name: string;
+    price: number;
+    description: string;
+    isActive: boolean;
+    cashback: number;
+    category: string;
+    tags: Lookup[] | null;
 }
 
 export interface ItemFilter {
