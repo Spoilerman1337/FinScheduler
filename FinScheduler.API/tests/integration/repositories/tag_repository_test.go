@@ -44,7 +44,7 @@ func TestTagsRepositoryCreateAndGetByIDs_ShouldNotErr(t *testing.T) {
 	assert.Equal(t, tagIsActive, tags[0].IsActive)
 }
 
-func TestTagsRepositoryGetByID_ShouldReturnCreatedTag(t *testing.T) {
+func TestTagsRepositoryGetDetailedInfo_ShouldReturnCreatedTag(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "tags")
@@ -62,18 +62,17 @@ func TestTagsRepositoryGetByID_ShouldReturnCreatedTag(t *testing.T) {
 	tagID, createErr := repo.Create(ctx, create)
 
 	// Act
-	tag, getErr := repo.GetById(ctx, tagID)
+	tag, getErr := repo.GetDetailedInfo(ctx, tagID)
 
 	// Assert
 	require.NoError(t, createErr)
 	require.NoError(t, getErr)
 	require.NotNil(t, tag)
-	assert.Equal(t, tagID, tag.Id)
 	assert.Equal(t, tagName, tag.Name)
 	assert.Equal(t, tagIsActive, tag.IsActive)
 }
 
-func TestTagsRepositoryGet_ShouldFilterAndReturnCount(t *testing.T) {
+func TestTagsRepositoryGetListingInfo_ShouldFilterAndReturnCount(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "tags")
@@ -111,7 +110,7 @@ func TestTagsRepositoryGet_ShouldFilterAndReturnCount(t *testing.T) {
 	expectedNames := []string{firstName, secondName}
 
 	// Act
-	tags, count, getErr := repo.Get(ctx, filter)
+	tags, count, getErr := repo.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.NoError(t, firstCreateErr)
@@ -169,7 +168,7 @@ func TestTagsRepositoryGetByIDs_ShouldReturnErrorOnNilIDs(t *testing.T) {
 	assert.Nil(t, tags)
 }
 
-func TestTagsRepositoryGet_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+func TestTagsRepositoryGetListingInfo_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
 	// Arrange
 	ctx := testContext
 	closedDB := newClosedDB(t)
@@ -182,7 +181,7 @@ func TestTagsRepositoryGet_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
 	}
 
 	// Act
-	tags, count, err := repo.Get(ctx, filter)
+	tags, count, err := repo.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.Error(t, err)
@@ -267,8 +266,8 @@ func TestTagsRepositoryGetLookup_ShouldReturnActiveMatchesOrderedAndCount(t *tes
 	require.NoError(t, getErr)
 	require.Len(t, lookups, 2)
 	assert.Equal(t, int64(2), count)
-	assert.Equal(t, expectedLabels[0], *lookups[0].Label)
-	assert.Equal(t, expectedLabels[1], *lookups[1].Label)
+	assert.Equal(t, expectedLabels[0], lookups[0].Label)
+	assert.Equal(t, expectedLabels[1], lookups[1].Label)
 }
 
 func TestTagsRepositoryGetLookup_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {

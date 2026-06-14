@@ -31,14 +31,16 @@ func NewItemsHandler(service *services.ItemsService, logger *slog.Logger) *Items
 }
 
 func (handler *ItemsHandler) RegisterEndpoints(router chi.Router) {
-	router.Get("/", handler.Get)
-	router.Get("/{id}", handler.GetById)
+	router.Get("/", handler.GetListingInfo)
+	router.Get("/{id}", handler.GetDetailedInfo)
 	router.Post("/", handler.Create)
+	router.Patch("/cashback/tag", handler.UpdateCashbackByTag)
+	router.Patch("/cashback/items", handler.UpdateCashbackByItems)
 	router.Put("/{id}", handler.Update)
 	router.Delete("/{id}", handler.Delete)
 }
 
-func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (handler *ItemsHandler) GetListingInfo(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	statusCode := http.StatusOK
 	tracer := otel.Tracer("items")
@@ -73,7 +75,7 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, count, err := handler.service.Get(ctx, &filter)
+	items, count, err := handler.service.GetListingInfo(ctx, &filter)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Items filtering ended in failure", "error", err)
 		statusCode = http.StatusInternalServerError
@@ -90,7 +92,7 @@ func (handler *ItemsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handler *ItemsHandler) GetById(w http.ResponseWriter, r *http.Request) {
+func (handler *ItemsHandler) GetDetailedInfo(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	statusCode := http.StatusOK
 	tracer := otel.Tracer("items")
@@ -118,7 +120,7 @@ func (handler *ItemsHandler) GetById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := handler.service.GetById(ctx, idParam)
+	item, err := handler.service.GetDetailedInfo(ctx, idParam)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Get item by id ended in failure", "id", id, "error", err)
 
@@ -271,6 +273,102 @@ func (handler *ItemsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !success {
 		statusCode = http.StatusNotFound
 		http.Error(w, "item not found", statusCode)
+		return
+	}
+
+	w.WriteHeader(statusCode)
+}
+
+func (handler *ItemsHandler) UpdateCashbackByTag(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	statusCode := http.StatusNoContent
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(r.Context(), "items-http")
+	traces.RecordHttpSpan(span, r, "/items/cashback/tag")
+	defer func() {
+		err := r.Body.Close()
+		if err != nil {
+			handler.logger.ErrorContext(ctx, "Failed to close request body", "error", err)
+		}
+		metrics.RecordHTTPDuration(ctx, start)
+		metrics.RecordHTTPRequest(ctx, r, "PATCH /items/cashback/tag", statusCode)
+
+		if statusCode < 400 {
+			traces.EnrichSuccessHttpSpan(span, statusCode)
+		}
+		span.End()
+	}()
+
+	var update domains.ItemCashbackByTagUpdate
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
+		statusCode = http.StatusBadRequest
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
+
+	if err := update.Validate(); err != nil {
+		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
+		statusCode = http.StatusBadRequest
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
+
+	if _, err := handler.service.UpdateCashbackByTag(ctx, &update); err != nil {
+		handler.logger.ErrorContext(ctx, "Bulk cashback update by tag ended in failure", "tagId", update.TagId, "error", err)
+		statusCode = http.StatusInternalServerError
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
+
+	w.WriteHeader(statusCode)
+}
+
+func (handler *ItemsHandler) UpdateCashbackByItems(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	statusCode := http.StatusNoContent
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(r.Context(), "items-http")
+	traces.RecordHttpSpan(span, r, "/items/cashback/items")
+	defer func() {
+		err := r.Body.Close()
+		if err != nil {
+			handler.logger.ErrorContext(ctx, "Failed to close request body", "error", err)
+		}
+		metrics.RecordHTTPDuration(ctx, start)
+		metrics.RecordHTTPRequest(ctx, r, "PATCH /items/cashback/items", statusCode)
+
+		if statusCode < 400 {
+			traces.EnrichSuccessHttpSpan(span, statusCode)
+		}
+		span.End()
+	}()
+
+	var update domains.ItemCashbackByIdsUpdate
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
+		statusCode = http.StatusBadRequest
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
+
+	if err := update.Validate(); err != nil {
+		handler.logger.ErrorContext(ctx, "Validation failed", "error", err)
+		statusCode = http.StatusBadRequest
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
+
+	if _, err := handler.service.UpdateCashbackByIds(ctx, &update); err != nil {
+		handler.logger.ErrorContext(ctx, "Bulk cashback update by ids ended in failure", "itemIds", update.ItemIds, "error", err)
+		statusCode = http.StatusInternalServerError
+		traces.EnrichFailedHttpSpan(span, err, statusCode)
+		http.Error(w, err.Error(), statusCode)
 		return
 	}
 

@@ -23,17 +23,23 @@ type Item struct {
 	Category    ItemCategory    `db:"category"`
 }
 
-type ItemDto struct {
-	Id          *uuid.UUID    `json:"id"`
-	Name        *string       `json:"name"`
-	Price       *float64      `json:"price"`
-	Description *string       `json:"description"`
-	IsActive    *bool         `json:"isActive"`
-	CreatedAt   *time.Time    `json:"createdAt"`
-	UpdatedAt   *time.Time    `json:"updatedAt"`
-	Cashback    *int32        `json:"cashback"`
-	Category    *ItemCategory `json:"category"`
-	Tags        []*Lookup     `json:"tags"`
+type ItemListingDto struct {
+	Id        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Price     float64    `json:"price"`
+	IsActive  bool       `json:"isActive"`
+	UpdatedAt *time.Time `json:"updatedAt"`
+	Cashback  int32      `json:"cashback"`
+}
+
+type ItemDetailedDto struct {
+	Name        string       `json:"name"`
+	Price       float64      `json:"price"`
+	Description string       `json:"description"`
+	IsActive    bool         `json:"isActive"`
+	Cashback    int32        `json:"cashback"`
+	Category    ItemCategory `json:"category"`
+	Tags        []Lookup     `json:"tags"`
 }
 
 type ItemFilter struct {
@@ -73,6 +79,16 @@ type ItemUpdate struct {
 	Cashback    int32           `json:"cashback"`
 	Category    string          `json:"category"`
 	TagIds      []string        `json:"tagIds"`
+}
+
+type ItemCashbackByTagUpdate struct {
+	Cashback int32  `json:"cashback"`
+	TagId    string `json:"tagId"`
+}
+
+type ItemCashbackByIdsUpdate struct {
+	Cashback int32    `json:"cashback"`
+	ItemIds  []string `json:"itemIds"`
 }
 
 func NewItemFilter(r *http.Request) (ItemFilter, error) {
@@ -157,7 +173,7 @@ func NewItemFilter(r *http.Request) (ItemFilter, error) {
 	}, nil
 }
 
-func NewItemDto(item Item, tags []Tag) *ItemDto {
+func NewItemListingDto(item Item) *ItemListingDto {
 	var updatedAt *time.Time
 	if item.UpdatedAt.Valid {
 		updatedAt = &item.UpdatedAt.Time
@@ -167,36 +183,49 @@ func NewItemDto(item Item, tags []Tag) *ItemDto {
 
 	price, _ := item.Price.Float64()
 
-	var tagLookups []*Lookup
+	return &ItemListingDto{
+		Id:        item.Id,
+		Name:      item.Name,
+		IsActive:  item.IsActive,
+		Price:     price,
+		UpdatedAt: updatedAt,
+		Cashback:  item.Cashback,
+	}
+}
+
+func NewItemDetailedDto(item Item, tags []Tag) *ItemDetailedDto {
+	price, _ := item.Price.Float64()
+
+	tagLookups := make([]Lookup, 0, len(tags))
 	for _, tag := range tags {
-		value := tag.Id.String()
-		tagLookup := Lookup{Label: &tag.Name, Value: &value}
-		tagLookups = append(tagLookups, &tagLookup)
+		tagLookup := Lookup{
+			Label: tag.Name,
+			Value: tag.Id.String(),
+		}
+
+		tagLookups = append(tagLookups, tagLookup)
 	}
 
-	return &ItemDto{
-		Id:          &item.Id,
-		Name:        &item.Name,
-		Description: &item.Description,
-		IsActive:    &item.IsActive,
-		CreatedAt:   &item.CreatedAt,
-		Price:       &price,
-		UpdatedAt:   updatedAt,
-		Cashback:    &item.Cashback,
-		Category:    &item.Category,
+	return &ItemDetailedDto{
+		Name:        item.Name,
+		Description: item.Description,
+		IsActive:    item.IsActive,
+		Price:       price,
+		Cashback:    item.Cashback,
+		Category:    item.Category,
 		Tags:        tagLookups,
 	}
 }
 
 func (item *ItemCreate) Validate() error {
 	if len(item.Name) < 3 {
-		return fmt.Errorf("name too short")
+		return fmt.Errorf("name must be at least 3 characters long")
 	}
 	if item.Price.IsNegative() {
-		return fmt.Errorf("price is negative")
+		return fmt.Errorf("price must be zero or greater")
 	}
 	if item.Cashback < 0 {
-		return fmt.Errorf("cashback is negative")
+		return fmt.Errorf("cashback must be zero or greater")
 	}
 	if !ItemCategory(item.Category).IsValid() {
 		return fmt.Errorf("category is invalid")
@@ -210,13 +239,13 @@ func (item *ItemCreate) Validate() error {
 
 func (item *ItemUpdate) Validate() error {
 	if len(item.Name) < 3 {
-		return fmt.Errorf("name too short")
+		return fmt.Errorf("name must be at least 3 characters long")
 	}
 	if item.Price.IsNegative() {
-		return fmt.Errorf("price is negative")
+		return fmt.Errorf("price must be zero or greater")
 	}
 	if item.Cashback < 0 {
-		return fmt.Errorf("cashback is negative")
+		return fmt.Errorf("cashback must be zero or greater")
 	}
 	if !ItemCategory(item.Category).IsValid() {
 		return fmt.Errorf("category is invalid")
@@ -236,16 +265,38 @@ func (item *ItemFilter) Validate() error {
 		return fmt.Errorf("pageSize must be positive")
 	}
 	if item.PriceFrom != nil && item.PriceTo != nil && (*item.PriceTo).LessThan(*item.PriceFrom) {
-		return fmt.Errorf("priceTo cannot be lesser than priceFrom")
+		return fmt.Errorf("priceTo cannot be less than priceFrom")
 	}
 	if item.CreatedFrom != nil && item.CreatedTo != nil && (*item.CreatedTo).Before(*item.CreatedFrom) {
-		return fmt.Errorf("createTo cannot be earlier than createFrom")
+		return fmt.Errorf("createdTo cannot be earlier than createdFrom")
 	}
 	if item.UpdatedFrom != nil && item.UpdatedTo != nil && (*item.UpdatedTo).Before(*item.UpdatedFrom) {
-		return fmt.Errorf("updateTo cannot be earlier than updateFrom")
+		return fmt.Errorf("updatedTo cannot be earlier than updatedFrom")
 	}
 	if item.CashbackFrom != nil && item.CashbackTo != nil && *item.CashbackTo < *item.CashbackFrom {
-		return fmt.Errorf("cashbackFrom cannot be lesser than cashbackTO")
+		return fmt.Errorf("cashbackTo cannot be less than cashbackFrom")
+	}
+
+	return nil
+}
+
+func (item *ItemCashbackByTagUpdate) Validate() error {
+	if item.Cashback < 0 {
+		return fmt.Errorf("cashback must be zero or greater")
+	}
+	if err := validateRequiredUUID(item.TagId, "tagId"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (item *ItemCashbackByIdsUpdate) Validate() error {
+	if item.Cashback < 0 {
+		return fmt.Errorf("cashback must be zero or greater")
+	}
+	if err := validateItemIds(item.ItemIds); err != nil {
+		return err
 	}
 
 	return nil
@@ -291,6 +342,53 @@ func validateTagIds(tagIds []string) error {
 		}
 
 		seen[parsedTagID] = struct{}{}
+	}
+
+	return nil
+}
+
+func validateRequiredUUID(value string, fieldName string) error {
+	if len(value) == 0 {
+		return fmt.Errorf("%s is empty", fieldName)
+	}
+
+	parsedValue, err := uuid.Parse(value)
+	if err != nil {
+		return fmt.Errorf("%s is invalid: %s", fieldName, value)
+	}
+	if parsedValue == uuid.Nil {
+		return fmt.Errorf("%s is nil", fieldName)
+	}
+
+	return nil
+}
+
+func validateItemIds(itemIds []string) error {
+	if len(itemIds) == 0 {
+		return fmt.Errorf("itemIds are empty")
+	}
+
+	seen := make(map[uuid.UUID]struct{}, len(itemIds))
+
+	for _, itemId := range itemIds {
+		if len(itemId) == 0 {
+			return fmt.Errorf("itemId is empty")
+		}
+
+		parsedItemID, err := uuid.Parse(itemId)
+		if err != nil {
+			return fmt.Errorf("itemId is invalid: %s", itemId)
+		}
+
+		if parsedItemID == uuid.Nil {
+			return fmt.Errorf("itemId is nil")
+		}
+
+		if _, exists := seen[parsedItemID]; exists {
+			return fmt.Errorf("itemId is duplicated: %s", itemId)
+		}
+
+		seen[parsedItemID] = struct{}{}
 	}
 
 	return nil

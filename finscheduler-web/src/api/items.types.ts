@@ -1,20 +1,28 @@
+import type {Lookup} from './types.ts';
+
 export interface ItemDateFilterValue {
     mode: ItemDateFilterMode;
     from: string;
     to: string;
 }
 
-export interface ItemDto {
-    id?: string;
-    name?: string;
-    price?: number;
-    description?: string;
-    isActive?: boolean;
-    createdAt?: string;
-    updatedAt?: string | null;
-    cashback?: number;
-    category?: string;
-    tags?: import('./types.ts').Lookup[];
+export interface ItemListingDto {
+    id: string;
+    name: string;
+    price: number;
+    isActive: boolean;
+    updatedAt: string | null;
+    cashback: number;
+}
+
+export interface ItemDetailedDto {
+    name: string;
+    price: number;
+    description: string;
+    isActive: boolean;
+    cashback: number;
+    category: string;
+    tags: Lookup[] | null;
 }
 
 export interface ItemFilter {

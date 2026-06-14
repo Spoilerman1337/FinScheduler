@@ -4,6 +4,6 @@ export interface PaginatedList<T> {
 }
 
 export interface Lookup {
-    value?: string;
+    value: string;
     label?: string;
 }

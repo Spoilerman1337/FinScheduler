@@ -2,8 +2,9 @@ import {FinschedulerApiClient} from './finscheduler-api-client.ts';
 import type {PaginatedList} from './types.ts';
 import type {
     ItemDateFilterValue,
-    ItemDto,
+    ItemDetailedDto,
     ItemFilter,
+    ItemListingDto,
     ItemModification,
     ItemStatusFilter,
 } from './items.types.ts';
@@ -92,7 +93,7 @@ export function buildItemFilter(params: {
 }
 
 export default class ItemsService extends FinschedulerApiClient {
-    async getItems(filter?: ItemFilter): Promise<PaginatedList<ItemDto>> {
+    async getListingInfo(filter?: ItemFilter): Promise<PaginatedList<ItemListingDto>> {
         const queryString = filter ? this.buildQueryString(filter) : '';
         const response = await fetch(`${this.baseUrl}/items${queryString}`, {
             method: 'GET',
@@ -108,7 +109,7 @@ export default class ItemsService extends FinschedulerApiClient {
         return response.json();
     }
 
-    async getItem(id: string): Promise<ItemDto | null> {
+    async getDetailedInfo(id: string): Promise<ItemDetailedDto | null> {
         const response = await fetch(`${this.baseUrl}/items/${id}`, {
             method: 'GET',
             headers: {
@@ -170,6 +171,40 @@ export default class ItemsService extends FinschedulerApiClient {
 
         if (!response.ok) {
             throw new Error(`Failed to update item: ${response.statusText}`);
+        }
+    }
+
+    async updateCashbackByTag(tagId: string, cashback: number): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/items/cashback/tag`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tagId,
+                cashback,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update cashback by tag: ${response.statusText}`);
+        }
+    }
+
+    async updateCashbackByItems(itemIds: string[], cashback: number): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/items/cashback/items`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                itemIds,
+                cashback,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update cashback by items: ${response.statusText}`);
         }
     }
 

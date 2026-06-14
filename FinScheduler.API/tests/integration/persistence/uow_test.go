@@ -62,10 +62,9 @@ func TestUnitOfWorkWithTx_ShouldCommitChangesWhenCallbackSucceeds(t *testing.T) 
 			return createErr
 		}
 
-		tagIDPointer := &createdTagID
 		linkCreate := &domains.TagToItemCreate{
-			ItemId: &createdItemID,
-			TagIds: []*uuid.UUID{tagIDPointer},
+			ItemId: createdItemID,
+			TagIds: []uuid.UUID{createdTagID},
 		}
 
 		_, createErr = repositories.TagToItems.BulkInsert(ctx, linkCreate)
@@ -140,10 +139,9 @@ func TestUnitOfWorkWithTx_ShouldRollbackChangesWhenCallbackReturnsError(t *testi
 			return createErr
 		}
 
-		tagIDPointer := &createdTagID
 		linkCreate := &domains.TagToItemCreate{
-			ItemId: &createdItemID,
-			TagIds: []*uuid.UUID{tagIDPointer},
+			ItemId: createdItemID,
+			TagIds: []uuid.UUID{createdTagID},
 		}
 
 		_, createErr = repositories.TagToItems.BulkInsert(ctx, linkCreate)

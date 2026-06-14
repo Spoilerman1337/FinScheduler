@@ -31,14 +31,14 @@ func NewTagsHandler(service *services.TagsService, logger *slog.Logger) *TagsHan
 }
 
 func (handler *TagsHandler) RegisterEndpoints(router chi.Router) {
-	router.Get("/", handler.Get)
+	router.Get("/", handler.GetListingInfo)
 	router.Get("/lookup", handler.GetLookup)
-	router.Get("/{id}", handler.GetById)
+	router.Get("/{id}", handler.GetDetailedInfo)
 	router.Post("/", handler.Create)
 	router.Put("/{id}", handler.Update)
 }
 
-func (handler *TagsHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (handler *TagsHandler) GetListingInfo(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	statusCode := http.StatusOK
 	tracer := otel.Tracer("tags")
@@ -56,7 +56,7 @@ func (handler *TagsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter, err := domains.NewTagsFilter(r)
+	filter, err := domains.NewTagFilter(r)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to parse query", "error", err)
 		statusCode = http.StatusBadRequest
@@ -73,7 +73,7 @@ func (handler *TagsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tags, count, err := handler.service.Get(ctx, &filter)
+	tags, count, err := handler.service.GetListingInfo(ctx, &filter)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Tags filtering ended in failure", "error", err)
 		statusCode = http.StatusInternalServerError
@@ -142,7 +142,7 @@ func (handler *TagsHandler) GetLookup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handler *TagsHandler) GetById(w http.ResponseWriter, r *http.Request) {
+func (handler *TagsHandler) GetDetailedInfo(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	statusCode := http.StatusOK
 	tracer := otel.Tracer("tags")
@@ -170,7 +170,7 @@ func (handler *TagsHandler) GetById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tag, err := handler.service.GetById(ctx, idParam)
+	tag, err := handler.service.GetDetailedInfo(ctx, idParam)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Get tag by id ended in failure", "id", id, "error", err)
 

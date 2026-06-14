@@ -58,7 +58,7 @@ func configureEnvironment(v *viper.Viper) {
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.SetDefault("corsSettings.allowedOrigins", []string{"*"})
-	v.SetDefault("corsSettings.allowedMethods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
+	v.SetDefault("corsSettings.allowedMethods", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
 	v.SetDefault("corsSettings.allowedHeaders", []string{"*"})
 	v.SetDefault("corsSettings.allowCredentials", false)
 	v.SetDefault("observability.serviceName", "fin-scheduler-api")

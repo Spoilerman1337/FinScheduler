@@ -1,9 +1,21 @@
-import type {TagDto, TagModification} from '../../api/tags.types.ts';
+import type {TagDetailedDto, TagModification} from '../../api/tags.types.ts';
+import {type FieldValidator, runFieldValidators} from '../shared.ts';
 
 export interface TagFormData {
     name: string;
     isActive: boolean;
 }
+
+export const tagNameValidators: FieldValidator<string>[] = [
+    {
+        validate: (value) => value.trim().length > 0,
+        errorMessage: 'Название обязательно для заполнения',
+    },
+];
+
+export const tagFormValidators = {
+    name: (value: string) => runFieldValidators(value, tagNameValidators),
+} as const;
 
 export function createDefaultTagFormData(): TagFormData {
     return {
@@ -12,7 +24,7 @@ export function createDefaultTagFormData(): TagFormData {
     };
 }
 
-export function mapTagToFormData(item?: TagDto | null): TagFormData {
+export function mapTagToFormData(item?: TagDetailedDto | null): TagFormData {
     if (!item) {
         return createDefaultTagFormData();
     }
@@ -23,12 +35,11 @@ export function mapTagToFormData(item?: TagDto | null): TagFormData {
     };
 }
 
-export function validateTagFormData(formData: TagFormData): string | null {
-    if (!formData.name.trim()) {
-        return 'Название обязательно для заполнения';
-    }
-
-    return null;
+export function normalizeTagFormData(formData: TagFormData): TagFormData {
+    return {
+        name: formData.name.trim(),
+        isActive: formData.isActive,
+    };
 }
 
 export function buildTagModification(formData: TagFormData): TagModification {
@@ -36,4 +47,12 @@ export function buildTagModification(formData: TagFormData): TagModification {
         name: formData.name.trim(),
         isActive: formData.isActive,
     };
+}
+
+export function shouldConfirmTagDeactivation(
+    mode: 'create' | 'edit',
+    tag: TagDetailedDto | null,
+    formData: TagFormData,
+): boolean {
+    return mode === 'edit' && tag?.isActive === true && formData.isActive === false;
 }

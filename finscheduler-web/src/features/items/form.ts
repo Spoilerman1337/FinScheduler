@@ -1,5 +1,6 @@
-import type {ItemDto, ItemModification} from '../../api/items.types.ts';
+import type {ItemDetailedDto, ItemModification} from '../../api/items.types.ts';
 import {categoryTranslations} from '../../models/items.ts';
+import {type FieldValidator, runFieldValidators} from '../shared.ts';
 
 export interface ItemFormData {
     name: string;
@@ -10,6 +11,49 @@ export interface ItemFormData {
     category: string;
     tagIds: string[];
 }
+
+export const itemNameValidators: FieldValidator<string>[] = [
+    {
+        validate: (value) => value.trim().length > 0,
+        errorMessage: 'Название обязательно для заполнения',
+    },
+];
+
+export const itemPriceValidators: FieldValidator<string>[] = [
+    {
+        validate: (value) => value.trim() === '' || !Number.isNaN(parseFloat(value)),
+        errorMessage: 'Цена должна быть числом',
+    },
+];
+
+export const itemCashbackValidators: FieldValidator<string>[] = [
+    {
+        validate: (value) => {
+            if (!value.trim()) {
+                return true;
+            }
+
+            const parsedValue = parseFloat(value);
+
+            return !Number.isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 100;
+        },
+        errorMessage: 'Кэшбэк должен быть числом от 0 до 100',
+    },
+];
+
+export const itemCategoryValidators: FieldValidator<string>[] = [
+    {
+        validate: (value) => value.trim().length > 0 && Boolean(categoryTranslations[value]),
+        errorMessage: 'Выберите категорию',
+    },
+];
+
+export const itemFormValidators = {
+    name: (value: string) => runFieldValidators(value, itemNameValidators),
+    price: (value: string) => runFieldValidators(value, itemPriceValidators),
+    cashback: (value: string) => runFieldValidators(value, itemCashbackValidators),
+    category: (value: string) => runFieldValidators(value, itemCategoryValidators),
+} as const;
 
 export function createDefaultItemFormData(): ItemFormData {
     return {
@@ -23,7 +67,7 @@ export function createDefaultItemFormData(): ItemFormData {
     };
 }
 
-export function mapItemToFormData(item?: ItemDto | null): ItemFormData {
+export function mapItemToFormData(item?: ItemDetailedDto | null): ItemFormData {
     if (!item) {
         return createDefaultItemFormData();
     }
@@ -48,29 +92,18 @@ export function mapItemToFormData(item?: ItemDto | null): ItemFormData {
     };
 }
 
-export function validateItemFormData(formData: ItemFormData): string | null {
-    if (!formData.name.trim()) {
-        return 'Название обязательно для заполнения';
-    }
+export function normalizeItemFormData(formData: ItemFormData): ItemFormData {
+    const payload = buildItemModification(formData);
 
-    if (formData.price && Number.isNaN(parseFloat(formData.price))) {
-        return 'Цена должна быть числом';
-    }
-
-    if (
-        formData.cashback &&
-        (Number.isNaN(parseFloat(formData.cashback)) ||
-            parseFloat(formData.cashback) < 0 ||
-            parseFloat(formData.cashback) > 100)
-    ) {
-        return 'Кэшбэк должен быть числом от 0 до 100';
-    }
-
-    if (!formData.category.trim() || !categoryTranslations[formData.category]) {
-        return 'Выберите категорию';
-    }
-
-    return null;
+    return {
+        name: payload.name,
+        description: payload.description ?? '',
+        price: formData.price.trim() ? payload.price.toString() : '',
+        cashback: formData.cashback.trim() ? payload.cashback.toString() : '',
+        isActive: payload.isActive,
+        category: payload.category,
+        tagIds: formData.tagIds,
+    };
 }
 
 export function buildItemModification(formData: ItemFormData): ItemModification {

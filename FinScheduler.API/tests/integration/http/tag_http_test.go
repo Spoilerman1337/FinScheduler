@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_TagsHandler_Get_ShouldReturnPaginatedTags(t *testing.T) {
+func Test_TagsHandler_GetListingInfo_ShouldReturnPaginatedTags(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -39,7 +39,7 @@ func Test_TagsHandler_Get_ShouldReturnPaginatedTags(t *testing.T) {
 	response := recorder.Result()
 	defer response.Body.Close()
 
-	var actualResponse domains.PaginatedList[domains.TagDto]
+	var actualResponse domains.PaginatedList[domains.TagListingDto]
 	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
 
 	// Assert
@@ -48,10 +48,10 @@ func Test_TagsHandler_Get_ShouldReturnPaginatedTags(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, actualResponse.Data, 1)
 	assert.Equal(t, expectedCount, actualResponse.Count)
-	assert.Equal(t, expectedName, *actualResponse.Data[0].Name)
+	assert.Equal(t, expectedName, actualResponse.Data[0].Name)
 }
 
-func Test_TagsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
+func Test_TagsHandler_GetListingInfo_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -71,7 +71,7 @@ func Test_TagsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_TagsHandler_Get_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+func Test_TagsHandler_GetListingInfo_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
 	// Arrange
 	closedDB := newClosedDB(t)
 	app := newTestApplicationWithDB(closedDB)
@@ -89,7 +89,7 @@ func Test_TagsHandler_Get_ShouldReturnInternalServerErrorOnServiceFailure(t *tes
 	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
-func Test_TagsHandler_GetById_ShouldReturnTag(t *testing.T) {
+func Test_TagsHandler_GetDetailedInfo_ShouldReturnTag(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -112,19 +112,18 @@ func Test_TagsHandler_GetById_ShouldReturnTag(t *testing.T) {
 	response := recorder.Result()
 	defer response.Body.Close()
 
-	var actualResponse domains.TagDto
+	var actualResponse domains.TagDetailedDto
 	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
 
 	// Assert
 	require.NoError(t, createErr)
 	require.NoError(t, decodeErr)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, tagID, *actualResponse.Id)
-	assert.Equal(t, expectedName, *actualResponse.Name)
-	assert.Equal(t, expectedIsActive, *actualResponse.IsActive)
+	assert.Equal(t, expectedName, actualResponse.Name)
+	assert.Equal(t, expectedIsActive, actualResponse.IsActive)
 }
 
-func Test_TagsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
+func Test_TagsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -144,7 +143,7 @@ func Test_TagsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_TagsHandler_GetById_ShouldReturnNotFoundForMissingTag(t *testing.T) {
+func Test_TagsHandler_GetDetailedInfo_ShouldReturnNotFoundForMissingTag(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -165,7 +164,7 @@ func Test_TagsHandler_GetById_ShouldReturnNotFoundForMissingTag(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_TagsHandler_GetById_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+func Test_TagsHandler_GetDetailedInfo_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
 	// Arrange
 	closedDB := newClosedDB(t)
 	app := newTestApplicationWithDB(closedDB)
@@ -219,7 +218,7 @@ func Test_TagsHandler_GetLookup_ShouldReturnOnlyActiveTags(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, actualResponse.Data, 1)
 	assert.Equal(t, int64(1), actualResponse.Count)
-	assert.Equal(t, activeName, *actualResponse.Data[0].Label)
+	assert.Equal(t, activeName, actualResponse.Data[0].Label)
 }
 
 func Test_TagsHandler_GetLookup_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
@@ -318,7 +317,7 @@ func Test_TagsHandler_Create_ShouldReturnBadRequestOnValidationError(t *testing.
 	method := http.MethodPost
 	target := "/api/tags"
 	requestBody := `{"name":"No","isActive":true}`
-	expectedBodyFragment := "name too short"
+	expectedBodyFragment := "name must be at least 3 characters long"
 	request := newJSONRequest(method, target, requestBody)
 
 	// Act

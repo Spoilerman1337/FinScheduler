@@ -26,7 +26,7 @@ func NewItemsRepository(db DBTX, logger *slog.Logger) *ItemsRepository {
 	return &ItemsRepository{db: db, logger: logger}
 }
 
-func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.ItemFilter) ([]domains.Item, int64, error) {
+func (repository *ItemsRepository) GetListingInfo(ctx context.Context, filter *domains.ItemFilter) ([]domains.Item, int64, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
@@ -153,7 +153,10 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	}
 	offset := page * pageSize
 
-	itemsSelectQuery := fmt.Sprintf("SELECT * %s ORDER BY i.created_at DESC, i.id DESC LIMIT ? OFFSET ?", itemsQuery)
+	itemsSelectQuery := fmt.Sprintf(
+		"SELECT i.id, i.name, i.price, i.is_active, i.updated_at, i.cashback %s ORDER BY i.created_at DESC, i.id DESC LIMIT ? OFFSET ?",
+		itemsQuery,
+	)
 	itemsSelectQuery = repository.db.Rebind(itemsSelectQuery)
 	itemsSelectArgs := append(make([]interface{}, 0), args...)
 	itemsSelectArgs = append(itemsSelectArgs, pageSize, offset)
@@ -192,7 +195,7 @@ func (repository *ItemsRepository) Get(ctx context.Context, filter *domains.Item
 	return rh.DereferenceSlice(items), count, err
 }
 
-func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*domains.Item, error) {
+func (repository *ItemsRepository) GetDetailedInfo(ctx context.Context, id uuid.UUID) (*domains.Item, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-repository")
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
@@ -209,7 +212,7 @@ func (repository *ItemsRepository) GetById(ctx context.Context, id uuid.UUID) (*
 		return nil, err
 	}
 
-	query := "SELECT * FROM public.items WHERE id = ?"
+	query := "SELECT name, price, description, is_active, cashback, category FROM public.items WHERE id = ?"
 	query = repository.db.Rebind(query)
 
 	repository.logger.InfoContext(ctx, "executing operation:", "query", query, "id", id)
@@ -342,4 +345,102 @@ func (repository *ItemsRepository) Delete(ctx context.Context, itemID uuid.UUID)
 
 	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
 	return success, err
+}
+
+func (repository *ItemsRepository) UpdateCashbackByTag(ctx context.Context, tagID uuid.UUID, cashback int32) (int64, error) {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-repository")
+	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationUpdate)
+	defer span.End()
+
+	if tagID == uuid.Nil {
+		repository.logger.ErrorContext(ctx, "tagID should not be nil")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("tagID should not be nil")
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return 0, err
+	}
+
+	now := time.Now().UTC()
+	query := `UPDATE public.items AS i
+			  SET cashback = ?, updated_at = ?
+			  WHERE EXISTS (
+			  	SELECT 1
+			  	FROM public.tag_to_item tti
+			  	WHERE tti.item_id = i.id AND tti.tag_id = ?
+			  )`
+	query = repository.db.Rebind(query)
+	repository.logger.InfoContext(ctx, "updating cashback by tag", "query", query, "tagId", tagID, "cashback", cashback, "updatedAt", now)
+	start := time.Now()
+	result, err := repository.db.ExecContext(ctx, query, cashback, sql.NullTime{Time: now, Valid: true}, tagID)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationUpdate)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error updating cashback by tag", "error", err, "tagId", tagID, "cashback", cashback, "updatedAt", now)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return 0, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return 0, err
+	}
+
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationUpdate)
+	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
+	return rowsAffected, nil
+}
+
+func (repository *ItemsRepository) UpdateCashbackByIds(ctx context.Context, itemIDs []uuid.UUID, cashback int32) (int64, error) {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-repository")
+	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationUpdate)
+	defer span.End()
+
+	if len(itemIDs) == 0 {
+		repository.logger.ErrorContext(ctx, "itemIDs should not be empty")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("itemIDs should not be empty")
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return 0, err
+	}
+
+	now := time.Now().UTC()
+	query := "UPDATE public.items SET cashback = ?, updated_at = ? WHERE id IN (?)"
+	query, args, err := sqlx.In(query, cashback, sql.NullTime{Time: now, Valid: true}, itemIDs)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error binding itemIDs array to IN filter", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationNone)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return 0, err
+	}
+
+	query = repository.db.Rebind(query)
+	repository.logger.InfoContext(ctx, "updating cashback by ids", "query", query, "itemIds", itemIDs, "cashback", cashback, "updatedAt", now)
+	start := time.Now()
+	result, err := repository.db.ExecContext(ctx, query, args...)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, itemsTableName, err == nil, metrics.DatabaseOperationUpdate)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error updating cashback by ids", "error", err, "itemIds", itemIDs, "cashback", cashback, "updatedAt", now)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return 0, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, false, metrics.DatabaseOperationUpdate)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return 0, err
+	}
+
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, itemsTableName, true, metrics.DatabaseOperationUpdate)
+	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
+	return rowsAffected, nil
 }

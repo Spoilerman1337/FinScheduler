@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ItemsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
+func Test_ItemsRepository_CreateAndGetDetailedInfo_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "items")
@@ -35,7 +35,7 @@ func Test_ItemsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 
 	// Act
 	id, createErr := repo.Create(ctx, create)
-	item, getErr := repo.GetById(ctx, id)
+	item, getErr := repo.GetDetailedInfo(ctx, id)
 
 	// Assert
 	require.NoError(t, createErr)
@@ -46,7 +46,7 @@ func Test_ItemsRepository_CreateAndGet_ShouldNotErr(t *testing.T) {
 	assert.True(t, itemPrice.Equal(item.Price))
 }
 
-func Test_ItemsRepository_Get_ShouldFilterAndReturnCount(t *testing.T) {
+func Test_ItemsRepository_GetListingInfo_ShouldFilterAndReturnCount(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -105,7 +105,7 @@ func Test_ItemsRepository_Get_ShouldFilterAndReturnCount(t *testing.T) {
 	expectedNames := []string{firstName, secondName}
 
 	// Act
-	items, count, getErr := repo.Get(ctx, filter)
+	items, count, getErr := repo.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.NoError(t, firstCreateErr)
@@ -118,24 +118,23 @@ func Test_ItemsRepository_Get_ShouldFilterAndReturnCount(t *testing.T) {
 	require.Len(t, items, 1)
 	assert.Equal(t, int64(2), count)
 	assert.Contains(t, expectedNames, items[0].Name)
-	assert.Equal(t, domains.FoodDrinks, items[0].Category)
 }
 
-func Test_ItemsRepository_GetById_ShouldReturnErrorOnNilID(t *testing.T) {
+func Test_ItemsRepository_GetDetailedInfo_ShouldReturnErrorOnNilID(t *testing.T) {
 	// Arrange
 	ctx := testContext
 	repo := repositories.NewItemsRepository(testDB, testLogger)
 	itemID := uuid.Nil
 
 	// Act
-	item, err := repo.GetById(ctx, itemID)
+	item, err := repo.GetDetailedInfo(ctx, itemID)
 
 	// Assert
 	require.EqualError(t, err, "id should not be nil")
 	assert.Nil(t, item)
 }
 
-func Test_ItemsRepository_Get_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
+func Test_ItemsRepository_GetListingInfo_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T) {
 	// Arrange
 	ctx := testContext
 	closedDB := newClosedDB(t)
@@ -148,7 +147,7 @@ func Test_ItemsRepository_Get_ShouldReturnErrorWhenDatabaseIsClosed(t *testing.T
 	}
 
 	// Act
-	items, count, err := repo.Get(ctx, filter)
+	items, count, err := repo.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.Error(t, err)
@@ -185,7 +184,7 @@ func Test_ItemsRepository_Create_ShouldReturnErrorOnDuplicateName(t *testing.T) 
 	assert.Equal(t, uuid.Nil, secondID)
 }
 
-func Test_ItemsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
+func Test_ItemsRepository_UpdateAndGetDetailedInfo_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "items")
@@ -214,7 +213,7 @@ func Test_ItemsRepository_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	// Act
 	id, createErr := repo.Create(ctx, create)
 	ok, updateErr := repo.Update(ctx, id, update)
-	item, getErr := repo.GetById(ctx, id)
+	item, getErr := repo.GetDetailedInfo(ctx, id)
 
 	// Assert
 	require.NoError(t, createErr)
@@ -272,7 +271,7 @@ func Test_ItemsRepository_Update_ShouldReturnErrorWhenDatabaseIsClosed(t *testin
 	assert.False(t, ok)
 }
 
-func Test_ItemsRepository_DeleteAndGet_ShouldErr(t *testing.T) {
+func Test_ItemsRepository_DeleteAndGetDetailedInfo_ShouldErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB, "items")
@@ -293,7 +292,7 @@ func Test_ItemsRepository_DeleteAndGet_ShouldErr(t *testing.T) {
 	// Act
 	id, createErr := repo.Create(ctx, create)
 	ok, deleteErr := repo.Delete(ctx, id)
-	item, getErr := repo.GetById(ctx, id)
+	item, getErr := repo.GetDetailedInfo(ctx, id)
 
 	// Assert
 	require.NoError(t, createErr)

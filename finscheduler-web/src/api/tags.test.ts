@@ -47,7 +47,7 @@ describe('tags api', () => {
         });
     });
 
-    it('getTag requests the tag by id endpoint and returns the tag', async () => {
+    it('getDetailedInfo requests the tag by id endpoint and returns the tag', async () => {
         // Arrange
         const service = new TagsService();
         const fetchMock = vi.fn().mockResolvedValue(
@@ -60,7 +60,7 @@ describe('tags api', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         // Act
-        const tag = await service.getTag('tag-1');
+        const tag = await service.getDetailedInfo('tag-1');
 
         // Assert
         expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/tags/tag-1`, {
@@ -72,7 +72,7 @@ describe('tags api', () => {
         expect(tag).toEqual({id: 'tag-1', name: 'Food'});
     });
 
-    it('getTag returns null when the tag endpoint responds with 404', async () => {
+    it('getDetailedInfo returns null when the tag endpoint responds with 404', async () => {
         // Arrange
         const service = new TagsService();
         const fetchMock = vi.fn().mockResolvedValue(
@@ -85,7 +85,7 @@ describe('tags api', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         // Act
-        const tag = await service.getTag('missing-tag');
+        const tag = await service.getDetailedInfo('missing-tag');
 
         // Assert
         expect(tag).toBeNull();

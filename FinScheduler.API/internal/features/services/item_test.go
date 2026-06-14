@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestItemsServiceGet_ShouldReturnErrorOnNilFilter(t *testing.T) {
+func TestItemsServiceGetListingInfo_ShouldReturnErrorOnNilFilter(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	logger := slog.Default()
@@ -21,7 +21,7 @@ func TestItemsServiceGet_ShouldReturnErrorOnNilFilter(t *testing.T) {
 	service := NewItemsService(uow, logger)
 
 	// Act
-	items, count, err := service.Get(ctx, filter)
+	items, count, err := service.GetListingInfo(ctx, filter)
 
 	// Assert
 	require.EqualError(t, err, "filter is nil")
@@ -124,4 +124,50 @@ func TestItemsServiceDelete_ShouldReturnErrorOnNilItemID(t *testing.T) {
 	// Assert
 	require.EqualError(t, err, "itemID is nil")
 	assert.False(t, success)
+}
+
+func TestItemsServiceUpdateCashbackByTag_ShouldReturnErrorOnInvalidInput(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	service := NewItemsService(uow, logger)
+	var nilUpdate *domains.ItemCashbackByTagUpdate
+	invalidUpdate := &domains.ItemCashbackByTagUpdate{
+		Cashback: 1,
+		TagId:    "bad-uuid",
+	}
+
+	// Act
+	affectedOnNilUpdate, errOnNilUpdate := service.UpdateCashbackByTag(ctx, nilUpdate)
+	affectedOnInvalidUpdate, errOnInvalidUpdate := service.UpdateCashbackByTag(ctx, invalidUpdate)
+
+	// Assert
+	require.EqualError(t, errOnNilUpdate, "update is nil")
+	require.EqualError(t, errOnInvalidUpdate, "tagId is invalid: bad-uuid")
+	assert.Zero(t, affectedOnNilUpdate)
+	assert.Zero(t, affectedOnInvalidUpdate)
+}
+
+func TestItemsServiceUpdateCashbackByIds_ShouldReturnErrorOnInvalidInput(t *testing.T) {
+	// Arrange
+	ctx := context.Background()
+	logger := slog.Default()
+	var uow *persistence.UnitOfWork
+	service := NewItemsService(uow, logger)
+	var nilUpdate *domains.ItemCashbackByIdsUpdate
+	invalidUpdate := &domains.ItemCashbackByIdsUpdate{
+		Cashback: 1,
+		ItemIds:  []string{"bad-uuid"},
+	}
+
+	// Act
+	affectedOnNilUpdate, errOnNilUpdate := service.UpdateCashbackByIds(ctx, nilUpdate)
+	affectedOnInvalidUpdate, errOnInvalidUpdate := service.UpdateCashbackByIds(ctx, invalidUpdate)
+
+	// Assert
+	require.EqualError(t, errOnNilUpdate, "update is nil")
+	require.EqualError(t, errOnInvalidUpdate, "itemId is invalid: bad-uuid")
+	assert.Zero(t, affectedOnNilUpdate)
+	assert.Zero(t, affectedOnInvalidUpdate)
 }

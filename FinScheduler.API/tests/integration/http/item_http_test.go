@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ItemsHandler_Get_ShouldReturnPaginatedItems(t *testing.T) {
+func Test_ItemsHandler_GetListingInfo_ShouldReturnPaginatedItems(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -44,7 +44,7 @@ func Test_ItemsHandler_Get_ShouldReturnPaginatedItems(t *testing.T) {
 	response := recorder.Result()
 	defer response.Body.Close()
 
-	var actualResponse domains.PaginatedList[domains.ItemDto]
+	var actualResponse domains.PaginatedList[domains.ItemListingDto]
 	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
 
 	// Assert
@@ -53,10 +53,10 @@ func Test_ItemsHandler_Get_ShouldReturnPaginatedItems(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, actualResponse.Data, 1)
 	assert.Equal(t, expectedCount, actualResponse.Count)
-	assert.Equal(t, expectedName, *actualResponse.Data[0].Name)
+	assert.Equal(t, expectedName, actualResponse.Data[0].Name)
 }
 
-func Test_ItemsHandler_GetById_ShouldReturnItem(t *testing.T) {
+func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -82,20 +82,19 @@ func Test_ItemsHandler_GetById_ShouldReturnItem(t *testing.T) {
 	response := recorder.Result()
 	defer response.Body.Close()
 
-	var actualResponse domains.ItemDto
+	var actualResponse domains.ItemDetailedDto
 	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
 
 	// Assert
 	require.NoError(t, createErr)
 	require.NoError(t, decodeErr)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	require.NotNil(t, actualResponse.Id)
-	require.NotNil(t, actualResponse.Name)
-	assert.Equal(t, itemID, *actualResponse.Id)
-	assert.Equal(t, expectedName, *actualResponse.Name)
+	assert.Equal(t, expectedName, actualResponse.Name)
+	assert.Equal(t, 12.5, actualResponse.Price)
+	assert.Equal(t, domains.ItemCategory("FoodDrinks"), actualResponse.Category)
 }
 
-func Test_ItemsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
+func Test_ItemsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -115,7 +114,7 @@ func Test_ItemsHandler_GetById_ShouldReturnBadRequestOnInvalidID(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_ItemsHandler_GetById_ShouldReturnNotFoundForMissingItem(t *testing.T) {
+func Test_ItemsHandler_GetDetailedInfo_ShouldReturnNotFoundForMissingItem(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -136,7 +135,7 @@ func Test_ItemsHandler_GetById_ShouldReturnNotFoundForMissingItem(t *testing.T) 
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_ItemsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
+func Test_ItemsHandler_GetListingInfo_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	// Arrange
 	app := newTestApplication()
 	method := http.MethodGet
@@ -156,7 +155,7 @@ func Test_ItemsHandler_Get_ShouldReturnBadRequestOnInvalidQuery(t *testing.T) {
 	assert.Contains(t, actualBody, expectedBodyFragment)
 }
 
-func Test_ItemsHandler_Get_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+func Test_ItemsHandler_GetListingInfo_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
 	// Arrange
 	closedDB := newClosedDB(t)
 	app := newTestApplicationWithDB(closedDB)
@@ -402,6 +401,155 @@ func Test_ItemsHandler_Update_ShouldReturnNotFoundForMissingItem(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusNotFound, response.StatusCode)
 	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_ItemsHandler_UpdateCashbackByTag_ShouldReturnNoContentAndUpdateTaggedItems(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	app := newTestApplication()
+	ctx := testContext
+	method := http.MethodPatch
+	tagCreate := &domains.TagCreate{Name: "Groceries"}
+
+	tagID, tagCreateErr := app.tagsService.Create(ctx, tagCreate)
+	firstTaggedID, firstTaggedCreateErr := app.itemsService.Create(ctx, &domains.ItemCreate{
+		Name:     "Milk",
+		Category: "FoodDrinks",
+		TagIds:   []string{tagID.String()},
+	})
+	secondTaggedID, secondTaggedCreateErr := app.itemsService.Create(ctx, &domains.ItemCreate{
+		Name:     "Bread",
+		Category: "FoodDrinks",
+		TagIds:   []string{tagID.String()},
+	})
+	untouchedID, untouchedCreateErr := app.itemsService.Create(ctx, &domains.ItemCreate{
+		Name:     "Taxi",
+		Category: "Transport",
+	})
+	target := "/api/items/cashback/tag"
+	requestBody := `{"cashback":7,"tagId":"` + tagID.String() + `"}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	firstTaggedItem, firstTaggedGetErr := app.itemsService.GetDetailedInfo(ctx, firstTaggedID)
+	secondTaggedItem, secondTaggedGetErr := app.itemsService.GetDetailedInfo(ctx, secondTaggedID)
+	untouchedItem, untouchedGetErr := app.itemsService.GetDetailedInfo(ctx, untouchedID)
+
+	// Assert
+	require.NoError(t, tagCreateErr)
+	require.NoError(t, firstTaggedCreateErr)
+	require.NoError(t, secondTaggedCreateErr)
+	require.NoError(t, untouchedCreateErr)
+	require.NoError(t, firstTaggedGetErr)
+	require.NoError(t, secondTaggedGetErr)
+	require.NoError(t, untouchedGetErr)
+	assert.Equal(t, http.StatusNoContent, response.StatusCode)
+	require.NotNil(t, firstTaggedItem)
+	require.NotNil(t, secondTaggedItem)
+	require.NotNil(t, untouchedItem)
+	assert.Equal(t, int32(7), firstTaggedItem.Cashback)
+	assert.Equal(t, int32(7), secondTaggedItem.Cashback)
+	assert.Equal(t, int32(0), untouchedItem.Cashback)
+}
+
+func Test_ItemsHandler_UpdateCashbackByItems_ShouldReturnNoContentAndUpdateSelectedItems(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	app := newTestApplication()
+	ctx := testContext
+	method := http.MethodPatch
+
+	firstItemID, firstCreateErr := app.itemsService.Create(ctx, &domains.ItemCreate{
+		Name:     "Milk",
+		Category: "FoodDrinks",
+	})
+	secondItemID, secondCreateErr := app.itemsService.Create(ctx, &domains.ItemCreate{
+		Name:     "Taxi",
+		Category: "Transport",
+	})
+	thirdItemID, thirdCreateErr := app.itemsService.Create(ctx, &domains.ItemCreate{
+		Name:     "Gym",
+		Category: "Sports",
+	})
+	target := "/api/items/cashback/items"
+	requestBody := `{"cashback":11,"itemIds":["` + firstItemID.String() + `","` + thirdItemID.String() + `"]}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	firstItem, firstGetErr := app.itemsService.GetDetailedInfo(ctx, firstItemID)
+	secondItem, secondGetErr := app.itemsService.GetDetailedInfo(ctx, secondItemID)
+	thirdItem, thirdGetErr := app.itemsService.GetDetailedInfo(ctx, thirdItemID)
+
+	// Assert
+	require.NoError(t, firstCreateErr)
+	require.NoError(t, secondCreateErr)
+	require.NoError(t, thirdCreateErr)
+	require.NoError(t, firstGetErr)
+	require.NoError(t, secondGetErr)
+	require.NoError(t, thirdGetErr)
+	assert.Equal(t, http.StatusNoContent, response.StatusCode)
+	require.NotNil(t, firstItem)
+	require.NotNil(t, secondItem)
+	require.NotNil(t, thirdItem)
+	assert.Equal(t, int32(11), firstItem.Cashback)
+	assert.Equal(t, int32(0), secondItem.Cashback)
+	assert.Equal(t, int32(11), thirdItem.Cashback)
+}
+
+func Test_ItemsHandler_UpdateCashbackByItems_ShouldReturnBadRequestOnInvalidPayload(t *testing.T) {
+	// Arrange
+	app := newTestApplication()
+	method := http.MethodPatch
+	target := "/api/items/cashback/items"
+	expectedBodyFragment := "itemId is invalid: bad-uuid"
+	requestBody := `{"cashback":11,"itemIds":["bad-uuid"]}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+	actualBody := recorder.Body.String()
+
+	// Assert
+	assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+	assert.Contains(t, actualBody, expectedBodyFragment)
+}
+
+func Test_ItemsHandler_UpdateCashbackByTag_ShouldReturnInternalServerErrorOnServiceFailure(t *testing.T) {
+	// Arrange
+	closedDB := newClosedDB(t)
+	app := newTestApplicationWithDB(closedDB)
+	method := http.MethodPatch
+	target := "/api/items/cashback/tag"
+	requestBody := `{"cashback":11,"tagId":"` + uuid.New().String() + `"}`
+	request := newJSONRequest(method, target, requestBody)
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	// Assert
+	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 }
 
 func Test_ItemsHandler_Delete_ShouldReturnNoContent(t *testing.T) {

@@ -83,7 +83,7 @@ export default function SidebarItem(props: SidebarItemProps) {
     );
 
     return (
-        <NavLink to={path} aria-label={props.label}>
+        <NavLink to={path} aria-label={props.label} discover="none" prefetch="none">
             <SidebarItemContent {...props} isActive={isActive} />
         </NavLink>
     );

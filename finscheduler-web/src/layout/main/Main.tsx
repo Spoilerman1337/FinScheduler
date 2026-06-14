@@ -1,20 +1,14 @@
 import {Flex} from '@chakra-ui/react';
-import {FaroRoutes} from '@grafana/faro-react';
 import {motion} from 'framer-motion';
-import {Route, Routes, matchPath, useLocation} from 'react-router-dom';
+import {Outlet} from 'react-router-dom';
+import {useCurrentRouteTitle} from '../../hooks/useCurrentRouteTitle.ts';
 import Layout from './subcomponents/Layout.tsx';
-import {routes} from './routes.tsx';
 import {Toaster} from '../../components/ui/toaster.tsx';
-import {isFaroEnabled} from '../../observability/faro.ts';
 
 const MotionFlex = motion.create(Flex);
 
 export default function Main() {
-    const location = useLocation();
-    const currentRoute = routes.find((route) =>
-        matchPath({path: route.path, end: true}, location.pathname),
-    );
-    const RoutesComponent = isFaroEnabled ? FaroRoutes : Routes;
+    const currentRouteTitle = useCurrentRouteTitle();
 
     return (
         <>
@@ -34,12 +28,8 @@ export default function Main() {
                 minHeight={0}
                 className="custom-scrollbar"
             >
-                <Layout headerName={currentRoute?.title}>
-                    <RoutesComponent>
-                        {routes.map((route) => (
-                            <Route key={route.path} path={route.path} element={route.element} />
-                        ))}
-                    </RoutesComponent>
+                <Layout headerName={currentRouteTitle}>
+                    <Outlet />
                 </Layout>
             </MotionFlex>
             <Toaster />

@@ -2,9 +2,15 @@ import {describe, expect, it} from 'vitest';
 import {
     buildItemModification,
     createDefaultItemFormData,
+    itemCashbackValidators,
+    itemCategoryValidators,
+    itemFormValidators,
+    itemNameValidators,
+    itemPriceValidators,
     mapItemToFormData,
-    validateItemFormData,
+    normalizeItemFormData,
 } from './form.ts';
+import {runFieldValidators} from '../shared.ts';
 
 describe('items form', () => {
     it('creates the default item form data', () => {
@@ -53,66 +59,101 @@ describe('items form', () => {
         });
     });
 
-    it('returns an error when the name is blank', () => {
+    it('returns a validation message when the name is blank', () => {
         // Arrange
-        const formData = {
-            ...createDefaultItemFormData(),
-            category: 'FoodDrinks',
-            name: '   ',
-        };
+        const value = '   ';
 
         // Act
-        const error = validateItemFormData(formData);
+        const validationResult = runFieldValidators(value, itemNameValidators);
 
         // Assert
-        expect(error).toBe('Название обязательно для заполнения');
+        expect(validationResult).toBe('Название обязательно для заполнения');
     });
 
-    it('returns an error when the price is not numeric', () => {
+    it('returns a validation message when the price is not numeric', () => {
         // Arrange
-        const formData = {
-            ...createDefaultItemFormData(),
-            name: 'Coffee',
-            category: 'FoodDrinks',
-            price: 'abc',
-        };
+        const value = 'abc';
 
         // Act
-        const error = validateItemFormData(formData);
+        const validationResult = runFieldValidators(value, itemPriceValidators);
 
         // Assert
-        expect(error).toBe('Цена должна быть числом');
+        expect(validationResult).toBe('Цена должна быть числом');
     });
 
-    it('returns an error when cashback is out of range', () => {
+    it('returns a validation message when cashback is out of range', () => {
         // Arrange
-        const formData = {
-            ...createDefaultItemFormData(),
-            name: 'Coffee',
-            category: 'FoodDrinks',
-            cashback: '101',
-        };
+        const value = '101';
 
         // Act
-        const error = validateItemFormData(formData);
+        const validationResult = runFieldValidators(value, itemCashbackValidators);
 
         // Assert
-        expect(error).toBe('Кэшбэк должен быть числом от 0 до 100');
+        expect(validationResult).toBe('Кэшбэк должен быть числом от 0 до 100');
     });
 
-    it('returns an error when the category is missing or unknown', () => {
+    it('returns a validation message when the category is missing or unknown', () => {
         // Arrange
-        const formData = {
-            ...createDefaultItemFormData(),
+        const value = 'UnknownCategory';
+
+        // Act
+        const validationResult = runFieldValidators(value, itemCategoryValidators);
+
+        // Assert
+        expect(validationResult).toBe('Выберите категорию');
+    });
+
+    it('returns true for valid field values', () => {
+        // Arrange
+        const validValues = {
             name: 'Coffee',
-            category: 'UnknownCategory',
+            price: '',
+            cashback: '10',
+            category: 'FoodDrinks',
         };
 
         // Act
-        const error = validateItemFormData(formData);
+        const validationResults = {
+            name: itemFormValidators.name(validValues.name),
+            price: itemFormValidators.price(validValues.price),
+            cashback: itemFormValidators.cashback(validValues.cashback),
+            category: itemFormValidators.category(validValues.category),
+        };
 
         // Assert
-        expect(error).toBe('Выберите категорию');
+        expect(validationResults).toEqual({
+            name: true,
+            price: true,
+            cashback: true,
+            category: true,
+        });
+    });
+
+    it('normalizes item form data for reuse in the form state', () => {
+        // Arrange
+        const formData = {
+            name: ' Coffee ',
+            description: ' Morning coffee ',
+            price: ' 199.5 ',
+            cashback: ' 3 ',
+            isActive: true,
+            category: 'FoodDrinks',
+            tagIds: ['tag-1', 'tag-2'],
+        };
+
+        // Act
+        const normalizedFormData = normalizeItemFormData(formData);
+
+        // Assert
+        expect(normalizedFormData).toEqual({
+            name: 'Coffee',
+            description: 'Morning coffee',
+            price: '199.5',
+            cashback: '3',
+            isActive: true,
+            category: 'FoodDrinks',
+            tagIds: ['tag-1', 'tag-2'],
+        });
     });
 
     it('builds a normalized item payload from valid form data', () => {

@@ -2,6 +2,7 @@ import {Box, Button, Circle, Flex, HStack, Stack, Text} from '@chakra-ui/react';
 import {ChevronsLeft, ChevronsRight} from 'lucide-react';
 import {useState} from 'react';
 import SvgLogoIcon from '../../components/svgIcon/SvgLogoIcon.tsx';
+import {collapseSidebarLabel} from '../navigationLabels.ts';
 import {routedNavigationItems} from './navigation.tsx';
 import SidebarItem from './subcomponents/SidebarItem.tsx';
 
@@ -94,7 +95,7 @@ export default function Sidebar() {
                                             lg: isCollapsed ? 'none' : 'inline-flex',
                                         }}
                                     >
-                                        Свернуть меню
+                                        {collapseSidebarLabel}
                                     </Text>
                                     <ChevronsLeft size={16} />
                                 </>

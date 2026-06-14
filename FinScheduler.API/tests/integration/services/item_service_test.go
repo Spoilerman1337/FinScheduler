@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
+func Test_ItemsService_Flow_CreateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -43,17 +43,17 @@ func Test_ItemsService_Flow_CreateAndGet_ShouldNotErr(t *testing.T) {
 		PageSize: &pageSize,
 	}
 
-	items, count, getErr := service.Get(ctx, &filter)
+	items, count, getErr := service.GetListingInfo(ctx, &filter)
 
 	// Assert
 	require.NoError(t, createErr)
 	require.NoError(t, getErr)
 	require.Len(t, items, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, expectedName, *items[0].Name)
+	assert.Equal(t, expectedName, items[0].Name)
 }
 
-func Test_ItemsService_CreateAndGet_ShouldReturnAssignedTags(t *testing.T) {
+func Test_ItemsService_CreateAndGetDetailedInfo_ShouldReturnAssignedTags(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -65,8 +65,6 @@ func Test_ItemsService_CreateAndGet_ShouldReturnAssignedTags(t *testing.T) {
 	tagsService := services.NewTagsService(uow, testLogger)
 	tagName := "Groceries"
 	itemName := "Milk"
-	page := int32(0)
-	pageSize := int32(20)
 	tagCreate := &domains.TagCreate{Name: tagName}
 
 	tagID, tagCreateErr := tagsService.Create(ctx, tagCreate)
@@ -79,26 +77,19 @@ func Test_ItemsService_CreateAndGet_ShouldReturnAssignedTags(t *testing.T) {
 
 	// Act
 	itemID, itemCreateErr := itemsService.Create(ctx, create)
-	filter := domains.ItemFilter{
-		Ids:      []*uuid.UUID{&itemID},
-		Page:     &page,
-		PageSize: &pageSize,
-	}
-
-	items, count, getErr := itemsService.Get(ctx, &filter)
+	item, getErr := itemsService.GetDetailedInfo(ctx, itemID)
 
 	// Assert
 	require.NoError(t, tagCreateErr)
 	require.NoError(t, itemCreateErr)
 	require.NoError(t, getErr)
-	require.Len(t, items, 1)
-	require.Len(t, items[0].Tags, 1)
-	assert.Equal(t, int64(1), count)
-	assert.Equal(t, tagName, *items[0].Tags[0].Label)
-	assert.Equal(t, tagID.String(), *items[0].Tags[0].Value)
+	require.NotNil(t, item)
+	require.Len(t, item.Tags, 1)
+	assert.Equal(t, tagName, item.Tags[0].Label)
+	assert.Equal(t, tagID.String(), item.Tags[0].Value)
 }
 
-func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
+func Test_ItemsService_UpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -134,7 +125,7 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 		PageSize: &pageSize,
 	}
 
-	items, count, getErr := service.Get(ctx, &filter)
+	items, count, getErr := service.GetListingInfo(ctx, &filter)
 
 	// Assert
 	require.NoError(t, createErr)
@@ -143,8 +134,8 @@ func Test_ItemsService_UpdateAndGet_ShouldNotErr(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, items, 1)
 	assert.Equal(t, int64(1), count)
-	assert.Equal(t, updatedName, *items[0].Name)
-	assert.Equal(t, updatedPrice, *items[0].Price)
+	assert.Equal(t, updatedName, items[0].Name)
+	assert.Equal(t, updatedPrice, items[0].Price)
 }
 
 func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
@@ -161,8 +152,6 @@ func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
 	secondTagName := "New Tag"
 	itemName := "Tagged item"
 	updatedItemName := "Tagged item updated"
-	page := int32(0)
-	pageSize := int32(20)
 	firstTagCreate := &domains.TagCreate{Name: firstTagName}
 	secondTagCreate := &domains.TagCreate{Name: secondTagName}
 
@@ -185,14 +174,8 @@ func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
 
 	// Act
 	ok, updateErr := itemsService.Update(ctx, itemID, update)
-	filter := domains.ItemFilter{
-		Ids:      []*uuid.UUID{&itemID},
-		Page:     &page,
-		PageSize: &pageSize,
-	}
-
 	var actualTagIDs []uuid.UUID
-	items, count, getErr := itemsService.Get(ctx, &filter)
+	item, getErr := itemsService.GetDetailedInfo(ctx, itemID)
 	selectErr := testDB.Select(&actualTagIDs, query, itemID)
 
 	// Assert
@@ -203,16 +186,15 @@ func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
 	require.NoError(t, getErr)
 	require.NoError(t, selectErr)
 	require.True(t, ok)
-	require.Len(t, items, 1)
-	require.Len(t, items[0].Tags, 1)
-	assert.Equal(t, int64(1), count)
-	assert.Equal(t, updatedItemName, *items[0].Name)
-	assert.Equal(t, secondTagName, *items[0].Tags[0].Label)
-	assert.Equal(t, secondTagID.String(), *items[0].Tags[0].Value)
+	require.NotNil(t, item)
+	require.Len(t, item.Tags, 1)
+	assert.Equal(t, updatedItemName, item.Name)
+	assert.Equal(t, secondTagName, item.Tags[0].Label)
+	assert.Equal(t, secondTagID.String(), item.Tags[0].Value)
 	assert.Equal(t, []uuid.UUID{secondTagID}, actualTagIDs)
 }
 
-func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
+func Test_ItemsService_DeleteAndGetListingInfo_ShouldErr(t *testing.T) {
 	// Arrange
 	t.Cleanup(func() {
 		testsupport.Truncate(t, testDB)
@@ -240,7 +222,7 @@ func Test_ItemsService_DeleteAndGet_ShouldErr(t *testing.T) {
 		PageSize: &pageSize,
 	}
 
-	items, count, getErr := service.Get(ctx, &filter)
+	items, count, getErr := service.GetListingInfo(ctx, &filter)
 
 	// Assert
 	require.NoError(t, createErr)

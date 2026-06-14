@@ -7,7 +7,6 @@ import (
 	"finscheduler/internal/persistence"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/dh"
-	"finscheduler/pkg/rh"
 	"fmt"
 	"log/slog"
 
@@ -29,82 +28,42 @@ func NewItemsService(uow *persistence.UnitOfWork, logger *slog.Logger) *ItemsSer
 	}
 }
 
-func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter) ([]domains.ItemDto, int64, error) {
+func (service *ItemsService) GetListingInfo(ctx context.Context, filter *domains.ItemFilter) ([]domains.ItemListingDto, int64, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
-	traces.RecordServiceSpan(span, "Get")
+	traces.RecordServiceSpan(span, "GetListingInfo")
 	defer span.End()
 
 	if filter == nil {
 		service.logger.ErrorContext(ctx, "filter is nil")
 		err := fmt.Errorf("filter is nil")
 		traces.EnrichFailedServiceSpan(span, err)
-		metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetListingInfo", err)
 		return nil, 0, err
 	}
 
-	var items []domains.ItemDto
+	var items []domains.ItemListingDto
 	var count int64
 
 	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
-		rawItems, rawItemsCount, err := repositories.Items.Get(ctx, filter)
+		rawItems, rawItemsCount, err := repositories.Items.GetListingInfo(ctx, filter)
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get items failed", "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetListingInfo", err)
 			return err
 		}
 
 		count = rawItemsCount
 
 		if len(rawItems) == 0 {
-			items = make([]domains.ItemDto, 0)
+			items = make([]domains.ItemListingDto, 0)
 			return nil
 		}
 
-		var itemIds []uuid.UUID
+		items = make([]domains.ItemListingDto, 0, len(rawItems))
 		for _, item := range rawItems {
-			itemIds = append(itemIds, item.Id)
-		}
-
-		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, itemIds)
-		if err != nil {
-			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
-			return err
-		}
-
-		tagIds := make([]uuid.UUID, len(rawTagToItems))
-		if len(rawTagToItems) > 0 {
-			for i, tag := range rawTagToItems {
-				tagIds[i] = tag.TagId
-			}
-		}
-
-		rawTags, err := repositories.Tags.GetByIds(ctx, tagIds)
-		if err != nil {
-			service.logger.ErrorContext(ctx, "Get tag to items failed", "error", err)
-			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "Get", err)
-			return err
-		}
-
-		tagsById := make(map[uuid.UUID]domains.Tag, len(rawTags))
-		for _, tag := range rawTags {
-			tagsById[tag.Id] = tag
-		}
-
-		itemsWithTags := make(map[uuid.UUID][]domains.Tag)
-		for _, tti := range rawTagToItems {
-			if tag, exists := tagsById[tti.TagId]; exists {
-				itemsWithTags[tti.ItemId] = append(itemsWithTags[tti.ItemId], tag)
-			}
-		}
-
-		items = make([]domains.ItemDto, 0)
-		for _, item := range rawItems {
-			items = append(items, *domains.NewItemDto(item, itemsWithTags[item.Id]))
+			items = append(items, *domains.NewItemListingDto(item))
 		}
 
 		return nil
@@ -117,36 +76,36 @@ func (service *ItemsService) Get(ctx context.Context, filter *domains.ItemFilter
 	return items, count, err
 }
 
-func (service *ItemsService) GetById(ctx context.Context, itemID uuid.UUID) (*domains.ItemDto, error) {
+func (service *ItemsService) GetDetailedInfo(ctx context.Context, itemID uuid.UUID) (*domains.ItemDetailedDto, error) {
 	tracer := otel.Tracer("items")
 	ctx, span := tracer.Start(ctx, "items-service")
-	traces.RecordServiceSpan(span, "GetById")
+	traces.RecordServiceSpan(span, "GetDetailedInfo")
 	defer span.End()
 
 	if itemID == uuid.Nil {
 		service.logger.ErrorContext(ctx, "itemID is nil")
 		err := fmt.Errorf("itemID is nil")
 		traces.EnrichFailedServiceSpan(span, err)
-		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 		return nil, err
 	}
 
-	var item *domains.ItemDto
+	var item *domains.ItemDetailedDto
 
 	err := service.uow.WithoutTx(func(repositories persistence.Repositories) error {
-		rawItem, err := repositories.Items.GetById(ctx, itemID)
+		rawItem, err := repositories.Items.GetDetailedInfo(ctx, itemID)
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get item by id failed", "itemID", itemID, "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 			return err
 		}
 
-		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{rawItem.Id})
+		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{itemID})
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "itemID", itemID, "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 			return err
 		}
 
@@ -159,11 +118,11 @@ func (service *ItemsService) GetById(ctx context.Context, itemID uuid.UUID) (*do
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tags by ids failed", "itemID", itemID, "error", err)
 			traces.EnrichFailedServiceSpan(span, err)
-			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetById", err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
 			return err
 		}
 
-		item = domains.NewItemDto(*rawItem, rawTags)
+		item = domains.NewItemDetailedDto(*rawItem, rawTags)
 		return nil
 	})
 	if err != nil {
@@ -196,7 +155,7 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 	}
 
 	var newId uuid.UUID
-	updateTagIds := parseTagIDs(create.TagIds)
+	createTagIds := parseUUIDs(create.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
 		var err error
@@ -209,41 +168,19 @@ func (service *ItemsService) Create(ctx context.Context, create *domains.ItemCre
 			return fmt.Errorf("failed to create item: repository returned nil uuid")
 		}
 
-		tagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{newId})
+		if len(createTagIds) == 0 {
+			return nil
+		}
+
+		success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: newId, TagIds: createTagIds})
 		if err != nil {
+			if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
+				return domains.ErrInvalidReference
+			}
 			return err
 		}
-
-		var currentTagIds []uuid.UUID
-		if tagToItems != nil && len(tagToItems) > 0 {
-			for _, tagToItem := range tagToItems {
-				currentTagIds = append(currentTagIds, tagToItem.TagId)
-			}
-		}
-
-		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
-
-		if len(toDelete) > 0 {
-			success, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &newId, TagIds: rh.ReferenceSlice(toDelete)})
-			if err != nil {
-				return err
-			}
-			if !success {
-				return fmt.Errorf("failed to create item: tag to item delete affected no rows")
-			}
-		}
-
-		if len(toInsert) > 0 {
-			success, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &newId, TagIds: rh.ReferenceSlice(toInsert)})
-			if err != nil {
-				if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
-					return domains.ErrInvalidReference
-				}
-				return err
-			}
-			if !success {
-				return fmt.Errorf("failed to create item: tag to item insert affected no rows")
-			}
+		if !success {
+			return fmt.Errorf("failed to create item: tag to item insert affected no rows")
 		}
 
 		return nil
@@ -293,7 +230,7 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 	}
 
 	var success bool
-	updateTagIds := parseTagIDs(update.TagIds)
+	updateTagIds := parseUUIDs(update.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
 		var err error
@@ -321,7 +258,7 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		toDelete, toInsert := dh.Reconcile(updateTagIds, currentTagIds)
 
 		if len(toDelete) > 0 {
-			tagSuccess, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: &itemID, TagIds: rh.ReferenceSlice(toDelete)})
+			tagSuccess, err := repositories.TagToItems.BulkDelete(ctx, &domains.TagToItemDelete{ItemId: itemID, TagIds: toDelete})
 			if err != nil {
 				return err
 			}
@@ -331,7 +268,7 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		}
 
 		if len(toInsert) > 0 {
-			tagSuccess, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: &itemID, TagIds: rh.ReferenceSlice(toInsert)})
+			tagSuccess, err := repositories.TagToItems.BulkInsert(ctx, &domains.TagToItemCreate{ItemId: itemID, TagIds: toInsert})
 			if err != nil {
 				if details, ok := dh.GetPostgresErrorDetails(err); ok && details.Code == dh.PostgresForeignKeyViolationCode {
 					return domains.ErrInvalidReference
@@ -395,14 +332,101 @@ func (service *ItemsService) Delete(ctx context.Context, itemID uuid.UUID) (bool
 	return success, nil
 }
 
-func parseTagIDs(tagIDs []string) []uuid.UUID {
-	if tagIDs == nil {
+func (service *ItemsService) UpdateCashbackByTag(ctx context.Context, update *domains.ItemCashbackByTagUpdate) (int64, error) {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-service")
+	traces.RecordServiceSpan(span, "UpdateCashbackByTag")
+	defer span.End()
+
+	if update == nil {
+		service.logger.ErrorContext(ctx, "update is nil")
+		err := fmt.Errorf("update is nil")
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	if err := update.Validate(); err != nil {
+		service.logger.ErrorContext(ctx, "update validation failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	tagID, err := uuid.Parse(update.TagId)
+	if err != nil {
+		service.logger.ErrorContext(ctx, "failed to parse tag id", "tagId", update.TagId, "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	var affected int64
+
+	err = service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var repositoryErr error
+		affected, repositoryErr = repositories.Items.UpdateCashbackByTag(ctx, tagID, update.Cashback)
+		return repositoryErr
+	})
+	if err != nil {
+		service.logger.ErrorContext(ctx, "error updating cashback by tag", "tagId", update.TagId, "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByTag", err)
+		return 0, err
+	}
+
+	traces.EnrichSuccessServiceSpan(span)
+	return affected, nil
+}
+
+func (service *ItemsService) UpdateCashbackByIds(ctx context.Context, update *domains.ItemCashbackByIdsUpdate) (int64, error) {
+	tracer := otel.Tracer("items")
+	ctx, span := tracer.Start(ctx, "items-service")
+	traces.RecordServiceSpan(span, "UpdateCashbackByIds")
+	defer span.End()
+
+	if update == nil {
+		service.logger.ErrorContext(ctx, "update is nil")
+		err := fmt.Errorf("update is nil")
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByIds", err)
+		return 0, err
+	}
+
+	if err := update.Validate(); err != nil {
+		service.logger.ErrorContext(ctx, "update validation failed", "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByIds", err)
+		return 0, err
+	}
+
+	var affected int64
+	itemIDs := parseUUIDs(update.ItemIds)
+
+	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
+		var repositoryErr error
+		affected, repositoryErr = repositories.Items.UpdateCashbackByIds(ctx, itemIDs, update.Cashback)
+		return repositoryErr
+	})
+	if err != nil {
+		service.logger.ErrorContext(ctx, "error updating cashback by ids", "itemIds", update.ItemIds, "error", err)
+		traces.EnrichFailedServiceSpan(span, err)
+		metrics.RecordServiceFailure(ctx, itemsServiceName, "UpdateCashbackByIds", err)
+		return 0, err
+	}
+
+	traces.EnrichSuccessServiceSpan(span)
+	return affected, nil
+}
+
+func parseUUIDs(ids []string) []uuid.UUID {
+	if ids == nil {
 		return nil
 	}
 
-	result := make([]uuid.UUID, len(tagIDs))
-	for i, tagID := range tagIDs {
-		result[i] = uuid.MustParse(tagID)
+	result := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		result[i] = uuid.MustParse(id)
 	}
 
 	return result

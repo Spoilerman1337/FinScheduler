@@ -6,7 +6,6 @@ import (
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/traces"
 	"finscheduler/pkg/dh"
-	"finscheduler/pkg/rh"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -77,10 +76,46 @@ func (repository *TagToItemsRepository) BulkInsert(ctx context.Context, create *
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationSelect)
 	defer span.End()
 
+	if create == nil {
+		repository.logger.ErrorContext(ctx, "create should not be nil")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("create should not be nil")
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	if create.ItemId == uuid.Nil {
+		repository.logger.ErrorContext(ctx, "itemId should not be nil")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("itemId should not be nil")
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	if len(create.TagIds) == 0 {
+		repository.logger.ErrorContext(ctx, "tagIds should not be empty")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("tagIds should not be empty")
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
 	args := make([]interface{}, 0, len(create.TagIds)*2)
 	values := make([]string, 0, len(create.TagIds))
 
 	for _, tagId := range create.TagIds {
+		if tagId == uuid.Nil {
+			repository.logger.ErrorContext(ctx, "tagId should not be nil")
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
+
+			err := fmt.Errorf("tagId should not be nil")
+			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+			return false, err
+		}
+
 		values = append(values, "(?, ?)")
 		args = append(args, create.ItemId, tagId)
 	}
@@ -117,8 +152,41 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationDelete)
 	defer span.End()
 
+	if delete == nil {
+		repository.logger.ErrorContext(ctx, "delete should not be nil")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("delete should not be nil")
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	if delete.ItemId == uuid.Nil {
+		repository.logger.ErrorContext(ctx, "itemId should not be nil")
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
+
+		err := fmt.Errorf("itemId should not be nil")
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	if len(delete.TagIds) == 0 {
+		return false, nil
+	}
+
+	for _, tagId := range delete.TagIds {
+		if tagId == uuid.Nil {
+			repository.logger.ErrorContext(ctx, "tagId should not be nil")
+			metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationNone)
+
+			err := fmt.Errorf("tagId should not be nil")
+			traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+			return false, err
+		}
+	}
+
 	query := `DELETE FROM public.tag_to_item WHERE item_id = ? AND tag_id IN (?)`
-	query, inArgs, err := sqlx.In(query, *delete.ItemId, rh.DereferenceSlice(delete.TagIds))
+	query, inArgs, err := sqlx.In(query, delete.ItemId, delete.TagIds)
 	query = repository.db.Rebind(query)
 	repository.logger.InfoContext(ctx, "fetching delete tag to items:", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)
 	start := time.Now()
@@ -126,6 +194,40 @@ func (repository *TagToItemsRepository) BulkDelete(ctx context.Context, delete *
 	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err == nil, metrics.DatabaseOperationDelete)
 	if err != nil {
 		repository.logger.ErrorContext(ctx, "error on DELETE operation", "query", query, "itemId", delete.ItemId, "tagIds", delete.TagIds)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error fetching affected rows", "error", err)
+		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
+		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
+		return false, err
+	}
+
+	success := rowsAffected > 0
+	metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, true, metrics.DatabaseOperationDelete)
+
+	traces.EnrichSuccessRepositorySpanWrite(span, rowsAffected)
+	return success, err
+}
+
+func (repository *TagToItemsRepository) DeleteByTagId(ctx context.Context, tagID uuid.UUID) (bool, error) {
+	tracer := otel.Tracer("tag-to-items")
+	ctx, span := tracer.Start(ctx, "tag-to-items-repository")
+	traces.RecordRepositorySpan(span, databaseDriver, metrics.DatabaseOperationDelete)
+	defer span.End()
+
+	query := "DELETE FROM public.tag_to_item WHERE tag_id = ?"
+	query = repository.db.Rebind(query)
+	repository.logger.InfoContext(ctx, "fetching delete tag to items by tag id:", "query", query, "tagId", tagID)
+	start := time.Now()
+	result, err := repository.db.ExecContext(ctx, query, tagID)
+	metrics.RecordDatabaseDuration(ctx, start, databaseDriver, tagsToItemTableName, err == nil, metrics.DatabaseOperationDelete)
+	if err != nil {
+		repository.logger.ErrorContext(ctx, "error on DELETE operation", "error", err, "tagId", tagID)
 		metrics.RecordDatabaseRequest(ctx, databaseDriver, tagsToItemTableName, false, metrics.DatabaseOperationDelete)
 		traces.EnrichFailedRepositorySpanWrite(span, err, 0)
 		return false, err

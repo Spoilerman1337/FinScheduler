@@ -109,10 +109,9 @@ func TestNewItemFilter_ShouldReturnErrorOnInvalidQueryParam(t *testing.T) {
 	assert.Contains(t, err.Error(), `invalid query parameter "page"`)
 }
 
-func TestNewItemDto_ShouldMapUpdatedAtAndTags(t *testing.T) {
+func TestNewItemListingDto_ShouldMapOnlyListingFields(t *testing.T) {
 	// Arrange
 	itemID := uuid.New()
-	tagID := uuid.New()
 	createdAt := time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2026, 1, 11, 13, 0, 0, 0, time.UTC)
 	price := decimal.RequireFromString("99.95")
@@ -128,38 +127,22 @@ func TestNewItemDto_ShouldMapUpdatedAtAndTags(t *testing.T) {
 		Cashback:    7,
 		Category:    Subscriptions,
 	}
-	tags := []Tag{
-		{
-			Id:       tagID,
-			Name:     "Recurring",
-			IsActive: true,
-		},
-	}
-
 	// Act
-	dto := NewItemDto(item, tags)
+	dto := NewItemListingDto(item)
 
 	// Assert
 	require.NotNil(t, dto)
 	require.NotNil(t, dto.UpdatedAt)
-	require.Len(t, dto.Tags, 1)
-	require.NotNil(t, dto.Price)
-	require.NotNil(t, dto.Category)
 
-	assert.Equal(t, itemID, *dto.Id)
-	assert.Equal(t, "Subscription", *dto.Name)
-	assert.Equal(t, 99.95, *dto.Price)
-	assert.Equal(t, "Monthly", *dto.Description)
-	assert.True(t, *dto.IsActive)
-	assert.Equal(t, createdAt, *dto.CreatedAt)
+	assert.Equal(t, itemID, dto.Id)
+	assert.Equal(t, "Subscription", dto.Name)
+	assert.Equal(t, 99.95, dto.Price)
+	assert.True(t, dto.IsActive)
 	assert.Equal(t, updatedAt, *dto.UpdatedAt)
-	assert.Equal(t, int32(7), *dto.Cashback)
-	assert.Equal(t, Subscriptions, *dto.Category)
-	assert.Equal(t, "Recurring", *dto.Tags[0].Label)
-	assert.Equal(t, tagID.String(), *dto.Tags[0].Value)
+	assert.Equal(t, int32(7), dto.Cashback)
 }
 
-func TestNewItemDto_ShouldNilUpdatedAtAndTags(t *testing.T) {
+func TestNewItemListingDto_ShouldNilUpdatedAt(t *testing.T) {
 	// Arrange
 	item := Item{
 		Id:          uuid.New(),
@@ -174,12 +157,71 @@ func TestNewItemDto_ShouldNilUpdatedAtAndTags(t *testing.T) {
 	}
 
 	// Act
-	dto := NewItemDto(item, nil)
+	dto := NewItemListingDto(item)
 
 	// Assert
 	require.NotNil(t, dto)
 	assert.Nil(t, dto.UpdatedAt)
-	assert.Nil(t, dto.Tags)
+}
+
+func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
+	// Arrange
+	tagID := uuid.New()
+	price := decimal.RequireFromString("99.95")
+	item := Item{
+		Id:          uuid.New(),
+		Name:        "Subscription",
+		Price:       price,
+		Description: "Monthly",
+		IsActive:    true,
+		CreatedAt:   time.Now().UTC(),
+		Cashback:    7,
+		Category:    Subscriptions,
+	}
+	tags := []Tag{
+		{
+			Id:       tagID,
+			Name:     "Recurring",
+			IsActive: true,
+		},
+	}
+
+	// Act
+	dto := NewItemDetailedDto(item, tags)
+
+	// Assert
+	require.NotNil(t, dto)
+	require.Len(t, dto.Tags, 1)
+	assert.Equal(t, "Subscription", dto.Name)
+	assert.Equal(t, 99.95, dto.Price)
+	assert.Equal(t, "Monthly", dto.Description)
+	assert.True(t, dto.IsActive)
+	assert.Equal(t, int32(7), dto.Cashback)
+	assert.Equal(t, Subscriptions, dto.Category)
+	assert.Equal(t, "Recurring", dto.Tags[0].Label)
+	assert.Equal(t, tagID.String(), dto.Tags[0].Value)
+}
+
+func TestNewItemDetailedDto_ShouldUseEmptyTagsSliceWhenNoTagsProvided(t *testing.T) {
+	// Arrange
+	item := Item{
+		Id:          uuid.New(),
+		Name:        "Subscription",
+		Price:       decimal.RequireFromString("99.95"),
+		Description: "Monthly",
+		IsActive:    true,
+		CreatedAt:   time.Now().UTC(),
+		Cashback:    7,
+		Category:    Subscriptions,
+	}
+
+	// Act
+	dto := NewItemDetailedDto(item, nil)
+
+	// Assert
+	require.NotNil(t, dto)
+	require.NotNil(t, dto.Tags)
+	assert.Empty(t, dto.Tags)
 }
 
 func TestItemCreateValidate(t *testing.T) {
@@ -209,21 +251,21 @@ func TestItemCreateValidate(t *testing.T) {
 			mutate: func(item *ItemCreate) {
 				item.Name = "No"
 			},
-			expectedErr: "name too short",
+			expectedErr: "name must be at least 3 characters long",
 		},
 		{
 			name: "price is negative",
 			mutate: func(item *ItemCreate) {
 				item.Price = decimal.RequireFromString("-1")
 			},
-			expectedErr: "price is negative",
+			expectedErr: "price must be zero or greater",
 		},
 		{
 			name: "cashback is negative",
 			mutate: func(item *ItemCreate) {
 				item.Cashback = -1
 			},
-			expectedErr: "cashback is negative",
+			expectedErr: "cashback must be zero or greater",
 		},
 		{
 			name: "category is invalid",
@@ -295,21 +337,21 @@ func TestItemUpdateValidate(t *testing.T) {
 			mutate: func(item *ItemUpdate) {
 				item.Name = "No"
 			},
-			expectedErr: "name too short",
+			expectedErr: "name must be at least 3 characters long",
 		},
 		{
 			name: "price is negative",
 			mutate: func(item *ItemUpdate) {
 				item.Price = decimal.RequireFromString("-1")
 			},
-			expectedErr: "price is negative",
+			expectedErr: "price must be zero or greater",
 		},
 		{
 			name: "cashback is negative",
 			mutate: func(item *ItemUpdate) {
 				item.Cashback = -1
 			},
-			expectedErr: "cashback is negative",
+			expectedErr: "cashback must be zero or greater",
 		},
 		{
 			name: "category is invalid",
@@ -409,7 +451,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := decimal.RequireFromString("5")
 				filter.PriceTo = &reversed
 			},
-			expectedErr: "priceTo cannot be lesser than priceFrom",
+			expectedErr: "priceTo cannot be less than priceFrom",
 		},
 		{
 			name: "created range is reversed",
@@ -417,7 +459,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := createdFrom.Add(-time.Hour)
 				filter.CreatedTo = &reversed
 			},
-			expectedErr: "createTo cannot be earlier than createFrom",
+			expectedErr: "createdTo cannot be earlier than createdFrom",
 		},
 		{
 			name: "updated range is reversed",
@@ -425,7 +467,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := updatedFrom.Add(-time.Hour)
 				filter.UpdatedTo = &reversed
 			},
-			expectedErr: "updateTo cannot be earlier than updateFrom",
+			expectedErr: "updatedTo cannot be earlier than updatedFrom",
 		},
 		{
 			name: "cashback range is reversed",
@@ -433,7 +475,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := int32(0)
 				filter.CashbackTo = &reversed
 			},
-			expectedErr: "cashbackFrom cannot be lesser than cashbackTO",
+			expectedErr: "cashbackTo cannot be less than cashbackFrom",
 		},
 	}
 
@@ -445,6 +487,152 @@ func TestItemFilterValidate(t *testing.T) {
 
 			// Act
 			err := filter.Validate()
+
+			// Assert
+			if tt.expectedErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tt.expectedErr)
+			}
+		})
+	}
+}
+
+func TestItemCashbackByTagUpdateValidate(t *testing.T) {
+	valid := ItemCashbackByTagUpdate{
+		Cashback: 5,
+		TagId:    uuid.New().String(),
+	}
+
+	tests := []struct {
+		name        string
+		mutate      func(item *ItemCashbackByTagUpdate)
+		expectedErr string
+	}{
+		{
+			name:        "valid",
+			mutate:      func(item *ItemCashbackByTagUpdate) {},
+			expectedErr: "",
+		},
+		{
+			name: "cashback is negative",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.Cashback = -1
+			},
+			expectedErr: "cashback must be zero or greater",
+		},
+		{
+			name: "tag id is empty",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.TagId = ""
+			},
+			expectedErr: "tagId is empty",
+		},
+		{
+			name: "tag id is invalid",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.TagId = "bad-uuid"
+			},
+			expectedErr: "tagId is invalid: bad-uuid",
+		},
+		{
+			name: "tag id is nil",
+			mutate: func(item *ItemCashbackByTagUpdate) {
+				item.TagId = uuid.Nil.String()
+			},
+			expectedErr: "tagId is nil",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			item := valid
+			tt.mutate(&item)
+
+			// Act
+			err := item.Validate()
+
+			// Assert
+			if tt.expectedErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tt.expectedErr)
+			}
+		})
+	}
+}
+
+func TestItemCashbackByIdsUpdateValidate(t *testing.T) {
+	duplicateItemID := uuid.New().String()
+	valid := ItemCashbackByIdsUpdate{
+		Cashback: 5,
+		ItemIds:  []string{uuid.New().String(), uuid.New().String()},
+	}
+
+	tests := []struct {
+		name        string
+		mutate      func(item *ItemCashbackByIdsUpdate)
+		expectedErr string
+	}{
+		{
+			name:        "valid",
+			mutate:      func(item *ItemCashbackByIdsUpdate) {},
+			expectedErr: "",
+		},
+		{
+			name: "cashback is negative",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.Cashback = -1
+			},
+			expectedErr: "cashback must be zero or greater",
+		},
+		{
+			name: "item ids are empty",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = nil
+			},
+			expectedErr: "itemIds are empty",
+		},
+		{
+			name: "item id is empty",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{""}
+			},
+			expectedErr: "itemId is empty",
+		},
+		{
+			name: "item id is invalid",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{"bad-uuid"}
+			},
+			expectedErr: "itemId is invalid: bad-uuid",
+		},
+		{
+			name: "item id is nil",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{uuid.Nil.String()}
+			},
+			expectedErr: "itemId is nil",
+		},
+		{
+			name: "item ids contain duplicates",
+			mutate: func(item *ItemCashbackByIdsUpdate) {
+				item.ItemIds = []string{duplicateItemID, duplicateItemID}
+			},
+			expectedErr: "itemId is duplicated: " + duplicateItemID,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			item := valid
+			item.ItemIds = append([]string(nil), valid.ItemIds...)
+			tt.mutate(&item)
+
+			// Act
+			err := item.Validate()
 
 			// Assert
 			if tt.expectedErr == "" {

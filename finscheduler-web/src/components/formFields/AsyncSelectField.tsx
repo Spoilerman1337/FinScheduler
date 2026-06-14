@@ -12,6 +12,8 @@ interface BaseAsyncSelectFieldProps {
     label: string;
     placeholder?: string;
     required?: boolean;
+    invalid?: boolean;
+    errorText?: string;
     emptyText?: string;
     initialOptions?: SelectOption[];
     collapseThreshold?: number;
@@ -34,15 +36,6 @@ type MultipleAsyncSelectFieldProps = BaseAsyncSelectFieldProps & {
 
 type AsyncSelectFieldProps = SingleAsyncSelectFieldProps | MultipleAsyncSelectFieldProps;
 
-interface CacheEntry {
-    options: SelectOption[];
-    pages: Set<number>;
-    hasMore: boolean;
-}
-
-const globalSearchCache = new Map<string, CacheEntry>();
-const globalRequestCache = new Map<string, Promise<AsyncLoadResult>>();
-
 function mergeOptions(existing: SelectOption[], incoming: SelectOption[]) {
     const map = new Map<string, SelectOption>();
 
@@ -52,23 +45,16 @@ function mergeOptions(existing: SelectOption[], incoming: SelectOption[]) {
     return Array.from(map.values());
 }
 
-function getSearchCacheKey(namespace: string, search: string) {
-    return `${namespace}::${search}`;
-}
-
-function getRequestCacheKey(namespace: string, search: string, page: number) {
-    return `${namespace}::${search}::${page}`;
-}
-
 export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     const {
         label,
         placeholder,
         required = false,
+        invalid = false,
+        errorText,
         emptyText = 'Ничего не найдено',
         initialOptions = [],
         collapseThreshold = 4,
-        cacheKey,
         preloadOnMount = false,
         loadOptions,
     } = props;
@@ -81,8 +67,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     const [initialLoading, setInitialLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const searchRef = useRef('');
-
-    const cacheNamespace = cacheKey ?? label;
+    const requestIdRef = useRef(0);
     const values = useMemo(
         () => (props.multiple ? props.value : props.value ? [props.value] : []),
         [props.multiple, props.value],
@@ -104,27 +89,11 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     );
     const shouldCollapseSelection = props.multiple && selectedOptions.length > collapseThreshold;
     const collection = useMemo(() => createListCollection({items: mergedOptions}), [mergedOptions]);
-
-    const syncFromCache = useCallback(
-        (search: string) => {
-            const cachedEntry = globalSearchCache.get(getSearchCacheKey(cacheNamespace, search));
-
-            if (!cachedEntry) {
-                return false;
-            }
-
-            setOptions(cachedEntry.options);
-            setCurrentPage(cachedEntry.pages.size > 0 ? Math.max(...cachedEntry.pages) : 0);
-            setHasMore(cachedEntry.hasMore);
-            return true;
-        },
-        [cacheNamespace],
-    );
+    const isInvalid = invalid || Boolean(errorText);
 
     const loadPage = useCallback(
         async (search: string, page: number, append: boolean) => {
-            const searchCacheKey = getSearchCacheKey(cacheNamespace, search);
-            const requestCacheKey = getRequestCacheKey(cacheNamespace, search, page);
+            const requestId = ++requestIdRef.current;
 
             if (append) {
                 setLoadingMore(true);
@@ -133,42 +102,26 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
             }
 
             try {
-                let request = globalRequestCache.get(requestCacheKey);
+                const result = await loadOptions({search, page});
 
-                if (!request) {
-                    request = loadOptions({search, page}).finally(() => {
-                        globalRequestCache.delete(requestCacheKey);
-                    });
-                    globalRequestCache.set(requestCacheKey, request);
+                if (requestId !== requestIdRef.current) {
+                    return;
                 }
 
-                const result = await request;
-                const cachedEntry = globalSearchCache.get(searchCacheKey);
-                const previousOptions = append ? (cachedEntry?.options ?? []) : [];
-                const nextOptions = mergeOptions(previousOptions, result.options);
-                const nextPages = new Set(append ? (cachedEntry?.pages ?? []) : []);
-
-                nextPages.add(page);
-
-                const nextEntry: CacheEntry = {
-                    options: nextOptions,
-                    pages: nextPages,
-                    hasMore: result.hasMore,
-                };
-
-                globalSearchCache.set(searchCacheKey, nextEntry);
-                setOptions(nextEntry.options);
+                setOptions((currentOptions) =>
+                    append ? mergeOptions(currentOptions, result.options) : result.options,
+                );
                 setCurrentPage(page);
-                setHasMore(nextEntry.hasMore);
+                setHasMore(result.hasMore);
             } finally {
-                if (append) {
+                if (append && requestId === requestIdRef.current) {
                     setLoadingMore(false);
-                } else {
+                } else if (!append && requestId === requestIdRef.current) {
                     setInitialLoading(false);
                 }
             }
         },
-        [cacheNamespace, loadOptions],
+        [loadOptions],
     );
 
     useEffect(() => {
@@ -176,12 +129,8 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
             return;
         }
 
-        if (syncFromCache('')) {
-            return;
-        }
-
         void loadPage('', 0, false);
-    }, [loadPage, preloadOnMount, syncFromCache]);
+    }, [loadPage, preloadOnMount]);
 
     useEffect(() => {
         if (!open) {
@@ -191,12 +140,8 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         const search = inputValue.trim();
         searchRef.current = search;
 
-        if (syncFromCache(search)) {
-            return;
-        }
-
         void loadPage(search, 0, false);
-    }, [inputValue, loadPage, open, syncFromCache]);
+    }, [inputValue, loadPage, open]);
 
     const handleValueChange = (nextValues: string[]) => {
         if (props.multiple) {
@@ -204,6 +149,16 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         } else {
             props.onChange(nextValues[0] ?? '');
         }
+    };
+
+    const handleInputValueChange = (details: {inputValue: string; reason?: string}) => {
+        if (details.reason === 'item-select') {
+            searchRef.current = '';
+            setInputValue('');
+            return;
+        }
+
+        setInputValue(details.inputValue);
     };
 
     const handleRemove = (valueToRemove: string) => {
@@ -218,6 +173,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         setOpen(details.open);
 
         if (!details.open) {
+            searchRef.current = '';
             setInputValue('');
         }
     };
@@ -238,7 +194,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     };
 
     return (
-        <Field.Root required={required} gap={0}>
+        <Field.Root required={required} invalid={isInvalid} gap={1}>
             <Field.Label color="neon.blue">
                 {label} {(initialLoading || loadingMore) && <Spinner size="xs" ml={2} />}
             </Field.Label>
@@ -253,7 +209,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                 openOnChange
                 selectionBehavior={props.multiple ? 'clear' : 'replace'}
                 onOpenChange={handleOpenChange}
-                onInputValueChange={(details) => setInputValue(details.inputValue)}
+                onInputValueChange={handleInputValueChange}
                 onValueChange={(details) => handleValueChange(details.value)}
             >
                 <Combobox.Control
@@ -262,7 +218,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                     py="0"
                     border="1px solid"
                     borderRadius="sm"
-                    borderColor="glass.border"
+                    borderColor={isInvalid ? 'border.error' : 'glass.border'}
                     bg="bg.layer2"
                     color="neon.blue"
                     overflow="hidden"
@@ -423,7 +379,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                             borderColor="glass.borderStrong"
                             backdropFilter="blur(16px)"
                             boxShadow="lg"
-                            zIndex="popover"
+                            zIndex="toast"
                             width="var(--reference-width)"
                             maxH="200px"
                             overflowY="auto"
@@ -481,6 +437,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                     </Combobox.Positioner>
                 </Portal>
             </Combobox.Root>
+            {errorText ? <Field.ErrorText color="fg.error">{errorText}</Field.ErrorText> : null}
         </Field.Root>
     );
 }
