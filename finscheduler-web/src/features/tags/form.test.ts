@@ -3,8 +3,11 @@ import {
     buildTagModification,
     createDefaultTagFormData,
     mapTagToFormData,
+    normalizeTagFormData,
+    runFieldValidators,
     shouldConfirmTagDeactivation,
-    validateTagFormData,
+    tagFormValidators,
+    tagNameValidators,
 } from './form.ts';
 
 describe('tags form', () => {
@@ -39,18 +42,43 @@ describe('tags form', () => {
         });
     });
 
-    it('returns an error when the name is blank', () => {
+    it('returns a validation message when the name is blank', () => {
+        // Arrange
+        const value = '   ';
+
+        // Act
+        const validationResult = runFieldValidators(value, tagNameValidators);
+
+        // Assert
+        expect(validationResult).toBe('Название обязательно для заполнения');
+    });
+
+    it('returns true for a valid name', () => {
+        // Arrange
+        const value = 'Transport';
+
+        // Act
+        const validationResult = tagFormValidators.name(value);
+
+        // Assert
+        expect(validationResult).toBe(true);
+    });
+
+    it('normalizes tag form data for reuse in the form state', () => {
         // Arrange
         const formData = {
-            ...createDefaultTagFormData(),
-            name: '   ',
+            name: ' Transport ',
+            isActive: false,
         };
 
         // Act
-        const error = validateTagFormData(formData);
+        const normalizedFormData = normalizeTagFormData(formData);
 
         // Assert
-        expect(error).toBe('Название обязательно для заполнения');
+        expect(normalizedFormData).toEqual({
+            name: 'Transport',
+            isActive: false,
+        });
     });
 
     it('builds a normalized tag modification from valid form data', () => {

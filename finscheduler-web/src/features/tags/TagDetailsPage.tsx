@@ -1,5 +1,6 @@
 import {Button, Card, CloseButton, Dialog, Flex, Portal, Spinner, Stack, Text} from '@chakra-ui/react';
 import {useEffect, useState} from 'react';
+import {Controller, useForm, useWatch} from 'react-hook-form';
 import {useNavigate, useParams} from 'react-router-dom';
 import type {TagDetailedDto} from '../../api/tags.types.ts';
 import TagsService from '../../api/tags.ts';
@@ -8,15 +9,16 @@ import TextField from '../../components/formFields/TextField.tsx';
 import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
-import DetailsPageLayout from '../../layout/details/DetailsPageLayout.tsx';
+import DetailsPageLayout, {type DetailsPageStatus} from '../../layout/details/DetailsPageLayout.tsx';
 import {buildEditTagPath, tagsListPath} from '../routes.ts';
 import {
     buildTagModification,
     createDefaultTagFormData,
     mapTagToFormData,
+    normalizeTagFormData,
     shouldConfirmTagDeactivation,
+    tagFormValidators,
     type TagFormData,
-    validateTagFormData,
 } from './form.ts';
 
 interface TagDetailsPageProps {
@@ -25,23 +27,44 @@ interface TagDetailsPageProps {
 
 interface PendingSaveAction {
     closeAfterSave: boolean;
+    values: TagFormData;
 }
 
 const tagsService = new TagsService();
+const validationStatus: DetailsPageStatus = 'Ошибка валидации';
 
 export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     const navigate = useNavigate();
     const {tagId} = useParams<{tagId: string}>();
     const [tag, setTag] = useState<TagDetailedDto | null>(null);
-    const [formData, setFormData] = useState<TagFormData>(createDefaultTagFormData);
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [isDirty, setIsDirty] = useState(false);
+    const [status, setStatus] = useState<DetailsPageStatus | null>(null);
     const [pendingSaveAction, setPendingSaveAction] = useState<PendingSaveAction | null>(null);
+    const {
+        control,
+        formState: {isDirty},
+        handleSubmit,
+        reset,
+    } = useForm<TagFormData>({
+        defaultValues: createDefaultTagFormData(),
+        mode: 'onSubmit',
+        reValidateMode: 'onChange',
+    });
     const {isDialogOpen, leavePage, scheduleNavigation, stayOnPage} = useUnsavedChangesGuard({
         isDirty,
         isDisabled: loading || saving,
+    });
+
+    const watchedName = useWatch({
+        control,
+        name: 'name',
+        defaultValue: '',
+    });
+    const watchedIsActive = useWatch({
+        control,
+        name: 'isActive',
+        defaultValue: true,
     });
 
     useEffect(() => {
@@ -50,15 +73,14 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
         async function loadTag() {
             if (mode !== 'edit' || !tagId) {
                 setTag(null);
-                setFormData(createDefaultTagFormData());
+                reset(createDefaultTagFormData());
                 setLoading(false);
-                setError(null);
-                setIsDirty(false);
+                setStatus(null);
                 return;
             }
 
             setLoading(true);
-            setError(null);
+            setStatus(null);
 
             try {
                 const loadedTag = await tagsService.getDetailedInfo(tagId);
@@ -69,20 +91,19 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
 
                 if (!loadedTag) {
                     setTag(null);
-                    setError('Тег не найден');
+                    setStatus('Тег не найден');
                     return;
                 }
 
                 setTag(loadedTag);
-                setFormData(mapTagToFormData(loadedTag));
-                setIsDirty(false);
+                reset(mapTagToFormData(loadedTag));
             } catch (err) {
                 if (!isMounted) {
                     return;
                 }
 
                 setTag(null);
-                setError(err instanceof Error ? err.message : 'Ошибка загрузки тега');
+                setStatus(err instanceof Error ? err.message : 'Ошибка загрузки тега');
             } finally {
                 if (isMounted) {
                     setLoading(false);
@@ -95,27 +116,23 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
         return () => {
             isMounted = false;
         };
-    }, [mode, tagId]);
-
-    const updateFormData = <K extends keyof TagFormData>(field: K, value: TagFormData[K]) => {
-        setIsDirty(true);
-        setFormData((prev) => ({...prev, [field]: value}));
-    };
+    }, [mode, reset, tagId]);
 
     const handleCancel = () => {
         navigate(tagsListPath);
     };
 
-    const persistTag = async (closeAfterSave: boolean) => {
+    const persistTag = async (formData: TagFormData, closeAfterSave: boolean) => {
         setSaving(true);
 
         try {
-            const payload = buildTagModification(formData);
+            const normalizedFormData = normalizeTagFormData(formData);
+            const payload = buildTagModification(normalizedFormData);
 
             if (mode === 'create') {
                 const createdTagId = await tagsService.createTag(payload);
 
-                setIsDirty(false);
+                reset(normalizedFormData);
                 toaster.create({
                     title: 'Успешно',
                     description: 'Тег успешно добавлен',
@@ -136,7 +153,7 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             }
 
             await tagsService.updateTag(tagId, payload);
-            setIsDirty(false);
+            reset(normalizedFormData);
             setTag((currentTag) =>
                 currentTag
                     ? {
@@ -157,28 +174,28 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                 scheduleNavigation(tagsListPath);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Ошибка при сохранении');
+            setStatus(err instanceof Error ? err.message : 'Ошибка при сохранении');
         } finally {
             setSaving(false);
         }
     };
 
-    const handleSave = async (closeAfterSave: boolean) => {
-        setError(null);
+    const handleSave = (closeAfterSave: boolean) => {
+        setStatus(null);
 
-        const validationError = validateTagFormData(formData);
+        void handleSubmit(
+            async (values) => {
+                if (shouldConfirmTagDeactivation(mode, tag, values)) {
+                    setPendingSaveAction({closeAfterSave, values});
+                    return;
+                }
 
-        if (validationError) {
-            setError(validationError);
-            return;
-        }
-
-        if (shouldConfirmTagDeactivation(mode, tag, formData)) {
-            setPendingSaveAction({closeAfterSave});
-            return;
-        }
-
-        await persistTag(closeAfterSave);
+                await persistTag(values, closeAfterSave);
+            },
+            () => {
+                setStatus(validationStatus);
+            },
+        )();
     };
 
     const handleConfirmDeactivation = async () => {
@@ -186,12 +203,12 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             return;
         }
 
-        const {closeAfterSave} = pendingSaveAction;
+        const {closeAfterSave, values} = pendingSaveAction;
         setPendingSaveAction(null);
-        await persistTag(closeAfterSave);
+        await persistTag(values, closeAfterSave);
     };
 
-    const pageSubtitle = formData.name.trim() || tag?.name || 'Заполните данные тега для сохранения';
+    const pageSubtitle = watchedName.trim() || tag?.name || 'Заполните данные тега для сохранения';
 
     if (loading) {
         return (
@@ -209,12 +226,12 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             ]}
             title={mode === 'create' ? 'Новый тег' : 'Редактирование тега'}
             subtitle={pageSubtitle}
-            isActive={formData.isActive}
+            isActive={watchedIsActive}
             isDirty={isDirty}
             saving={saving}
-            error={error}
-            onSave={() => void handleSave(false)}
-            onSaveAndClose={() => void handleSave(true)}
+            status={status}
+            onSave={() => handleSave(false)}
+            onSaveAndClose={() => handleSave(true)}
             onBack={handleCancel}
         >
             <Card.Root>
@@ -223,17 +240,32 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                     <Card.Description>Базовые данные тега из текущей модели.</Card.Description>
                 </Card.Header>
                 <Card.Body gap={4}>
-                    <TextField
-                        label="Название"
-                        value={formData.name}
-                        placeholder="Введите название"
-                        required
-                        onChange={(value) => updateFormData('name', value)}
+                    <Controller
+                        name="name"
+                        control={control}
+                        rules={{validate: tagFormValidators.name}}
+                        render={({field, fieldState}) => (
+                            <TextField
+                                label="Название"
+                                value={field.value}
+                                placeholder="Введите название"
+                                required
+                                invalid={fieldState.invalid}
+                                errorText={fieldState.error?.message}
+                                onChange={field.onChange}
+                            />
+                        )}
                     />
-                    <SwitchField
-                        label="Активен"
-                        checked={formData.isActive}
-                        onChange={(value) => updateFormData('isActive', value)}
+                    <Controller
+                        name="isActive"
+                        control={control}
+                        render={({field}) => (
+                            <SwitchField
+                                label="Активен"
+                                checked={field.value}
+                                onChange={field.onChange}
+                            />
+                        )}
                     />
                 </Card.Body>
             </Card.Root>
@@ -270,8 +302,12 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                             </Dialog.Header>
                             <Dialog.Body>
                                 <Stack gap={3}>
-                                    <Text color="fg">При деактивации тег будет отвязан от всех элементов каталога.</Text>
-                                    <Text color="fg.muted">Подтвердите сохранение изменений.</Text>
+                                    <Text color="fg">
+                                        При деактивации тег будет отвязан от всех элементов каталога.
+                                    </Text>
+                                    <Text color="fg.muted">
+                                        Подтвердите сохранение изменений.
+                                    </Text>
                                 </Stack>
                             </Dialog.Body>
                             <Dialog.Footer>

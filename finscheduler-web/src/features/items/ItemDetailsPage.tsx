@@ -1,5 +1,6 @@
 import {Card, Flex, SimpleGrid, Spinner} from '@chakra-ui/react';
 import {useEffect, useState} from 'react';
+import {Controller, useForm, useWatch} from 'react-hook-form';
 import {useNavigate, useParams} from 'react-router-dom';
 import type {ItemDetailedDto} from '../../api/items.types.ts';
 import ItemsService from '../../api/items.ts';
@@ -13,16 +14,17 @@ import TextField from '../../components/formFields/TextField.tsx';
 import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
-import DetailsPageLayout from '../../layout/details/DetailsPageLayout.tsx';
+import DetailsPageLayout, {type DetailsPageStatus} from '../../layout/details/DetailsPageLayout.tsx';
 import {categoryOptions} from '../../models/items.ts';
 import {buildEditItemPath, itemsListPath} from '../routes.ts';
 import {mapLookupsToSelectOptions} from '../shared.ts';
 import {
     buildItemModification,
     createDefaultItemFormData,
+    itemFormValidators,
     mapItemToFormData,
+    normalizeItemFormData,
     type ItemFormData,
-    validateItemFormData,
 } from './form.ts';
 
 interface ItemDetailsPageProps {
@@ -32,19 +34,39 @@ interface ItemDetailsPageProps {
 const TAGS_PAGE_SIZE = 20;
 const itemsService = new ItemsService();
 const tagsService = new TagsService();
+const validationStatus: DetailsPageStatus = 'Ошибка валидации';
 
 export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     const navigate = useNavigate();
     const {itemId} = useParams<{itemId: string}>();
     const [item, setItem] = useState<ItemDetailedDto | null>(null);
-    const [formData, setFormData] = useState<ItemFormData>(createDefaultItemFormData);
     const [loading, setLoading] = useState(mode === 'edit');
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [isDirty, setIsDirty] = useState(false);
+    const [status, setStatus] = useState<DetailsPageStatus | null>(null);
+    const {
+        control,
+        formState: {isDirty},
+        handleSubmit,
+        reset,
+    } = useForm<ItemFormData>({
+        defaultValues: createDefaultItemFormData(),
+        mode: 'onSubmit',
+        reValidateMode: 'onChange',
+    });
     const {isDialogOpen, leavePage, scheduleNavigation, stayOnPage} = useUnsavedChangesGuard({
         isDirty,
         isDisabled: loading || saving,
+    });
+
+    const watchedName = useWatch({
+        control,
+        name: 'name',
+        defaultValue: '',
+    });
+    const watchedIsActive = useWatch({
+        control,
+        name: 'isActive',
+        defaultValue: true,
     });
 
     useEffect(() => {
@@ -53,15 +75,14 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
         async function loadItem() {
             if (mode !== 'edit' || !itemId) {
                 setItem(null);
-                setFormData(createDefaultItemFormData());
+                reset(createDefaultItemFormData());
                 setLoading(false);
-                setError(null);
-                setIsDirty(false);
+                setStatus(null);
                 return;
             }
 
             setLoading(true);
-            setError(null);
+            setStatus(null);
 
             try {
                 const loadedItem = await itemsService.getDetailedInfo(itemId);
@@ -72,20 +93,19 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
 
                 if (!loadedItem) {
                     setItem(null);
-                    setError('Предмет не найден');
+                    setStatus('Предмет не найден');
                     return;
                 }
 
                 setItem(loadedItem);
-                setFormData(mapItemToFormData(loadedItem));
-                setIsDirty(false);
+                reset(mapItemToFormData(loadedItem));
             } catch (err) {
                 if (!isMounted) {
                     return;
                 }
 
                 setItem(null);
-                setError(err instanceof Error ? err.message : 'Ошибка загрузки предмета');
+                setStatus(err instanceof Error ? err.message : 'Ошибка загрузки предмета');
             } finally {
                 if (isMounted) {
                     setLoading(false);
@@ -98,36 +118,23 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
         return () => {
             isMounted = false;
         };
-    }, [itemId, mode]);
-
-    const updateFormData = <K extends keyof ItemFormData>(field: K, value: ItemFormData[K]) => {
-        setIsDirty(true);
-        setFormData((prev) => ({...prev, [field]: value}));
-    };
+    }, [itemId, mode, reset]);
 
     const handleCancel = () => {
         navigate(itemsListPath);
     };
 
-    const handleSave = async (closeAfterSave: boolean) => {
-        setError(null);
-
-        const validationError = validateItemFormData(formData);
-
-        if (validationError) {
-            setError(validationError);
-            return;
-        }
-
+    const persistItem = async (formData: ItemFormData, closeAfterSave: boolean) => {
         setSaving(true);
 
         try {
-            const payload = buildItemModification(formData);
+            const normalizedFormData = normalizeItemFormData(formData);
+            const payload = buildItemModification(normalizedFormData);
 
             if (mode === 'create') {
                 const createdItemId = await itemsService.createItem(payload);
 
-                setIsDirty(false);
+                reset(normalizedFormData);
                 toaster.create({
                     title: 'Успешно',
                     description: 'Предмет успешно добавлен',
@@ -148,7 +155,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             }
 
             await itemsService.updateItem(itemId, payload);
-            setIsDirty(false);
+            reset(normalizedFormData);
             setItem((currentItem) =>
                 currentItem
                     ? {
@@ -174,13 +181,27 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                 scheduleNavigation(itemsListPath);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Ошибка при сохранении');
+            setStatus(err instanceof Error ? err.message : 'Ошибка при сохранении');
         } finally {
             setSaving(false);
         }
     };
 
-    const pageSubtitle = formData.name.trim() || item?.name || 'Заполните данные предмета для сохранения';
+    const handleSave = (closeAfterSave: boolean) => {
+        setStatus(null);
+
+        void handleSubmit(
+            async (values) => {
+                await persistItem(values, closeAfterSave);
+            },
+            () => {
+                setStatus(validationStatus);
+            },
+        )();
+    };
+
+    const pageSubtitle =
+        watchedName.trim() || item?.name || 'Заполните данные предмета для сохранения';
     const initialTagOptions = mapLookupsToSelectOptions(item?.tags);
 
     if (loading) {
@@ -199,12 +220,12 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             ]}
             title={mode === 'create' ? 'Новый предмет' : 'Редактирование предмета'}
             subtitle={pageSubtitle}
-            isActive={formData.isActive}
+            isActive={watchedIsActive}
             isDirty={isDirty}
             saving={saving}
-            error={error}
-            onSave={() => void handleSave(false)}
-            onSaveAndClose={() => void handleSave(true)}
+            status={status}
+            onSave={() => handleSave(false)}
+            onSaveAndClose={() => handleSave(true)}
             onBack={handleCancel}
         >
             <SimpleGrid columns={{base: 1, xl: 2}} gap={6}>
@@ -214,19 +235,34 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                         <Card.Description>Базовые данные предмета для каталога.</Card.Description>
                     </Card.Header>
                     <Card.Body gap={4}>
-                        <TextField
-                            label="Название"
-                            value={formData.name}
-                            placeholder="Введите название"
-                            required
-                            onChange={(value) => updateFormData('name', value)}
+                        <Controller
+                            name="name"
+                            control={control}
+                            rules={{validate: itemFormValidators.name}}
+                            render={({field, fieldState}) => (
+                                <TextField
+                                    label="Название"
+                                    value={field.value}
+                                    placeholder="Введите название"
+                                    required
+                                    invalid={fieldState.invalid}
+                                    errorText={fieldState.error?.message}
+                                    onChange={field.onChange}
+                                />
+                            )}
                         />
-                        <TextAreaField
-                            label="Описание"
-                            value={formData.description}
-                            placeholder="Введите описание"
-                            rows={6}
-                            onChange={(value) => updateFormData('description', value)}
+                        <Controller
+                            name="description"
+                            control={control}
+                            render={({field}) => (
+                                <TextAreaField
+                                    label="Описание"
+                                    value={field.value}
+                                    placeholder="Введите описание"
+                                    rows={6}
+                                    onChange={field.onChange}
+                                />
+                            )}
                         />
                     </Card.Body>
                 </Card.Root>
@@ -237,41 +273,62 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                         <Card.Description>Категория, теги и актуальный статус.</Card.Description>
                     </Card.Header>
                     <Card.Body gap={4}>
-                        <SelectField
-                            label="Категория"
-                            value={formData.category}
-                            options={categoryOptions}
-                            placeholder="Выберите категорию"
-                            required
-                            onChange={(value) => updateFormData('category', value)}
+                        <Controller
+                            name="category"
+                            control={control}
+                            rules={{validate: itemFormValidators.category}}
+                            render={({field, fieldState}) => (
+                                <SelectField
+                                    label="Категория"
+                                    value={field.value}
+                                    options={categoryOptions}
+                                    placeholder="Выберите категорию"
+                                    required
+                                    invalid={fieldState.invalid}
+                                    errorText={fieldState.error?.message}
+                                    onChange={field.onChange}
+                                />
+                            )}
                         />
-                        <AsyncSelectField
-                            multiple
-                            label="Теги"
-                            value={formData.tagIds}
-                            initialOptions={initialTagOptions}
-                            cacheKey="item-tags"
-                            placeholder="Выберите теги"
-                            emptyText="Теги не найдены"
-                            collapseThreshold={4}
-                            loadOptions={async ({page, search}) => {
-                                const tags = await tagsService.getLookup({
-                                    page,
-                                    pageSize: TAGS_PAGE_SIZE,
-                                    name: search || undefined,
-                                });
+                        <Controller
+                            name="tagIds"
+                            control={control}
+                            render={({field}) => (
+                                <AsyncSelectField
+                                    multiple
+                                    label="Теги"
+                                    value={field.value}
+                                    initialOptions={initialTagOptions}
+                                    cacheKey="item-tags"
+                                    placeholder="Выберите теги"
+                                    emptyText="Теги не найдены"
+                                    collapseThreshold={4}
+                                    loadOptions={async ({page, search}) => {
+                                        const tags = await tagsService.getLookup({
+                                            page,
+                                            pageSize: TAGS_PAGE_SIZE,
+                                            name: search || undefined,
+                                        });
 
-                                return {
-                                    options: mapLookupsToSelectOptions(tags.data),
-                                    hasMore: (page + 1) * TAGS_PAGE_SIZE < tags.count,
-                                };
-                            }}
-                            onChange={(value) => updateFormData('tagIds', value)}
+                                        return {
+                                            options: mapLookupsToSelectOptions(tags.data),
+                                            hasMore: (page + 1) * TAGS_PAGE_SIZE < tags.count,
+                                        };
+                                    }}
+                                    onChange={field.onChange}
+                                />
+                            )}
                         />
-                        <SwitchField
-                            label="Активен"
-                            checked={formData.isActive}
-                            onChange={(value) => updateFormData('isActive', value)}
+                        <Controller
+                            name="isActive"
+                            control={control}
+                            render={({field}) => (
+                                <SwitchField
+                                    label="Активен"
+                                    checked={field.value}
+                                    onChange={field.onChange}
+                                />
+                            )}
                         />
                     </Card.Body>
                 </Card.Root>
@@ -279,26 +336,46 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                 <Card.Root gridColumn={{xl: '1 / -1'}}>
                     <Card.Header>
                         <Card.Title>3. Цена и бонусы</Card.Title>
-                        <Card.Description>Финансовые поля предмета из текущей модели.</Card.Description>
+                        <Card.Description>
+                            Финансовые поля предмета из текущей модели.
+                        </Card.Description>
                     </Card.Header>
                     <Card.Body>
                         <SimpleGrid columns={{base: 1, md: 2}} gap={4}>
-                            <NumberField
-                                label="Цена (₽)"
-                                value={formData.price}
-                                defaultValue="0.00"
-                                step={0.01}
-                                min={0}
-                                onChange={(value) => updateFormData('price', value)}
+                            <Controller
+                                name="price"
+                                control={control}
+                                rules={{validate: itemFormValidators.price}}
+                                render={({field, fieldState}) => (
+                                    <NumberField
+                                        label="Цена (₽)"
+                                        value={field.value}
+                                        defaultValue="0.00"
+                                        step={0.01}
+                                        min={0}
+                                        invalid={fieldState.invalid}
+                                        errorText={fieldState.error?.message}
+                                        onChange={field.onChange}
+                                    />
+                                )}
                             />
-                            <NumberField
-                                label="Кэшбэк (%)"
-                                value={formData.cashback}
-                                defaultValue="0"
-                                step={1}
-                                min={0}
-                                max={100}
-                                onChange={(value) => updateFormData('cashback', value)}
+                            <Controller
+                                name="cashback"
+                                control={control}
+                                rules={{validate: itemFormValidators.cashback}}
+                                render={({field, fieldState}) => (
+                                    <NumberField
+                                        label="Кэшбэк (%)"
+                                        value={field.value}
+                                        defaultValue="0"
+                                        step={1}
+                                        min={0}
+                                        max={100}
+                                        invalid={fieldState.invalid}
+                                        errorText={fieldState.error?.message}
+                                        onChange={field.onChange}
+                                    />
+                                )}
                             />
                         </SimpleGrid>
                     </Card.Body>

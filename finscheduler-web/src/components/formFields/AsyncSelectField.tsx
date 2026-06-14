@@ -12,6 +12,8 @@ interface BaseAsyncSelectFieldProps {
     label: string;
     placeholder?: string;
     required?: boolean;
+    invalid?: boolean;
+    errorText?: string;
     emptyText?: string;
     initialOptions?: SelectOption[];
     collapseThreshold?: number;
@@ -65,6 +67,8 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
         label,
         placeholder,
         required = false,
+        invalid = false,
+        errorText,
         emptyText = 'Ничего не найдено',
         initialOptions = [],
         collapseThreshold = 4,
@@ -104,6 +108,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     );
     const shouldCollapseSelection = props.multiple && selectedOptions.length > collapseThreshold;
     const collection = useMemo(() => createListCollection({items: mergedOptions}), [mergedOptions]);
+    const isInvalid = invalid || Boolean(errorText);
 
     const syncFromCache = useCallback(
         (search: string) => {
@@ -249,7 +254,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
     };
 
     return (
-        <Field.Root required={required} gap={0}>
+        <Field.Root required={required} invalid={isInvalid} gap={1}>
             <Field.Label color="neon.blue">
                 {label} {(initialLoading || loadingMore) && <Spinner size="xs" ml={2} />}
             </Field.Label>
@@ -273,7 +278,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                     py="0"
                     border="1px solid"
                     borderRadius="sm"
-                    borderColor="glass.border"
+                    borderColor={isInvalid ? 'border.error' : 'glass.border'}
                     bg="bg.layer2"
                     color="neon.blue"
                     overflow="hidden"
@@ -492,6 +497,7 @@ export default function AsyncSelectField(props: AsyncSelectFieldProps) {
                     </Combobox.Positioner>
                 </Portal>
             </Combobox.Root>
+            {errorText ? <Field.ErrorText color="fg.error">{errorText}</Field.ErrorText> : null}
         </Field.Root>
     );
 }

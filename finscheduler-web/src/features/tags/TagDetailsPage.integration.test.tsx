@@ -37,6 +37,32 @@ describe('TagDetailsPage integration', () => {
         expect(screen.queryByRole('button', {name: 'Отмена'})).not.toBeInTheDocument();
     });
 
+    it('shows a validation summary and an inline field error without sending a request', async () => {
+        // Arrange
+        let createRequests = 0;
+
+        server.use(
+            http.post(`${API_BASE_URL}/tags`, async () => {
+                createRequests += 1;
+
+                return HttpResponse.json('tag-2');
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        renderTagDetailsRoutes([newTagPath]);
+
+        // Act
+        await user.type(screen.getByLabelText('Название'), '   ');
+        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
+
+        // Assert
+        expect(createRequests).toBe(0);
+        expect(screen.getByText('Ошибка валидации')).toBeInTheDocument();
+        expect(screen.getByText('Название обязательно для заполнения')).toBeInTheDocument();
+    });
+
     it('creates a new tag and stays on the detail page after saving', async () => {
         // Arrange
         let createdPayload: TagModification | null = null;

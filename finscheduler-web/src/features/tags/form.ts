@@ -5,6 +5,35 @@ export interface TagFormData {
     isActive: boolean;
 }
 
+export interface FieldValidator<TValue> {
+    validate: (value: TValue) => boolean;
+    errorMessage: string;
+}
+
+export function runFieldValidators<TValue>(
+    value: TValue,
+    validators: FieldValidator<TValue>[],
+): true | string {
+    for (const validator of validators) {
+        if (!validator.validate(value)) {
+            return validator.errorMessage;
+        }
+    }
+
+    return true;
+}
+
+export const tagNameValidators: FieldValidator<string>[] = [
+    {
+        validate: (value) => value.trim().length > 0,
+        errorMessage: 'Название обязательно для заполнения',
+    },
+];
+
+export const tagFormValidators = {
+    name: (value: string) => runFieldValidators(value, tagNameValidators),
+} as const;
+
 export function createDefaultTagFormData(): TagFormData {
     return {
         name: '',
@@ -23,12 +52,11 @@ export function mapTagToFormData(item?: TagDetailedDto | null): TagFormData {
     };
 }
 
-export function validateTagFormData(formData: TagFormData): string | null {
-    if (!formData.name.trim()) {
-        return 'Название обязательно для заполнения';
-    }
-
-    return null;
+export function normalizeTagFormData(formData: TagFormData): TagFormData {
+    return {
+        name: formData.name.trim(),
+        isActive: formData.isActive,
+    };
 }
 
 export function buildTagModification(formData: TagFormData): TagModification {

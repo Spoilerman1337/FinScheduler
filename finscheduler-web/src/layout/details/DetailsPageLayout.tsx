@@ -3,6 +3,13 @@ import {CheckCircle2, Save, X} from 'lucide-react';
 import type {ReactNode} from 'react';
 import Breadcrumbs, {type BreadcrumbItem} from '../../components/breadcrumbs/Breadcrumbs.tsx';
 
+export interface DetailsPageStatusObject {
+    title: string;
+    description?: string;
+}
+
+export type DetailsPageStatus = string | DetailsPageStatusObject;
+
 interface DetailsPageLayoutProps {
     breadcrumbItems: BreadcrumbItem[];
     title: string;
@@ -10,7 +17,7 @@ interface DetailsPageLayoutProps {
     isActive: boolean;
     isDirty: boolean;
     saving: boolean;
-    error?: string | null;
+    status?: DetailsPageStatus | null;
     onSave: () => void;
     onSaveAndClose: () => void;
     onBack: () => void;
@@ -24,7 +31,7 @@ export default function DetailsPageLayout({
     isActive,
     isDirty,
     saving,
-    error = null,
+    status = null,
     onSave,
     onSaveAndClose,
     onBack,
@@ -105,10 +112,15 @@ export default function DetailsPageLayout({
                 </Card.Body>
             </Card.Root>
 
-            {error ? (
+            {status ? (
                 <Card.Root borderColor="border.error">
-                    <Card.Body>
-                        <Text color="fg.error">{error}</Text>
+                    <Card.Body gap={1}>
+                        <Text color="fg.error" fontWeight="semibold">
+                            {typeof status === 'string' ? status : status.title}
+                        </Text>
+                        {typeof status !== 'string' && status.description ? (
+                            <Text color="fg.error">{status.description}</Text>
+                        ) : null}
                     </Card.Body>
                 </Card.Root>
             ) : null}

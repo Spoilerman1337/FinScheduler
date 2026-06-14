@@ -37,6 +37,35 @@ describe('ItemDetailsPage integration', () => {
         expect(screen.queryByRole('button', {name: 'Отмена'})).not.toBeInTheDocument();
     });
 
+    it('shows a validation summary and inline field errors without sending a request', async () => {
+        // Arrange
+        let createRequests = 0;
+
+        server.use(
+            http.post(`${API_BASE_URL}/items`, async () => {
+                createRequests += 1;
+
+                return HttpResponse.json('item-2');
+            }),
+        );
+
+        const user = userEvent.setup();
+
+        renderItemDetailsRoutes([newItemPath]);
+
+        // Act
+        await user.type(screen.getByLabelText('Название'), '   ');
+        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
+
+        // Assert
+        expect(createRequests).toBe(0);
+        expect(screen.getByText('Ошибка валидации')).toBeInTheDocument();
+        expect(screen.getByText('Название обязательно для заполнения')).toBeInTheDocument();
+        expect(
+            screen.getByText('Выберите категорию', {selector: '[data-part="error-text"]'}),
+        ).toBeInTheDocument();
+    });
+
     it('creates a new item and stays on the detail page after saving', async () => {
         // Arrange
         let createdPayload: ItemModification | null = null;

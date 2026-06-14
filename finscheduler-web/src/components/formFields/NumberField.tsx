@@ -9,6 +9,8 @@ interface NumberFieldProps {
     min?: number;
     max?: number;
     required?: boolean;
+    invalid?: boolean;
+    errorText?: string;
 }
 
 export default function NumberField({
@@ -20,15 +22,19 @@ export default function NumberField({
     min,
     max,
     required = false,
+    invalid = false,
+    errorText,
 }: NumberFieldProps) {
+    const isInvalid = invalid || Boolean(errorText);
+
     return (
-        <Field.Root required={required} gap={0}>
+        <Field.Root required={required} invalid={isInvalid} gap={1}>
             <Field.Label color="neon.blue">{label}</Field.Label>
             <NumberInput.Root
                 value={value}
                 onValueChange={(details) => onChange(details.value)}
                 bg="bg.layer2"
-                borderColor="glass.border"
+                borderColor={isInvalid ? 'border.error' : 'glass.border'}
                 color="neon.blue"
                 defaultValue={defaultValue}
                 step={step}
@@ -36,6 +42,12 @@ export default function NumberField({
                 max={max}
                 width="100%"
                 gap={0}
+                _focusWithin={{
+                    borderColor: isInvalid ? 'border.error' : 'neon.blue',
+                    boxShadow: isInvalid
+                        ? '0 0 0 1px rgba(255, 74, 122, 0.45)'
+                        : '0 0 0 1px rgba(0, 212, 255, 0.35)',
+                }}
             >
                 <NumberInput.Control>
                     <NumberInput.IncrementTrigger
@@ -63,6 +75,7 @@ export default function NumberField({
                 </NumberInput.Control>
                 <NumberInput.Input _placeholder={{color: 'text.placeholder'}} />
             </NumberInput.Root>
+            {errorText ? <Field.ErrorText color="fg.error">{errorText}</Field.ErrorText> : null}
         </Field.Root>
     );
 }

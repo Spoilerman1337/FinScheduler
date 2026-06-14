@@ -21,6 +21,8 @@ interface BaseSelectFieldProps {
     placeholder?: string;
     loading?: boolean;
     required?: boolean;
+    invalid?: boolean;
+    errorText?: string;
 }
 
 type SingleSelectFieldProps = BaseSelectFieldProps & {
@@ -38,14 +40,23 @@ type MultipleSelectFieldProps = BaseSelectFieldProps & {
 type SelectFieldProps = SingleSelectFieldProps | MultipleSelectFieldProps;
 
 export default function SelectField(props: SelectFieldProps) {
-    const {label, options, placeholder, loading = false, required = false} = props;
+    const {
+        label,
+        options,
+        placeholder,
+        loading = false,
+        required = false,
+        invalid = false,
+        errorText,
+    } = props;
 
     const collection = useMemo(() => createListCollection({items: options}), [options]);
     const value = props.multiple ? props.value : props.value ? [props.value] : [];
     const hasValue = props.multiple ? props.value.length > 0 : Boolean(props.value);
+    const isInvalid = invalid || Boolean(errorText);
 
     return (
-        <Field.Root required={required} gap={0}>
+        <Field.Root required={required} invalid={isInvalid} gap={1}>
             <Field.Label color="neon.blue">
                 {label} {loading && <Spinner size="xs" ml={2} />}
             </Field.Label>
@@ -72,14 +83,14 @@ export default function SelectField(props: SelectFieldProps) {
                         px={3}
                         border="1px solid"
                         borderRadius="sm"
-                        borderColor="glass.border"
+                        borderColor={isInvalid ? 'border.error' : 'glass.border'}
                         bg="bg.layer2"
                         color="neon.blue"
                         transition="all 0.2s"
                         _hover={{
                             color: 'neon.blue',
                             bg: 'bg.layer2',
-                            borderColor: 'glass.border',
+                            borderColor: isInvalid ? 'border.error' : 'glass.border',
                             cursor: 'pointer',
                         }}
                     >
@@ -147,6 +158,7 @@ export default function SelectField(props: SelectFieldProps) {
                     </SelectContent>
                 </SelectPositioner>
             </SelectRoot>
+            {errorText ? <Field.ErrorText color="fg.error">{errorText}</Field.ErrorText> : null}
         </Field.Root>
     );
 }
