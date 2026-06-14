@@ -1,8 +1,10 @@
 import {Theme} from '@chakra-ui/react';
+import {QueryClientProvider} from '@tanstack/react-query';
 import {render} from '@testing-library/react';
 import type {RouteObject} from 'react-router-dom';
 import {createMemoryRouter, RouterProvider} from 'react-router-dom';
 import {Provider} from '../components/ui/provider.tsx';
+import {createAppQueryClient} from '../query/query-client.ts';
 
 interface RenderWithDataRouterOptions {
     initialEntries?: string[];
@@ -47,6 +49,7 @@ export function renderWithDataRouter(
     options: RenderWithDataRouterOptions = {},
 ) {
     installRequestCompatibility();
+    const queryClient = createAppQueryClient();
 
     const router = createMemoryRouter(routes, {
         initialEntries: options.initialEntries ?? ['/'],
@@ -55,11 +58,13 @@ export function renderWithDataRouter(
     return {
         router,
         ...render(
-            <Provider>
-                <Theme appearance="dark">
-                    <RouterProvider router={router} />
-                </Theme>
-            </Provider>,
+            <QueryClientProvider client={queryClient}>
+                <Provider>
+                    <Theme appearance="dark">
+                        <RouterProvider router={router} />
+                    </Theme>
+                </Provider>
+            </QueryClientProvider>,
         ),
     };
 }

@@ -1,13 +1,11 @@
 import {Box, Flex, Stack, Text} from '@chakra-ui/react';
 import {useEffect, useState} from 'react';
-import TagsService from '../../../api/tags.ts';
 import AsyncSelectField from '../../../components/formFields/AsyncSelectField.tsx';
 import NumberField from '../../../components/formFields/NumberField.tsx';
 import FormModal from '../../../components/formModal/FormModal.tsx';
-import {mapLookupsToSelectOptions} from '../../shared.ts';
+import {useTagLookupOptionsLoader} from '../../tags/queries.ts';
 
 const TAGS_PAGE_SIZE = 20;
-const tagsService = new TagsService();
 
 export interface SelectedItemSummary {
     id: string;
@@ -48,6 +46,7 @@ export default function BulkCashbackModal(props: BulkCashbackModalProps) {
     const [cashback, setCashback] = useState('0');
     const [validationError, setValidationError] = useState<string | null>(null);
     const hasSelection = selectedItems.length > 0;
+    const loadTagOptions = useTagLookupOptionsLoader(TAGS_PAGE_SIZE);
 
     useEffect(() => {
         if (!isOpen) {
@@ -125,21 +124,9 @@ export default function BulkCashbackModal(props: BulkCashbackModalProps) {
                     <AsyncSelectField
                         label="Тег"
                         value={tagId}
-                        cacheKey="bulk-cashback-tag"
                         placeholder="Выберите тег"
                         emptyText="Теги не найдены"
-                        loadOptions={async ({page, search}) => {
-                            const tags = await tagsService.getLookup({
-                                page,
-                                pageSize: TAGS_PAGE_SIZE,
-                                name: search || undefined,
-                            });
-
-                            return {
-                                options: mapLookupsToSelectOptions(tags.data),
-                                hasMore: (page + 1) * TAGS_PAGE_SIZE < tags.count,
-                            };
-                        }}
+                        loadOptions={loadTagOptions}
                         onChange={setTagId}
                     />
                 </Stack>

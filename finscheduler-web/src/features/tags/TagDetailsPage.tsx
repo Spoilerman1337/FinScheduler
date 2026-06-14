@@ -1,9 +1,7 @@
 import {Button, Card, CloseButton, Dialog, Flex, Portal, Spinner, Stack, Text} from '@chakra-ui/react';
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {Controller, useForm, useWatch} from 'react-hook-form';
 import {useNavigate, useParams} from 'react-router-dom';
-import type {TagDetailedDto} from '../../api/tags.types.ts';
-import TagsService from '../../api/tags.ts';
 import SwitchField from '../../components/formFields/SwitchField.tsx';
 import TextField from '../../components/formFields/TextField.tsx';
 import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
@@ -11,6 +9,11 @@ import {toaster} from '../../components/ui/toaster-instance.ts';
 import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
 import DetailsPageLayout, {type DetailsPageStatus} from '../../layout/details/DetailsPageLayout.tsx';
 import {buildEditTagPath, tagsListPath} from '../routes.ts';
+import {
+    useCreateTagMutation,
+    useTagDetailsQuery,
+    useUpdateTagMutation,
+} from './queries.ts';
 import {
     buildTagModification,
     createDefaultTagFormData,
@@ -30,17 +33,16 @@ interface PendingSaveAction {
     values: TagFormData;
 }
 
-const tagsService = new TagsService();
 const validationStatus: DetailsPageStatus = 'Ошибка валидации';
 
 export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     const navigate = useNavigate();
     const {tagId} = useParams<{tagId: string}>();
-    const [tag, setTag] = useState<TagDetailedDto | null>(null);
-    const [loading, setLoading] = useState(mode === 'edit');
-    const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<DetailsPageStatus | null>(null);
     const [pendingSaveAction, setPendingSaveAction] = useState<PendingSaveAction | null>(null);
+    const tagQuery = useTagDetailsQuery(mode === 'edit' ? tagId : undefined);
+    const createTagMutation = useCreateTagMutation();
+    const updateTagMutation = useUpdateTagMutation();
     const {
         control,
         formState: {isDirty},
@@ -51,6 +53,9 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
         mode: 'onSubmit',
         reValidateMode: 'onChange',
     });
+    const saving = createTagMutation.isPending || updateTagMutation.isPending;
+    const loading = mode === 'edit' ? tagQuery.isPending : false;
+    const tag = tagQuery.data ?? null;
     const {isDialogOpen, leavePage, scheduleNavigation, stayOnPage} = useUnsavedChangesGuard({
         isDirty,
         isDisabled: loading || saving,
@@ -68,69 +73,31 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     });
 
     useEffect(() => {
-        let isMounted = true;
+        setStatus(null);
 
-        async function loadTag() {
-            if (mode !== 'edit' || !tagId) {
-                setTag(null);
-                reset(createDefaultTagFormData());
-                setLoading(false);
-                setStatus(null);
-                return;
-            }
-
-            setLoading(true);
-            setStatus(null);
-
-            try {
-                const loadedTag = await tagsService.getDetailedInfo(tagId);
-
-                if (!isMounted) {
-                    return;
-                }
-
-                if (!loadedTag) {
-                    setTag(null);
-                    setStatus('Тег не найден');
-                    return;
-                }
-
-                setTag(loadedTag);
-                reset(mapTagToFormData(loadedTag));
-            } catch (err) {
-                if (!isMounted) {
-                    return;
-                }
-
-                setTag(null);
-                setStatus(err instanceof Error ? err.message : 'Ошибка загрузки тега');
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            }
+        if (mode !== 'edit' || !tagId) {
+            reset(createDefaultTagFormData());
+            return;
         }
 
-        void loadTag();
-
-        return () => {
-            isMounted = false;
-        };
+        reset(createDefaultTagFormData());
     }, [mode, reset, tagId]);
 
-    const handleCancel = () => {
-        navigate(tagsListPath);
-    };
+    useEffect(() => {
+        if (!tag) {
+            return;
+        }
+
+        reset(mapTagToFormData(tag));
+    }, [reset, tag]);
 
     const persistTag = async (formData: TagFormData, closeAfterSave: boolean) => {
-        setSaving(true);
-
         try {
             const normalizedFormData = normalizeTagFormData(formData);
             const payload = buildTagModification(normalizedFormData);
 
             if (mode === 'create') {
-                const createdTagId = await tagsService.createTag(payload);
+                const createdTagId = await createTagMutation.mutateAsync(payload);
 
                 reset(normalizedFormData);
                 toaster.create({
@@ -152,17 +119,8 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                 throw new Error('Не удалось определить тег для сохранения');
             }
 
-            await tagsService.updateTag(tagId, payload);
+            await updateTagMutation.mutateAsync({tagId, tag: payload});
             reset(normalizedFormData);
-            setTag((currentTag) =>
-                currentTag
-                    ? {
-                          ...currentTag,
-                          name: payload.name,
-                          isActive: payload.isActive,
-                      }
-                    : currentTag,
-            );
 
             toaster.create({
                 title: 'Успешно',
@@ -175,8 +133,6 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             }
         } catch (err) {
             setStatus(err instanceof Error ? err.message : 'Ошибка при сохранении');
-        } finally {
-            setSaving(false);
         }
     };
 
@@ -209,6 +165,22 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
     };
 
     const pageSubtitle = watchedName.trim() || tag?.name || 'Заполните данные тега для сохранения';
+    const loadStatus = useMemo(() => {
+        if (mode !== 'edit') {
+            return null;
+        }
+
+        if (tagQuery.isError) {
+            return tagQuery.error instanceof Error ? tagQuery.error.message : 'Ошибка загрузки тега';
+        }
+
+        if (tagQuery.isSuccess && tag === null) {
+            return 'Тег не найден';
+        }
+
+        return null;
+    }, [mode, tag, tagQuery.error, tagQuery.isError, tagQuery.isSuccess]);
+    const displayStatus = status ?? loadStatus;
 
     if (loading) {
         return (
@@ -229,10 +201,10 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
             isActive={watchedIsActive}
             isDirty={isDirty}
             saving={saving}
-            status={status}
+            status={displayStatus}
             onSave={() => handleSave(false)}
             onSaveAndClose={() => handleSave(true)}
-            onBack={handleCancel}
+            onBack={() => navigate(tagsListPath)}
         >
             <Card.Root>
                 <Card.Header>

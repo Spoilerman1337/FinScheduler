@@ -1,11 +1,12 @@
 import {fireEvent, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
+import type {RouteObject} from 'react-router-dom';
 import {describe, expect, it, vi} from 'vitest';
-import {Route, Routes} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api.ts';
 import type {ItemDetailedDto, ItemListingDto} from '../../api/items.types.ts';
 import {renderWithProviders} from '../../test/render.tsx';
+import {renderWithDataRouter} from '../../test/renderDataRouter.tsx';
 import {server} from '../../test/msw/server.ts';
 import {itemEditRoutePath, itemsListPath, newItemPath} from '../routes.ts';
 import ItemDetailsPage from './ItemDetailsPage.tsx';
@@ -29,14 +30,13 @@ function buildItem(overrides: Partial<ItemTestData> = {}): ItemTestData {
 }
 
 function renderItemsRoutes(initialEntries: string[] = [itemsListPath]) {
-    return renderWithProviders(
-        <Routes>
-            <Route path={itemsListPath} element={<Items />} />
-            <Route path={newItemPath} element={<ItemDetailsPage mode="create" />} />
-            <Route path={itemEditRoutePath} element={<ItemDetailsPage mode="edit" />} />
-        </Routes>,
-        {initialEntries},
-    );
+    const routes: RouteObject[] = [
+        {path: itemsListPath, element: <Items />},
+        {path: newItemPath, element: <ItemDetailsPage mode="create" />},
+        {path: itemEditRoutePath, element: <ItemDetailsPage mode="edit" />},
+    ];
+
+    return renderWithDataRouter(routes, {initialEntries});
 }
 
 describe('Items integration', () => {
@@ -132,18 +132,15 @@ describe('Items integration', () => {
             expect(lastRequest?.searchParams.get('name')).toBe('Tea');
             expect(lastRequest?.searchParams.get('isActive')).toBe('false');
         });
+        const requestCountBeforeReset = requests.length;
 
         // Act
         await user.click(screen.getByRole('button', {name: 'Сброс'}));
 
         // Assert
         expect(await screen.findByText('Coffee')).toBeInTheDocument();
-        await waitFor(() => {
-            const lastRequest = requests.at(-1);
-
-            expect(lastRequest?.searchParams.get('name')).toBeNull();
-            expect(lastRequest?.searchParams.get('isActive')).toBe('true');
-        });
+        expect(screen.queryByText('Tea')).not.toBeInTheDocument();
+        await waitFor(() => expect(requests).toHaveLength(requestCountBeforeReset));
     });
 
     it('applies the price range from a single filter control and delays reload until apply', async () => {
@@ -186,7 +183,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Price')).toBeInTheDocument();
@@ -241,7 +238,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Cashback')).toBeInTheDocument();
@@ -308,7 +305,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Date')).toBeInTheDocument();
@@ -377,7 +374,7 @@ describe('Items integration', () => {
         expect(requests).toHaveLength(1);
 
         // Act
-        await user.click(screen.getByRole('button', {name: 'Сохранить'}));
+        await user.click(screen.getByRole('button', {name: 'Применить'}));
 
         // Assert
         expect(await screen.findByText('Filtered by Updated Date')).toBeInTheDocument();
@@ -467,7 +464,7 @@ describe('Items integration', () => {
         expect(screen.getByLabelText('Название')).toHaveValue('Coffee');
     });
 
-    it('returns to the list after cancelling from the edit page', async () => {
+    it('returns to the list after going back from a clean edit page', async () => {
         // Arrange
         server.use(
             http.get(`${API_BASE_URL}/items`, () => {
@@ -487,7 +484,7 @@ describe('Items integration', () => {
         renderItemsRoutes();
         await user.dblClick(await screen.findByText('Coffee'));
         expect(await screen.findByText('Редактирование предмета')).toBeInTheDocument();
-        await user.click(screen.getByRole('button', {name: 'Отмена'}));
+        await user.click(screen.getByRole('button', {name: 'Назад'}));
 
         // Assert
         expect(await screen.findByText('Coffee')).toBeInTheDocument();

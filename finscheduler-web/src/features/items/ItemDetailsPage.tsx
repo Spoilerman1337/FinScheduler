@@ -1,10 +1,7 @@
 import {Card, Flex, SimpleGrid, Spinner} from '@chakra-ui/react';
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {Controller, useForm, useWatch} from 'react-hook-form';
 import {useNavigate, useParams} from 'react-router-dom';
-import type {ItemDetailedDto} from '../../api/items.types.ts';
-import ItemsService from '../../api/items.ts';
-import TagsService from '../../api/tags.ts';
 import AsyncSelectField from '../../components/formFields/AsyncSelectField.tsx';
 import NumberField from '../../components/formFields/NumberField.tsx';
 import SelectField from '../../components/formFields/SelectField.tsx';
@@ -18,6 +15,12 @@ import DetailsPageLayout, {type DetailsPageStatus} from '../../layout/details/De
 import {categoryOptions} from '../../models/items.ts';
 import {buildEditItemPath, itemsListPath} from '../routes.ts';
 import {mapLookupsToSelectOptions} from '../shared.ts';
+import {useTagLookupOptionsLoader} from '../tags/queries.ts';
+import {
+    useCreateItemMutation,
+    useItemDetailsQuery,
+    useUpdateItemMutation,
+} from './queries.ts';
 import {
     buildItemModification,
     createDefaultItemFormData,
@@ -32,17 +35,16 @@ interface ItemDetailsPageProps {
 }
 
 const TAGS_PAGE_SIZE = 20;
-const itemsService = new ItemsService();
-const tagsService = new TagsService();
 const validationStatus: DetailsPageStatus = 'Ошибка валидации';
 
 export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     const navigate = useNavigate();
     const {itemId} = useParams<{itemId: string}>();
-    const [item, setItem] = useState<ItemDetailedDto | null>(null);
-    const [loading, setLoading] = useState(mode === 'edit');
-    const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<DetailsPageStatus | null>(null);
+    const itemQuery = useItemDetailsQuery(mode === 'edit' ? itemId : undefined);
+    const createItemMutation = useCreateItemMutation();
+    const updateItemMutation = useUpdateItemMutation();
+    const loadTagOptions = useTagLookupOptionsLoader(TAGS_PAGE_SIZE);
     const {
         control,
         formState: {isDirty},
@@ -53,6 +55,9 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
         mode: 'onSubmit',
         reValidateMode: 'onChange',
     });
+    const saving = createItemMutation.isPending || updateItemMutation.isPending;
+    const loading = mode === 'edit' ? itemQuery.isPending : false;
+    const item = itemQuery.data ?? null;
     const {isDialogOpen, leavePage, scheduleNavigation, stayOnPage} = useUnsavedChangesGuard({
         isDirty,
         isDisabled: loading || saving,
@@ -70,69 +75,31 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     });
 
     useEffect(() => {
-        let isMounted = true;
+        setStatus(null);
 
-        async function loadItem() {
-            if (mode !== 'edit' || !itemId) {
-                setItem(null);
-                reset(createDefaultItemFormData());
-                setLoading(false);
-                setStatus(null);
-                return;
-            }
-
-            setLoading(true);
-            setStatus(null);
-
-            try {
-                const loadedItem = await itemsService.getDetailedInfo(itemId);
-
-                if (!isMounted) {
-                    return;
-                }
-
-                if (!loadedItem) {
-                    setItem(null);
-                    setStatus('Предмет не найден');
-                    return;
-                }
-
-                setItem(loadedItem);
-                reset(mapItemToFormData(loadedItem));
-            } catch (err) {
-                if (!isMounted) {
-                    return;
-                }
-
-                setItem(null);
-                setStatus(err instanceof Error ? err.message : 'Ошибка загрузки предмета');
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            }
+        if (mode !== 'edit' || !itemId) {
+            reset(createDefaultItemFormData());
+            return;
         }
 
-        void loadItem();
-
-        return () => {
-            isMounted = false;
-        };
+        reset(createDefaultItemFormData());
     }, [itemId, mode, reset]);
 
-    const handleCancel = () => {
-        navigate(itemsListPath);
-    };
+    useEffect(() => {
+        if (!item) {
+            return;
+        }
+
+        reset(mapItemToFormData(item));
+    }, [item, reset]);
 
     const persistItem = async (formData: ItemFormData, closeAfterSave: boolean) => {
-        setSaving(true);
-
         try {
             const normalizedFormData = normalizeItemFormData(formData);
             const payload = buildItemModification(normalizedFormData);
 
             if (mode === 'create') {
-                const createdItemId = await itemsService.createItem(payload);
+                const createdItemId = await createItemMutation.mutateAsync(payload);
 
                 reset(normalizedFormData);
                 toaster.create({
@@ -154,22 +121,8 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                 throw new Error('Не удалось определить предмет для сохранения');
             }
 
-            await itemsService.updateItem(itemId, payload);
+            await updateItemMutation.mutateAsync({itemId, item: payload});
             reset(normalizedFormData);
-            setItem((currentItem) =>
-                currentItem
-                    ? {
-                          ...currentItem,
-                          name: payload.name,
-                          description: normalizedFormData.description,
-                          price: payload.price,
-                          cashback: payload.cashback,
-                          isActive: payload.isActive,
-                          category: payload.category,
-                          tags: currentItem.tags,
-                      }
-                    : currentItem,
-            );
 
             toaster.create({
                 title: 'Успешно',
@@ -182,8 +135,6 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             }
         } catch (err) {
             setStatus(err instanceof Error ? err.message : 'Ошибка при сохранении');
-        } finally {
-            setSaving(false);
         }
     };
 
@@ -203,6 +154,24 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
     const pageSubtitle =
         watchedName.trim() || item?.name || 'Заполните данные предмета для сохранения';
     const initialTagOptions = mapLookupsToSelectOptions(item?.tags);
+    const loadStatus = useMemo(() => {
+        if (mode !== 'edit') {
+            return null;
+        }
+
+        if (itemQuery.isError) {
+            return itemQuery.error instanceof Error
+                ? itemQuery.error.message
+                : 'Ошибка загрузки предмета';
+        }
+
+        if (itemQuery.isSuccess && item === null) {
+            return 'Предмет не найден';
+        }
+
+        return null;
+    }, [item, itemQuery.error, itemQuery.isError, itemQuery.isSuccess, mode]);
+    const displayStatus = status ?? loadStatus;
 
     if (loading) {
         return (
@@ -223,10 +192,10 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             isActive={watchedIsActive}
             isDirty={isDirty}
             saving={saving}
-            status={status}
+            status={displayStatus}
             onSave={() => handleSave(false)}
             onSaveAndClose={() => handleSave(true)}
-            onBack={handleCancel}
+            onBack={() => navigate(itemsListPath)}
         >
             <SimpleGrid columns={{base: 1, xl: 2}} gap={6}>
                 <Card.Root>
@@ -299,22 +268,10 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                                     label="Теги"
                                     value={field.value}
                                     initialOptions={initialTagOptions}
-                                    cacheKey="item-tags"
                                     placeholder="Выберите теги"
                                     emptyText="Теги не найдены"
                                     collapseThreshold={4}
-                                    loadOptions={async ({page, search}) => {
-                                        const tags = await tagsService.getLookup({
-                                            page,
-                                            pageSize: TAGS_PAGE_SIZE,
-                                            name: search || undefined,
-                                        });
-
-                                        return {
-                                            options: mapLookupsToSelectOptions(tags.data),
-                                            hasMore: (page + 1) * TAGS_PAGE_SIZE < tags.count,
-                                        };
-                                    }}
+                                    loadOptions={loadTagOptions}
                                     onChange={field.onChange}
                                 />
                             )}
@@ -365,7 +322,7 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                                 rules={{validate: itemFormValidators.cashback}}
                                 render={({field, fieldState}) => (
                                     <NumberField
-                                        label="Кэшбэк (%)"
+                                        label="Кешбек (%)"
                                         value={field.value}
                                         defaultValue="0"
                                         step={1}

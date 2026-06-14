@@ -1,26 +1,42 @@
 import DataTable, {type DataListingColumn} from '../../components/dataTable/DataTable.tsx';
 import {Badge, Flex, Spinner, Text} from '@chakra-ui/react';
-import {useCallback, useEffect, useState} from 'react';
+import {useMemo, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import type {TagFilter, TagListingDto, TagStatusFilter} from '../../api/tags.types.ts';
-import TagsService, {buildTagFilter} from '../../api/tags.ts';
+import {buildTagFilter} from '../../api/tags.ts';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {buildEditTagPath, newTagPath} from '../routes.ts';
+import {useTagsListQuery} from './queries.ts';
 import TagsFilters from './subcomponents/TagsFilters.tsx';
-
-const tagsService = new TagsService();
 
 export default function Tags() {
     const navigate = useNavigate();
-    const [tags, setTags] = useState<TagListingDto[]>([]);
-    const [total, setTotal] = useState<number>(0);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(10);
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<TagStatusFilter>('Active');
+
+    const filter: TagFilter = useMemo(
+        () =>
+            buildTagFilter({
+                page,
+                pageSize,
+                searchTerm,
+                statusFilter,
+            }),
+        [page, pageSize, searchTerm, statusFilter],
+    );
+    const tagsQuery = useTagsListQuery(filter);
+    const tags = tagsQuery.data?.data ?? [];
+    const total = tagsQuery.data?.count ?? 0;
+    const loading = tagsQuery.isPending;
+    const error =
+        tagsQuery.isError && tagsQuery.error instanceof Error
+            ? tagsQuery.error.message
+            : tagsQuery.isError
+              ? 'Ошибка загрузки данных'
+              : null;
 
     const tagColumns: DataListingColumn<TagListingDto>[] = [
         {
@@ -52,32 +68,6 @@ export default function Tags() {
         },
     ];
 
-    const loadTags = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const filter: TagFilter = buildTagFilter({
-                page,
-                pageSize,
-                searchTerm,
-                statusFilter,
-            });
-            const result = await tagsService.getListingInfo(filter);
-            setTags(result.data);
-            setTotal(result.count);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Ошибка загрузки данных');
-            console.error('Failed to load tags:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [page, pageSize, searchTerm, statusFilter]);
-
-    useEffect(() => {
-        loadTags();
-    }, [loadTags]);
-
     const handleReset = () => {
         setSearchTerm('');
         setStatusFilter('All');
@@ -101,10 +91,6 @@ export default function Tags() {
         navigate(buildEditTagPath(tag.id));
     };
 
-    const getRowId = (row: TagListingDto): string => {
-        return row.id ?? '';
-    };
-
     return (
         <Flex direction="column" width="100%">
             <TagsFilters
@@ -120,7 +106,6 @@ export default function Tags() {
                 }}
                 onApply={() => {
                     setPage(1);
-                    loadTags();
                 }}
                 onReset={handleReset}
             />
@@ -136,26 +121,24 @@ export default function Tags() {
                     </Text>
                 </Flex>
             ) : (
-                <>
-                    <DataTable
-                        data={tags}
-                        columns={tagColumns}
-                        total={total}
-                        page={page}
-                        pageSize={pageSize}
-                        onPageChange={setPage}
-                        onPageSizeChange={(newSize) => {
-                            setPageSize(newSize);
-                            setPage(1);
-                        }}
-                        selectable={true}
-                        selectedRows={selectedRows}
-                        onSelectionChange={setSelectedRows}
-                        onAdd={handleOpenCreatePage}
-                        onEdit={handleOpenEditPage}
-                        getRowId={getRowId}
-                    />
-                </>
+                <DataTable
+                    data={tags}
+                    columns={tagColumns}
+                    total={total}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(newSize) => {
+                        setPageSize(newSize);
+                        setPage(1);
+                    }}
+                    selectable={true}
+                    selectedRows={selectedRows}
+                    onSelectionChange={setSelectedRows}
+                    onAdd={handleOpenCreatePage}
+                    onEdit={handleOpenEditPage}
+                    getRowId={(row) => row.id}
+                />
             )}
         </Flex>
     );
