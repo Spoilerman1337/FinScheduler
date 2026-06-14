@@ -57,7 +57,13 @@ export default function DetailsPageLayout({
                         gap={6}
                     >
                         <Stack gap={2} flex="1" minW={0}>
-                            <Text textStyle="3xl" color="fg" fontWeight="700" letterSpacing="tight" lineHeight="tight">
+                            <Text
+                                textStyle="3xl"
+                                color="fg"
+                                fontWeight="700"
+                                letterSpacing="tight"
+                                lineHeight="tight"
+                            >
                                 {title}
                             </Text>
                             <Text color="fg.muted" textStyle="lg" lineHeight="snug">

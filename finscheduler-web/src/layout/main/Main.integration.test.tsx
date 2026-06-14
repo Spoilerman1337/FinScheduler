@@ -102,14 +102,12 @@ describe('Main and Sidebar integration', () => {
         // Assert
         expect(screen.getByText('Items Page')).toBeInTheDocument();
         expect(screen.getAllByText(catalogNavigationLabel)).toHaveLength(2);
-        expect(screen.getByRole('link', {name: catalogNavigationLabel, hidden: true})).toHaveAttribute(
-            'href',
-            itemsListPath,
-        );
-        expect(screen.getByRole('link', {name: catalogNavigationLabel, hidden: true})).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
+        expect(
+            screen.getByRole('link', {name: catalogNavigationLabel, hidden: true}),
+        ).toHaveAttribute('href', itemsListPath);
+        expect(
+            screen.getByRole('link', {name: catalogNavigationLabel, hidden: true}),
+        ).toHaveAttribute('aria-current', 'page');
     });
 
     it('navigates between routes and updates the header and active link', async () => {
@@ -137,10 +135,9 @@ describe('Main and Sidebar integration', () => {
         // Assert
         expect(screen.getByText('Item Details Page')).toBeInTheDocument();
         expect(screen.getAllByText(catalogNavigationLabel)).toHaveLength(2);
-        expect(screen.getByRole('link', {name: catalogNavigationLabel, hidden: true})).toHaveAttribute(
-            'aria-current',
-            'page',
-        );
+        expect(
+            screen.getByRole('link', {name: catalogNavigationLabel, hidden: true}),
+        ).toHaveAttribute('aria-current', 'page');
     });
 
     it('keeps tags route active for nested tag detail pages', () => {
@@ -168,9 +165,8 @@ describe('Main and Sidebar integration', () => {
         // Assert
         expect(await screen.findByText('Dashboard Page')).toBeInTheDocument();
         expect(screen.getByText(dashboardRouteTitle)).toBeInTheDocument();
-        expect(screen.getByRole('link', {name: dashboardNavigationLabel, hidden: true})).toHaveAttribute(
-            'href',
-            dashboardPath,
-        );
+        expect(
+            screen.getByRole('link', {name: dashboardNavigationLabel, hidden: true}),
+        ).toHaveAttribute('href', dashboardPath);
     });
 });

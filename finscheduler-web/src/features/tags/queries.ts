@@ -1,6 +1,11 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useCallback} from 'react';
-import type {TagDetailedDto, TagFilter, TagLookupFilter, TagModification} from '../../api/tags.types.ts';
+import type {
+    TagDetailedDto,
+    TagFilter,
+    TagLookupFilter,
+    TagModification,
+} from '../../api/tags.types.ts';
 import TagsService from '../../api/tags.ts';
 import {mapLookupsToSelectOptions} from '../shared.ts';
 import {itemsQueryKeys} from '../items/queries.ts';

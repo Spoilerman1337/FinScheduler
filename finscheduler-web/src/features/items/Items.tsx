@@ -13,11 +13,7 @@ import type {NumberRangeValue} from '../../components/listingFilters/NumberRange
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import ListingBulkCashbackButton from '../../components/dataListing/actionButtons/ListingBulkCashbackButton.tsx';
 import {buildEditItemPath, newItemPath} from '../routes.ts';
-import {
-    useBulkCashbackMutation,
-    useDeleteItemsMutation,
-    useItemsListQuery,
-} from './queries.ts';
+import {useBulkCashbackMutation, useDeleteItemsMutation, useItemsListQuery} from './queries.ts';
 import BulkCashbackModal, {
     type BulkCashbackSubmitPayload,
 } from './subcomponents/BulkCashbackModal.tsx';

@@ -11,16 +11,14 @@ import TextField from '../../components/formFields/TextField.tsx';
 import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
-import DetailsPageLayout, {type DetailsPageStatus} from '../../layout/details/DetailsPageLayout.tsx';
+import DetailsPageLayout, {
+    type DetailsPageStatus,
+} from '../../layout/details/DetailsPageLayout.tsx';
 import {categoryOptions} from '../../models/items.ts';
 import {buildEditItemPath, itemsListPath} from '../routes.ts';
 import {mapLookupsToSelectOptions} from '../shared.ts';
 import {useTagLookupOptionsLoader} from '../tags/queries.ts';
-import {
-    useCreateItemMutation,
-    useItemDetailsQuery,
-    useUpdateItemMutation,
-} from './queries.ts';
+import {useCreateItemMutation, useItemDetailsQuery, useUpdateItemMutation} from './queries.ts';
 import {
     buildItemModification,
     createDefaultItemFormData,

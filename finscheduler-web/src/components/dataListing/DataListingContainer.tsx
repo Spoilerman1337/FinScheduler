@@ -158,9 +158,7 @@ export default function DataListingContainer<T extends object>(
                 selectedCount={selectedIds.length}
                 onAdd={onAdd}
                 onEditSelected={
-                    showEditSelectedAction && onEdit && selectedRow
-                        ? handleEditSelected
-                        : undefined
+                    showEditSelectedAction && onEdit && selectedRow ? handleEditSelected : undefined
                 }
                 onDeleteSelected={onDelete ? handleDeleteSelected : undefined}
                 additionalActions={footerActions}

@@ -1,4 +1,14 @@
-import {Button, Card, CloseButton, Dialog, Flex, Portal, Spinner, Stack, Text} from '@chakra-ui/react';
+import {
+    Button,
+    Card,
+    CloseButton,
+    Dialog,
+    Flex,
+    Portal,
+    Spinner,
+    Stack,
+    Text,
+} from '@chakra-ui/react';
 import {useEffect, useMemo, useState} from 'react';
 import {Controller, useForm, useWatch} from 'react-hook-form';
 import {useNavigate, useParams} from 'react-router-dom';
@@ -7,13 +17,11 @@ import TextField from '../../components/formFields/TextField.tsx';
 import UnsavedChangesDialog from '../../components/unsavedChanges/UnsavedChangesDialog.tsx';
 import {toaster} from '../../components/ui/toaster-instance.ts';
 import {useUnsavedChangesGuard} from '../../hooks/useUnsavedChangesGuard.ts';
-import DetailsPageLayout, {type DetailsPageStatus} from '../../layout/details/DetailsPageLayout.tsx';
+import DetailsPageLayout, {
+    type DetailsPageStatus,
+} from '../../layout/details/DetailsPageLayout.tsx';
 import {buildEditTagPath, tagsListPath} from '../routes.ts';
-import {
-    useCreateTagMutation,
-    useTagDetailsQuery,
-    useUpdateTagMutation,
-} from './queries.ts';
+import {useCreateTagMutation, useTagDetailsQuery, useUpdateTagMutation} from './queries.ts';
 import {
     buildTagModification,
     createDefaultTagFormData,
@@ -171,7 +179,9 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
         }
 
         if (tagQuery.isError) {
-            return tagQuery.error instanceof Error ? tagQuery.error.message : 'Ошибка загрузки тега';
+            return tagQuery.error instanceof Error
+                ? tagQuery.error.message
+                : 'Ошибка загрузки тега';
         }
 
         if (tagQuery.isSuccess && tag === null) {
@@ -275,11 +285,10 @@ export default function TagDetailsPage({mode}: TagDetailsPageProps) {
                             <Dialog.Body>
                                 <Stack gap={3}>
                                     <Text color="fg">
-                                        При деактивации тег будет отвязан от всех элементов каталога.
+                                        При деактивации тег будет отвязан от всех элементов
+                                        каталога.
                                     </Text>
-                                    <Text color="fg.muted">
-                                        Подтвердите сохранение изменений.
-                                    </Text>
+                                    <Text color="fg.muted">Подтвердите сохранение изменений.</Text>
                                 </Stack>
                             </Dialog.Body>
                             <Dialog.Footer>

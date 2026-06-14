@@ -6,11 +6,7 @@ interface UnsavedChangesDialogProps {
     onLeave: () => void;
 }
 
-export default function UnsavedChangesDialog({
-    open,
-    onStay,
-    onLeave,
-}: UnsavedChangesDialogProps) {
+export default function UnsavedChangesDialog({open, onStay, onLeave}: UnsavedChangesDialogProps) {
     return (
         <Dialog.Root
             open={open}
