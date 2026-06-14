@@ -116,7 +116,7 @@ func NewTagDetailedDto(tag Tag) *TagDetailedDto {
 
 func (item *TagCreate) Validate() error {
 	if len(item.Name) < 3 {
-		return fmt.Errorf("name too short")
+		return fmt.Errorf("name must be at least 3 characters long")
 	}
 
 	return nil
@@ -124,7 +124,7 @@ func (item *TagCreate) Validate() error {
 
 func (item *TagUpdate) Validate() error {
 	if len(item.Name) < 3 {
-		return fmt.Errorf("name too short")
+		return fmt.Errorf("name must be at least 3 characters long")
 	}
 
 	return nil

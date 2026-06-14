@@ -317,7 +317,7 @@ func Test_TagsHandler_Create_ShouldReturnBadRequestOnValidationError(t *testing.
 	method := http.MethodPost
 	target := "/api/tags"
 	requestBody := `{"name":"No","isActive":true}`
-	expectedBodyFragment := "name too short"
+	expectedBodyFragment := "name must be at least 3 characters long"
 	request := newJSONRequest(method, target, requestBody)
 
 	// Act

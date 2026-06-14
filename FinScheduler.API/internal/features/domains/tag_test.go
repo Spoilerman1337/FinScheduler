@@ -175,7 +175,7 @@ func TestTagCreateValidate(t *testing.T) {
 				Name:     "No",
 				IsActive: true,
 			},
-			expectedError: "name too short",
+			expectedError: "name must be at least 3 characters long",
 		},
 	}
 
@@ -217,7 +217,7 @@ func TestTagUpdateValidate(t *testing.T) {
 				Name:     "No",
 				IsActive: false,
 			},
-			expectedError: "name too short",
+			expectedError: "name must be at least 3 characters long",
 		},
 	}
 

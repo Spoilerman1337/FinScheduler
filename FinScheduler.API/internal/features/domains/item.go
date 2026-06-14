@@ -216,13 +216,13 @@ func NewItemDetailedDto(item Item, tags []Tag) *ItemDetailedDto {
 
 func (item *ItemCreate) Validate() error {
 	if len(item.Name) < 3 {
-		return fmt.Errorf("name too short")
+		return fmt.Errorf("name must be at least 3 characters long")
 	}
 	if item.Price.IsNegative() {
-		return fmt.Errorf("price is negative")
+		return fmt.Errorf("price must be zero or greater")
 	}
 	if item.Cashback < 0 {
-		return fmt.Errorf("cashback is negative")
+		return fmt.Errorf("cashback must be zero or greater")
 	}
 	if !ItemCategory(item.Category).IsValid() {
 		return fmt.Errorf("category is invalid")
@@ -236,13 +236,13 @@ func (item *ItemCreate) Validate() error {
 
 func (item *ItemUpdate) Validate() error {
 	if len(item.Name) < 3 {
-		return fmt.Errorf("name too short")
+		return fmt.Errorf("name must be at least 3 characters long")
 	}
 	if item.Price.IsNegative() {
-		return fmt.Errorf("price is negative")
+		return fmt.Errorf("price must be zero or greater")
 	}
 	if item.Cashback < 0 {
-		return fmt.Errorf("cashback is negative")
+		return fmt.Errorf("cashback must be zero or greater")
 	}
 	if !ItemCategory(item.Category).IsValid() {
 		return fmt.Errorf("category is invalid")
@@ -262,16 +262,16 @@ func (item *ItemFilter) Validate() error {
 		return fmt.Errorf("pageSize must be positive")
 	}
 	if item.PriceFrom != nil && item.PriceTo != nil && (*item.PriceTo).LessThan(*item.PriceFrom) {
-		return fmt.Errorf("priceTo cannot be lesser than priceFrom")
+		return fmt.Errorf("priceTo cannot be less than priceFrom")
 	}
 	if item.CreatedFrom != nil && item.CreatedTo != nil && (*item.CreatedTo).Before(*item.CreatedFrom) {
-		return fmt.Errorf("createTo cannot be earlier than createFrom")
+		return fmt.Errorf("createdTo cannot be earlier than createdFrom")
 	}
 	if item.UpdatedFrom != nil && item.UpdatedTo != nil && (*item.UpdatedTo).Before(*item.UpdatedFrom) {
-		return fmt.Errorf("updateTo cannot be earlier than updateFrom")
+		return fmt.Errorf("updatedTo cannot be earlier than updatedFrom")
 	}
 	if item.CashbackFrom != nil && item.CashbackTo != nil && *item.CashbackTo < *item.CashbackFrom {
-		return fmt.Errorf("cashbackFrom cannot be lesser than cashbackTO")
+		return fmt.Errorf("cashbackTo cannot be less than cashbackFrom")
 	}
 
 	return nil
@@ -279,7 +279,7 @@ func (item *ItemFilter) Validate() error {
 
 func (item *ItemCashbackByTagUpdate) Validate() error {
 	if item.Cashback < 0 {
-		return fmt.Errorf("cashback is negative")
+		return fmt.Errorf("cashback must be zero or greater")
 	}
 	if err := validateRequiredUUID(item.TagId, "tagId"); err != nil {
 		return err
@@ -290,7 +290,7 @@ func (item *ItemCashbackByTagUpdate) Validate() error {
 
 func (item *ItemCashbackByIdsUpdate) Validate() error {
 	if item.Cashback < 0 {
-		return fmt.Errorf("cashback is negative")
+		return fmt.Errorf("cashback must be zero or greater")
 	}
 	if err := validateItemIds(item.ItemIds); err != nil {
 		return err

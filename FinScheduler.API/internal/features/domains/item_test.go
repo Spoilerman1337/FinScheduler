@@ -240,21 +240,21 @@ func TestItemCreateValidate(t *testing.T) {
 			mutate: func(item *ItemCreate) {
 				item.Name = "No"
 			},
-			expectedErr: "name too short",
+			expectedErr: "name must be at least 3 characters long",
 		},
 		{
 			name: "price is negative",
 			mutate: func(item *ItemCreate) {
 				item.Price = decimal.RequireFromString("-1")
 			},
-			expectedErr: "price is negative",
+			expectedErr: "price must be zero or greater",
 		},
 		{
 			name: "cashback is negative",
 			mutate: func(item *ItemCreate) {
 				item.Cashback = -1
 			},
-			expectedErr: "cashback is negative",
+			expectedErr: "cashback must be zero or greater",
 		},
 		{
 			name: "category is invalid",
@@ -326,21 +326,21 @@ func TestItemUpdateValidate(t *testing.T) {
 			mutate: func(item *ItemUpdate) {
 				item.Name = "No"
 			},
-			expectedErr: "name too short",
+			expectedErr: "name must be at least 3 characters long",
 		},
 		{
 			name: "price is negative",
 			mutate: func(item *ItemUpdate) {
 				item.Price = decimal.RequireFromString("-1")
 			},
-			expectedErr: "price is negative",
+			expectedErr: "price must be zero or greater",
 		},
 		{
 			name: "cashback is negative",
 			mutate: func(item *ItemUpdate) {
 				item.Cashback = -1
 			},
-			expectedErr: "cashback is negative",
+			expectedErr: "cashback must be zero or greater",
 		},
 		{
 			name: "category is invalid",
@@ -440,7 +440,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := decimal.RequireFromString("5")
 				filter.PriceTo = &reversed
 			},
-			expectedErr: "priceTo cannot be lesser than priceFrom",
+			expectedErr: "priceTo cannot be less than priceFrom",
 		},
 		{
 			name: "created range is reversed",
@@ -448,7 +448,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := createdFrom.Add(-time.Hour)
 				filter.CreatedTo = &reversed
 			},
-			expectedErr: "createTo cannot be earlier than createFrom",
+			expectedErr: "createdTo cannot be earlier than createdFrom",
 		},
 		{
 			name: "updated range is reversed",
@@ -456,7 +456,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := updatedFrom.Add(-time.Hour)
 				filter.UpdatedTo = &reversed
 			},
-			expectedErr: "updateTo cannot be earlier than updateFrom",
+			expectedErr: "updatedTo cannot be earlier than updatedFrom",
 		},
 		{
 			name: "cashback range is reversed",
@@ -464,7 +464,7 @@ func TestItemFilterValidate(t *testing.T) {
 				reversed := int32(0)
 				filter.CashbackTo = &reversed
 			},
-			expectedErr: "cashbackFrom cannot be lesser than cashbackTO",
+			expectedErr: "cashbackTo cannot be less than cashbackFrom",
 		},
 	}
 
@@ -508,7 +508,7 @@ func TestItemCashbackByTagUpdateValidate(t *testing.T) {
 			mutate: func(item *ItemCashbackByTagUpdate) {
 				item.Cashback = -1
 			},
-			expectedErr: "cashback is negative",
+			expectedErr: "cashback must be zero or greater",
 		},
 		{
 			name: "tag id is empty",
@@ -574,7 +574,7 @@ func TestItemCashbackByIdsUpdateValidate(t *testing.T) {
 			mutate: func(item *ItemCashbackByIdsUpdate) {
 				item.Cashback = -1
 			},
-			expectedErr: "cashback is negative",
+			expectedErr: "cashback must be zero or greater",
 		},
 		{
 			name: "item ids are empty",
