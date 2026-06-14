@@ -67,11 +67,26 @@ go build ./cmd/finscheduler
 
 ## Tests
 
+Run the default test contour:
+
 ```bash
 go test ./...
 ```
 
+Run integration tests explicitly:
+
+```bash
+go test -tags=integration ./tests/integration/...
+```
+
+The intended split for CI is the same:
+
+- default job: `go test ./...`
+- integration job: `go test -tags=integration ./tests/integration/...`
+
 Integration tests start PostgreSQL through Testcontainers, so Docker must be available.
+
+On Windows, use Docker Desktop with Linux containers. The current setup does not work with rootless Docker on Windows.
 
 ## Observability
 
