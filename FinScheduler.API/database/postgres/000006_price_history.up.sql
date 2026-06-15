@@ -3,8 +3,13 @@ CREATE TABLE price_history
     id          UUID PRIMARY KEY,
     item_id     UUID           NOT NULL REFERENCES items (id) ON DELETE CASCADE,
     recorded_at DATE           NOT NULL,
-    value       NUMERIC(16, 2) NOT NULL CHECK (value >= 0)
+    value       NUMERIC(16, 2) NOT NULL CHECK (value >= 0),
+    CONSTRAINT uq_price_history_item_id_recorded_at
+        UNIQUE (item_id, recorded_at)
 );
+
+CREATE INDEX idx_price_history_item_id
+    ON price_history (item_id);
 
 WITH seed_data AS
 (
