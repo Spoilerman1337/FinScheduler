@@ -16,19 +16,37 @@ type PriceHistory struct {
 }
 
 type PriceHistoryPointDto struct {
-	Point time.Time       `json:"point"`
-	Value decimal.Decimal `json:"value"`
+	Point          time.Time        `json:"point"`
+	Value          decimal.Decimal  `json:"value"`
+	AbsoluteChange *decimal.Decimal `json:"absoluteChange"`
+	PercentChange  *decimal.Decimal `json:"percentChange"`
 }
 
 type PriceHistoryUpsert struct {
 	Value decimal.Decimal `json:"value"`
 }
 
-func NewPriceHistoryPointDto(priceHistory PriceHistory) *PriceHistoryPointDto {
-	return &PriceHistoryPointDto{
+func NewPriceHistoryPointDto(priceHistory PriceHistory, previousPriceHistory *PriceHistory) *PriceHistoryPointDto {
+	dto := &PriceHistoryPointDto{
 		Point: priceHistory.RecordedAt,
 		Value: priceHistory.Value,
 	}
+
+	if previousPriceHistory == nil {
+		return dto
+	}
+
+	absoluteChange := priceHistory.Value.Sub(previousPriceHistory.Value)
+	dto.AbsoluteChange = &absoluteChange
+
+	if previousPriceHistory.Value.IsZero() {
+		return dto
+	}
+
+	percentChange := absoluteChange.Div(previousPriceHistory.Value).Mul(decimal.NewFromInt(100))
+	dto.PercentChange = &percentChange
+
+	return dto
 }
 
 func (priceHistory *PriceHistoryUpsert) Validate() error {

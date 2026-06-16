@@ -66,9 +66,11 @@ func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	ctx := testContext
 	method := http.MethodGet
 	expectedName := "Milk"
-	priceHistoryDate := "2026-01-15"
-	priceHistoryValue := decimal.RequireFromString("13.75")
-	insertHistoryQuery := `INSERT INTO price_history (id, item_id, recorded_at, value) VALUES ($1, $2, $3, $4)`
+	olderPriceHistoryDate := "2026-01-10"
+	olderPriceHistoryValue := decimal.RequireFromString("11.00")
+	newerPriceHistoryDate := "2026-01-15"
+	newerPriceHistoryValue := decimal.RequireFromString("13.75")
+	insertHistoryQuery := `INSERT INTO price_history (id, item_id, recorded_at, value) VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)`
 	create := &domains.ItemCreate{
 		Name:     expectedName,
 		Price:    decimal.NewFromFloat(12.50),
@@ -76,7 +78,11 @@ func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	}
 
 	itemID, createErr := app.itemsService.Create(ctx, create)
-	_, insertHistoryErr := testDB.Exec(insertHistoryQuery, uuid.New(), itemID, priceHistoryDate, priceHistoryValue)
+	_, insertHistoryErr := testDB.Exec(
+		insertHistoryQuery,
+		uuid.New(), itemID, olderPriceHistoryDate, olderPriceHistoryValue,
+		uuid.New(), itemID, newerPriceHistoryDate, newerPriceHistoryValue,
+	)
 	target := "/api/items/" + itemID.String()
 	request := newJSONRequest(method, target, "")
 
@@ -97,9 +103,17 @@ func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	assert.Equal(t, expectedName, actualResponse.Name)
 	assert.Equal(t, 12.5, actualResponse.Price)
 	assert.Equal(t, domains.ItemCategory("FoodDrinks"), actualResponse.Category)
-	require.Len(t, actualResponse.PriceHistory, 1)
-	assert.Equal(t, priceHistoryDate, actualResponse.PriceHistory[0].Point.UTC().Format("2006-01-02"))
-	assert.True(t, priceHistoryValue.Equal(actualResponse.PriceHistory[0].Value))
+	require.Len(t, actualResponse.PriceHistory, 2)
+	assert.Equal(t, newerPriceHistoryDate, actualResponse.PriceHistory[0].Point.UTC().Format("2006-01-02"))
+	assert.True(t, newerPriceHistoryValue.Equal(actualResponse.PriceHistory[0].Value))
+	require.NotNil(t, actualResponse.PriceHistory[0].AbsoluteChange)
+	require.NotNil(t, actualResponse.PriceHistory[0].PercentChange)
+	assert.True(t, decimal.RequireFromString("2.75").Equal(*actualResponse.PriceHistory[0].AbsoluteChange))
+	assert.True(t, decimal.RequireFromString("25").Equal(*actualResponse.PriceHistory[0].PercentChange))
+	assert.Equal(t, olderPriceHistoryDate, actualResponse.PriceHistory[1].Point.UTC().Format("2006-01-02"))
+	assert.True(t, olderPriceHistoryValue.Equal(actualResponse.PriceHistory[1].Value))
+	assert.Nil(t, actualResponse.PriceHistory[1].AbsoluteChange)
+	assert.Nil(t, actualResponse.PriceHistory[1].PercentChange)
 }
 
 func Test_ItemsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {

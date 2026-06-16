@@ -208,8 +208,15 @@ func NewItemDetailedDto(item Item, tags []Tag, priceHistories []PriceHistory) *I
 	}
 
 	priceHistoryPoints := make([]PriceHistoryPointDto, 0, len(priceHistories))
-	for _, priceHistory := range priceHistories {
-		priceHistoryPoints = append(priceHistoryPoints, *NewPriceHistoryPointDto(priceHistory))
+	for i, priceHistory := range priceHistories {
+		var previousPriceHistory *PriceHistory
+		if i+1 < len(priceHistories) {
+			// History is already ordered by recorded_at DESC, so the previous value in time
+			// is the next slice element.
+			previousPriceHistory = &priceHistories[i+1]
+		}
+
+		priceHistoryPoints = append(priceHistoryPoints, *NewPriceHistoryPointDto(priceHistory, previousPriceHistory))
 	}
 
 	return &ItemDetailedDto{

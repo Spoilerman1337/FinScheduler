@@ -129,8 +129,14 @@ func Test_ItemsService_GetDetailedInfo_ShouldReturnPriceHistoryOrderedByDateDesc
 	require.Len(t, item.PriceHistory, 2)
 	assert.Equal(t, newerDate, item.PriceHistory[0].Point.UTC().Format("2006-01-02"))
 	assert.True(t, decimal.RequireFromString("11.25").Equal(item.PriceHistory[0].Value))
+	require.NotNil(t, item.PriceHistory[0].AbsoluteChange)
+	require.NotNil(t, item.PriceHistory[0].PercentChange)
+	assert.True(t, decimal.RequireFromString("1.75").Equal(*item.PriceHistory[0].AbsoluteChange))
+	assert.True(t, decimal.RequireFromString("18.42105263157895").Equal(*item.PriceHistory[0].PercentChange))
 	assert.Equal(t, olderDate, item.PriceHistory[1].Point.UTC().Format("2006-01-02"))
 	assert.True(t, decimal.RequireFromString("9.50").Equal(item.PriceHistory[1].Value))
+	assert.Nil(t, item.PriceHistory[1].AbsoluteChange)
+	assert.Nil(t, item.PriceHistory[1].PercentChange)
 }
 
 func Test_ItemsService_UpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
@@ -279,6 +285,8 @@ func Test_ItemsService_Update_ShouldUpsertPriceHistoryWhenPriceChanged(t *testin
 	assert.Equal(t, 1, actualCount)
 	assert.Equal(t, todayUTC, item.PriceHistory[0].Point.UTC().Format("2006-01-02"))
 	assert.True(t, decimal.RequireFromString("12.50").Equal(item.PriceHistory[0].Value))
+	assert.Nil(t, item.PriceHistory[0].AbsoluteChange)
+	assert.Nil(t, item.PriceHistory[0].PercentChange)
 }
 
 func Test_ItemsService_Update_ShouldNotUpsertPriceHistoryWhenPriceIsUnchanged(t *testing.T) {

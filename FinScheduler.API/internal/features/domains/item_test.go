@@ -168,8 +168,12 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	// Arrange
 	tagID := uuid.New()
 	price := decimal.RequireFromString("99.95")
-	priceHistoryDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
-	priceHistoryValue := decimal.RequireFromString("89.50")
+	newerPriceHistoryDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+	newerPriceHistoryValue := decimal.RequireFromString("89.50")
+	olderPriceHistoryDate := time.Date(2026, 1, 10, 0, 0, 0, 0, time.UTC)
+	olderPriceHistoryValue := decimal.RequireFromString("80.00")
+	expectedAbsoluteChange := decimal.RequireFromString("9.50")
+	expectedPercentChange := decimal.RequireFromString("11.875")
 	item := Item{
 		Id:          uuid.New(),
 		Name:        "Subscription",
@@ -189,8 +193,12 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	}
 	priceHistories := []PriceHistory{
 		{
-			RecordedAt: priceHistoryDate,
-			Value:      priceHistoryValue,
+			RecordedAt: newerPriceHistoryDate,
+			Value:      newerPriceHistoryValue,
+		},
+		{
+			RecordedAt: olderPriceHistoryDate,
+			Value:      olderPriceHistoryValue,
 		},
 	}
 
@@ -200,7 +208,7 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	// Assert
 	require.NotNil(t, dto)
 	require.Len(t, dto.Tags, 1)
-	require.Len(t, dto.PriceHistory, 1)
+	require.Len(t, dto.PriceHistory, 2)
 	assert.Equal(t, "Subscription", dto.Name)
 	assert.Equal(t, 99.95, dto.Price)
 	assert.Equal(t, "Monthly", dto.Description)
@@ -209,8 +217,16 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	assert.Equal(t, Subscriptions, dto.Category)
 	assert.Equal(t, "Recurring", dto.Tags[0].Label)
 	assert.Equal(t, tagID.String(), dto.Tags[0].Value)
-	assert.Equal(t, priceHistoryDate, dto.PriceHistory[0].Point)
-	assert.True(t, priceHistoryValue.Equal(dto.PriceHistory[0].Value))
+	assert.Equal(t, newerPriceHistoryDate, dto.PriceHistory[0].Point)
+	assert.True(t, newerPriceHistoryValue.Equal(dto.PriceHistory[0].Value))
+	require.NotNil(t, dto.PriceHistory[0].AbsoluteChange)
+	require.NotNil(t, dto.PriceHistory[0].PercentChange)
+	assert.True(t, expectedAbsoluteChange.Equal(*dto.PriceHistory[0].AbsoluteChange))
+	assert.True(t, expectedPercentChange.Equal(*dto.PriceHistory[0].PercentChange))
+	assert.Equal(t, olderPriceHistoryDate, dto.PriceHistory[1].Point)
+	assert.True(t, olderPriceHistoryValue.Equal(dto.PriceHistory[1].Value))
+	assert.Nil(t, dto.PriceHistory[1].AbsoluteChange)
+	assert.Nil(t, dto.PriceHistory[1].PercentChange)
 }
 
 func TestNewItemDetailedDto_ShouldUseEmptyTagsAndPriceHistorySlicesWhenNoDataProvided(t *testing.T) {
