@@ -18,9 +18,10 @@ func NewUnitOfWork(db *sqlx.DB, logger *slog.Logger) *UnitOfWork {
 }
 
 type Repositories struct {
-	Items      *repositories.ItemsRepository
-	Tags       *repositories.TagsRepository
-	TagToItems *repositories.TagToItemsRepository
+	Items          *repositories.ItemsRepository
+	PriceHistories *repositories.PriceHistoriesRepository
+	Tags           *repositories.TagsRepository
+	TagToItems     *repositories.TagToItemsRepository
 }
 
 func (uow *UnitOfWork) WithoutTx(fn func(Repositories) error) error {
@@ -56,8 +57,9 @@ func (uow *UnitOfWork) buildRepositories(db repositories.DBTX) Repositories {
 	factory := NewRepositoryFactory(db, uow.logger)
 
 	return Repositories{
-		Items:      factory.Items(),
-		Tags:       factory.Tags(),
-		TagToItems: factory.TagToItems(),
+		Items:          factory.Items(),
+		PriceHistories: factory.PriceHistories(),
+		Tags:           factory.Tags(),
+		TagToItems:     factory.TagToItems(),
 	}
 }
