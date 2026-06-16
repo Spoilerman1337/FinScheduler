@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/metrics"
 	"finscheduler/internal/persistence"
@@ -101,6 +102,14 @@ func (service *ItemsService) GetDetailedInfo(ctx context.Context, itemID uuid.UU
 			return err
 		}
 
+		rawPriceHistories, err := repositories.PriceHistories.GetByItemID(ctx, itemID)
+		if err != nil {
+			service.logger.ErrorContext(ctx, "Get price histories by item id failed", "itemID", itemID, "error", err)
+			traces.EnrichFailedServiceSpan(span, err)
+			metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
+			return err
+		}
+
 		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{itemID})
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "itemID", itemID, "error", err)
@@ -122,7 +131,7 @@ func (service *ItemsService) GetDetailedInfo(ctx context.Context, itemID uuid.UU
 			return err
 		}
 
-		item = domains.NewItemDetailedDto(*rawItem, rawTags)
+		item = domains.NewItemDetailedDto(*rawItem, rawTags, rawPriceHistories)
 		return nil
 	})
 	if err != nil {
@@ -233,7 +242,15 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 	updateTagIds := parseUUIDs(update.TagIds)
 
 	err := service.uow.WithTx(ctx, func(repositories persistence.Repositories) error {
-		var err error
+		currentItem, err := repositories.Items.GetDetailedInfo(ctx, itemID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				success = false
+				return nil
+			}
+
+			return err
+		}
 
 		success, err = repositories.Items.Update(ctx, itemID, update)
 		if err != nil {
@@ -241,6 +258,13 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 		}
 		if !success {
 			return nil
+		}
+
+		if !currentItem.Price.Equal(update.Price) {
+			_, err = repositories.PriceHistories.UpsertToday(ctx, itemID, &domains.PriceHistoryUpsert{Value: update.Price})
+			if err != nil {
+				return err
+			}
 		}
 
 		tagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{itemID})

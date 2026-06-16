@@ -168,6 +168,8 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	// Arrange
 	tagID := uuid.New()
 	price := decimal.RequireFromString("99.95")
+	priceHistoryDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+	priceHistoryValue := decimal.RequireFromString("89.50")
 	item := Item{
 		Id:          uuid.New(),
 		Name:        "Subscription",
@@ -185,13 +187,20 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 			IsActive: true,
 		},
 	}
+	priceHistories := []PriceHistory{
+		{
+			RecordedAt: priceHistoryDate,
+			Value:      priceHistoryValue,
+		},
+	}
 
 	// Act
-	dto := NewItemDetailedDto(item, tags)
+	dto := NewItemDetailedDto(item, tags, priceHistories)
 
 	// Assert
 	require.NotNil(t, dto)
 	require.Len(t, dto.Tags, 1)
+	require.Len(t, dto.PriceHistory, 1)
 	assert.Equal(t, "Subscription", dto.Name)
 	assert.Equal(t, 99.95, dto.Price)
 	assert.Equal(t, "Monthly", dto.Description)
@@ -200,9 +209,11 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	assert.Equal(t, Subscriptions, dto.Category)
 	assert.Equal(t, "Recurring", dto.Tags[0].Label)
 	assert.Equal(t, tagID.String(), dto.Tags[0].Value)
+	assert.Equal(t, priceHistoryDate, dto.PriceHistory[0].Point)
+	assert.True(t, priceHistoryValue.Equal(dto.PriceHistory[0].Value))
 }
 
-func TestNewItemDetailedDto_ShouldUseEmptyTagsSliceWhenNoTagsProvided(t *testing.T) {
+func TestNewItemDetailedDto_ShouldUseEmptyTagsAndPriceHistorySlicesWhenNoDataProvided(t *testing.T) {
 	// Arrange
 	item := Item{
 		Id:          uuid.New(),
@@ -216,12 +227,14 @@ func TestNewItemDetailedDto_ShouldUseEmptyTagsSliceWhenNoTagsProvided(t *testing
 	}
 
 	// Act
-	dto := NewItemDetailedDto(item, nil)
+	dto := NewItemDetailedDto(item, nil, nil)
 
 	// Assert
 	require.NotNil(t, dto)
 	require.NotNil(t, dto.Tags)
+	require.NotNil(t, dto.PriceHistory)
 	assert.Empty(t, dto.Tags)
+	assert.Empty(t, dto.PriceHistory)
 }
 
 func TestItemCreateValidate(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"finscheduler/internal/persistence"
 	"finscheduler/tests/internal/testsupport"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -85,8 +86,51 @@ func Test_ItemsService_CreateAndGetDetailedInfo_ShouldReturnAssignedTags(t *test
 	require.NoError(t, getErr)
 	require.NotNil(t, item)
 	require.Len(t, item.Tags, 1)
+	require.NotNil(t, item.PriceHistory)
 	assert.Equal(t, tagName, item.Tags[0].Label)
 	assert.Equal(t, tagID.String(), item.Tags[0].Value)
+	assert.Empty(t, item.PriceHistory)
+}
+
+func Test_ItemsService_GetDetailedInfo_ShouldReturnPriceHistoryOrderedByDateDescending(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	itemsService := services.NewItemsService(uow, testLogger)
+	itemName := "Milk"
+	olderDate := "2026-01-10"
+	newerDate := "2026-01-15"
+	insertHistoryQuery := `INSERT INTO price_history (id, item_id, recorded_at, value) VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)`
+	create := &domains.ItemCreate{
+		Name:     itemName,
+		Price:    decimal.RequireFromString("10.00"),
+		Category: "FoodDrinks",
+	}
+
+	itemID, itemCreateErr := itemsService.Create(ctx, create)
+	_, insertHistoryErr := testDB.Exec(
+		insertHistoryQuery,
+		uuid.New(), itemID, olderDate, decimal.RequireFromString("9.50"),
+		uuid.New(), itemID, newerDate, decimal.RequireFromString("11.25"),
+	)
+
+	// Act
+	item, getErr := itemsService.GetDetailedInfo(ctx, itemID)
+
+	// Assert
+	require.NoError(t, itemCreateErr)
+	require.NoError(t, insertHistoryErr)
+	require.NoError(t, getErr)
+	require.NotNil(t, item)
+	require.Len(t, item.PriceHistory, 2)
+	assert.Equal(t, newerDate, item.PriceHistory[0].Point.UTC().Format("2006-01-02"))
+	assert.True(t, decimal.RequireFromString("11.25").Equal(item.PriceHistory[0].Value))
+	assert.Equal(t, olderDate, item.PriceHistory[1].Point.UTC().Format("2006-01-02"))
+	assert.True(t, decimal.RequireFromString("9.50").Equal(item.PriceHistory[1].Value))
 }
 
 func Test_ItemsService_UpdateAndGetListingInfo_ShouldNotErr(t *testing.T) {
@@ -192,6 +236,89 @@ func Test_ItemsService_Update_ShouldReconcileTagLinks(t *testing.T) {
 	assert.Equal(t, secondTagName, item.Tags[0].Label)
 	assert.Equal(t, secondTagID.String(), item.Tags[0].Value)
 	assert.Equal(t, []uuid.UUID{secondTagID}, actualTagIDs)
+}
+
+func Test_ItemsService_Update_ShouldUpsertPriceHistoryWhenPriceChanged(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	itemsService := services.NewItemsService(uow, testLogger)
+	todayUTC := time.Now().UTC().Format("2006-01-02")
+	countQuery := "SELECT COUNT(*) FROM price_history WHERE item_id = $1"
+	create := &domains.ItemCreate{
+		Name:     "Coffee",
+		Price:    decimal.RequireFromString("10.00"),
+		Category: "FoodDrinks",
+	}
+	update := &domains.ItemUpdate{
+		Name:     "Coffee",
+		Price:    decimal.RequireFromString("12.50"),
+		Category: "FoodDrinks",
+	}
+
+	itemID, itemCreateErr := itemsService.Create(ctx, create)
+
+	// Act
+	ok, updateErr := itemsService.Update(ctx, itemID, update)
+	item, getErr := itemsService.GetDetailedInfo(ctx, itemID)
+	var actualCount int
+	countErr := testDB.Get(&actualCount, countQuery, itemID)
+
+	// Assert
+	require.NoError(t, itemCreateErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, getErr)
+	require.NoError(t, countErr)
+	require.True(t, ok)
+	require.NotNil(t, item)
+	require.Len(t, item.PriceHistory, 1)
+	assert.Equal(t, 1, actualCount)
+	assert.Equal(t, todayUTC, item.PriceHistory[0].Point.UTC().Format("2006-01-02"))
+	assert.True(t, decimal.RequireFromString("12.50").Equal(item.PriceHistory[0].Value))
+}
+
+func Test_ItemsService_Update_ShouldNotUpsertPriceHistoryWhenPriceIsUnchanged(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	itemsService := services.NewItemsService(uow, testLogger)
+	countQuery := "SELECT COUNT(*) FROM price_history WHERE item_id = $1"
+	create := &domains.ItemCreate{
+		Name:     "Tea",
+		Price:    decimal.RequireFromString("7.50"),
+		Category: "FoodDrinks",
+	}
+	update := &domains.ItemUpdate{
+		Name:     "Tea updated",
+		Price:    decimal.RequireFromString("7.50"),
+		Category: "FoodDrinks",
+	}
+
+	itemID, itemCreateErr := itemsService.Create(ctx, create)
+
+	// Act
+	ok, updateErr := itemsService.Update(ctx, itemID, update)
+	item, getErr := itemsService.GetDetailedInfo(ctx, itemID)
+	var actualCount int
+	countErr := testDB.Get(&actualCount, countQuery, itemID)
+
+	// Assert
+	require.NoError(t, itemCreateErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, getErr)
+	require.NoError(t, countErr)
+	require.True(t, ok)
+	require.NotNil(t, item)
+	assert.Equal(t, 0, actualCount)
+	assert.Empty(t, item.PriceHistory)
 }
 
 func Test_ItemsService_DeleteAndGetListingInfo_ShouldErr(t *testing.T) {
