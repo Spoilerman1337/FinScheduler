@@ -87,9 +87,11 @@ func Test_ItemsService_CreateAndGetDetailedInfo_ShouldReturnAssignedTags(t *test
 	require.NotNil(t, item)
 	require.Len(t, item.Tags, 1)
 	require.NotNil(t, item.PriceHistory)
+	require.NotNil(t, item.PriceForecast)
 	assert.Equal(t, tagName, item.Tags[0].Label)
 	assert.Equal(t, tagID.String(), item.Tags[0].Value)
 	assert.Empty(t, item.PriceHistory)
+	assert.Empty(t, item.PriceForecast)
 }
 
 func Test_ItemsService_GetDetailedInfo_ShouldReturnPriceHistoryOrderedByDateDescending(t *testing.T) {
@@ -127,6 +129,7 @@ func Test_ItemsService_GetDetailedInfo_ShouldReturnPriceHistoryOrderedByDateDesc
 	require.NoError(t, getErr)
 	require.NotNil(t, item)
 	require.Len(t, item.PriceHistory, 2)
+	require.Empty(t, item.PriceForecast)
 	assert.Equal(t, newerDate, item.PriceHistory[0].Point.UTC().Format("2006-01-02"))
 	assert.True(t, decimal.RequireFromString("11.25").Equal(item.PriceHistory[0].Value))
 	require.NotNil(t, item.PriceHistory[0].AbsoluteChange)
@@ -255,6 +258,7 @@ func Test_ItemsService_Update_ShouldUpsertPriceHistoryWhenPriceChanged(t *testin
 	itemsService := services.NewItemsService(uow, testLogger)
 	todayUTC := time.Now().UTC().Format("2006-01-02")
 	countQuery := "SELECT COUNT(*) FROM price_history WHERE item_id = $1"
+	forecastCountQuery := "SELECT COUNT(*) FROM price_forecast WHERE item_id = $1"
 	create := &domains.ItemCreate{
 		Name:     "Coffee",
 		Price:    decimal.RequireFromString("10.00"),
@@ -273,16 +277,21 @@ func Test_ItemsService_Update_ShouldUpsertPriceHistoryWhenPriceChanged(t *testin
 	item, getErr := itemsService.GetDetailedInfo(ctx, itemID)
 	var actualCount int
 	countErr := testDB.Get(&actualCount, countQuery, itemID)
+	var actualForecastCount int
+	forecastCountErr := testDB.Get(&actualForecastCount, forecastCountQuery, itemID)
 
 	// Assert
 	require.NoError(t, itemCreateErr)
 	require.NoError(t, updateErr)
 	require.NoError(t, getErr)
 	require.NoError(t, countErr)
+	require.NoError(t, forecastCountErr)
 	require.True(t, ok)
 	require.NotNil(t, item)
 	require.Len(t, item.PriceHistory, 1)
+	require.Empty(t, item.PriceForecast)
 	assert.Equal(t, 1, actualCount)
+	assert.Equal(t, 0, actualForecastCount)
 	assert.Equal(t, todayUTC, item.PriceHistory[0].Point.UTC().Format("2006-01-02"))
 	assert.True(t, decimal.RequireFromString("12.50").Equal(item.PriceHistory[0].Value))
 	assert.Nil(t, item.PriceHistory[0].AbsoluteChange)
@@ -327,6 +336,71 @@ func Test_ItemsService_Update_ShouldNotUpsertPriceHistoryWhenPriceIsUnchanged(t 
 	require.NotNil(t, item)
 	assert.Equal(t, 0, actualCount)
 	assert.Empty(t, item.PriceHistory)
+	assert.Empty(t, item.PriceForecast)
+}
+
+func Test_ItemsService_Update_ShouldBuildPriceForecastWhenHistoryHasAtLeastTwoPoints(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	ctx := testContext
+	uow := persistence.NewUnitOfWork(testDB, testLogger)
+	itemsService := services.NewItemsService(uow, testLogger)
+	todayUTC := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), time.Now().UTC().Day(), 0, 0, 0, 0, time.UTC)
+	middleDate := todayUTC.AddDate(0, 0, -15)
+	oldestDate := todayUTC.AddDate(0, -3, 0)
+	oldestValue := decimal.RequireFromString("10.00")
+	middleValue := decimal.RequireFromString("11.00")
+	newValue := decimal.RequireFromString("12.50")
+	insertHistoryQuery := `INSERT INTO price_history (id, item_id, recorded_at, value) VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)`
+	forecastCountQuery := "SELECT COUNT(*) FROM price_forecast WHERE item_id = $1"
+	create := &domains.ItemCreate{
+		Name:     "Forecast coffee",
+		Price:    oldestValue,
+		Category: "FoodDrinks",
+	}
+	update := &domains.ItemUpdate{
+		Name:     "Forecast coffee",
+		Price:    newValue,
+		Category: "FoodDrinks",
+	}
+
+	itemID, itemCreateErr := itemsService.Create(ctx, create)
+	_, insertHistoryErr := testDB.Exec(
+		insertHistoryQuery,
+		uuid.New(), itemID, oldestDate.Format("2006-01-02"), oldestValue,
+		uuid.New(), itemID, middleDate.Format("2006-01-02"), middleValue,
+	)
+	firstSegmentMonthsBetween := decimal.NewFromFloat(todayUTC.Sub(middleDate).Hours() / 24).Div(decimal.RequireFromString("30.4375"))
+	secondSegmentMonthsBetween := decimal.NewFromFloat(middleDate.Sub(oldestDate).Hours() / 24).Div(decimal.RequireFromString("30.4375"))
+	firstSegmentDrift := newValue.Sub(middleValue).Div(middleValue).Mul(decimal.NewFromInt(100)).Div(firstSegmentMonthsBetween)
+	secondSegmentDrift := middleValue.Sub(oldestValue).Div(oldestValue).Mul(decimal.NewFromInt(100)).Div(secondSegmentMonthsBetween)
+	expectedDrift := firstSegmentDrift.Add(secondSegmentDrift).Div(decimal.NewFromInt(2)).Round(2)
+	expectedFirstForecastValue := newValue.Mul(decimal.NewFromInt(1).Add(expectedDrift.Div(decimal.NewFromInt(100)))).Round(2)
+	expectedLastForecastValue := newValue.Mul(decimal.NewFromInt(1).Add(expectedDrift.Div(decimal.NewFromInt(100)).Mul(decimal.NewFromInt(12)))).Round(2)
+
+	// Act
+	ok, updateErr := itemsService.Update(ctx, itemID, update)
+	item, getErr := itemsService.GetDetailedInfo(ctx, itemID)
+	var actualForecastCount int
+	forecastCountErr := testDB.Get(&actualForecastCount, forecastCountQuery, itemID)
+
+	// Assert
+	require.NoError(t, itemCreateErr)
+	require.NoError(t, insertHistoryErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, getErr)
+	require.NoError(t, forecastCountErr)
+	require.True(t, ok)
+	require.NotNil(t, item)
+	require.Len(t, item.PriceForecast, 12)
+	assert.Equal(t, 1, actualForecastCount)
+	assert.Equal(t, todayUTC.AddDate(0, 1, 0), item.PriceForecast[0].Point)
+	assert.True(t, expectedFirstForecastValue.Equal(item.PriceForecast[0].Value))
+	assert.Equal(t, todayUTC.AddDate(0, 12, 0), item.PriceForecast[11].Point)
+	assert.True(t, expectedLastForecastValue.Equal(item.PriceForecast[11].Value))
 }
 
 func Test_ItemsService_DeleteAndGetListingInfo_ShouldErr(t *testing.T) {

@@ -19,6 +19,7 @@ func NewUnitOfWork(db *sqlx.DB, logger *slog.Logger) *UnitOfWork {
 
 type Repositories struct {
 	Items          *repositories.ItemsRepository
+	PriceForecasts *repositories.PriceForecastsRepository
 	PriceHistories *repositories.PriceHistoriesRepository
 	Tags           *repositories.TagsRepository
 	TagToItems     *repositories.TagToItemsRepository
@@ -58,6 +59,7 @@ func (uow *UnitOfWork) buildRepositories(db repositories.DBTX) Repositories {
 
 	return Repositories{
 		Items:          factory.Items(),
+		PriceForecasts: factory.PriceForecasts(),
 		PriceHistories: factory.PriceHistories(),
 		Tags:           factory.Tags(),
 		TagToItems:     factory.TagToItems(),

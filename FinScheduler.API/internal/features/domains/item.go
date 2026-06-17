@@ -33,14 +33,15 @@ type ItemListingDto struct {
 }
 
 type ItemDetailedDto struct {
-	Name         string                 `json:"name"`
-	Price        float64                `json:"price"`
-	Description  string                 `json:"description"`
-	IsActive     bool                   `json:"isActive"`
-	Cashback     int32                  `json:"cashback"`
-	Category     ItemCategory           `json:"category"`
-	Tags         []Lookup               `json:"tags"`
-	PriceHistory []PriceHistoryPointDto `json:"priceHistory"`
+	Name          string                  `json:"name"`
+	Price         float64                 `json:"price"`
+	Description   string                  `json:"description"`
+	IsActive      bool                    `json:"isActive"`
+	Cashback      int32                   `json:"cashback"`
+	Category      ItemCategory            `json:"category"`
+	Tags          []Lookup                `json:"tags"`
+	PriceHistory  []PriceHistoryPointDto  `json:"priceHistory"`
+	PriceForecast []PriceForecastPointDto `json:"priceForecast"`
 }
 
 type ItemFilter struct {
@@ -194,7 +195,7 @@ func NewItemListingDto(item Item) *ItemListingDto {
 	}
 }
 
-func NewItemDetailedDto(item Item, tags []Tag, priceHistories []PriceHistory) *ItemDetailedDto {
+func NewItemDetailedDto(item Item, tags []Tag, priceHistories []PriceHistory, priceForecast []PriceForecastPointDto) *ItemDetailedDto {
 	price, _ := item.Price.Float64()
 
 	tagLookups := make([]Lookup, 0, len(tags))
@@ -219,15 +220,19 @@ func NewItemDetailedDto(item Item, tags []Tag, priceHistories []PriceHistory) *I
 		priceHistoryPoints = append(priceHistoryPoints, *NewPriceHistoryPointDto(priceHistory, previousPriceHistory))
 	}
 
+	priceForecastPoints := make([]PriceForecastPointDto, 0, len(priceForecast))
+	priceForecastPoints = append(priceForecastPoints, priceForecast...)
+
 	return &ItemDetailedDto{
-		Name:         item.Name,
-		Description:  item.Description,
-		IsActive:     item.IsActive,
-		Price:        price,
-		Cashback:     item.Cashback,
-		Category:     item.Category,
-		Tags:         tagLookups,
-		PriceHistory: priceHistoryPoints,
+		Name:          item.Name,
+		Description:   item.Description,
+		IsActive:      item.IsActive,
+		Price:         price,
+		Cashback:      item.Cashback,
+		Category:      item.Category,
+		Tags:          tagLookups,
+		PriceHistory:  priceHistoryPoints,
+		PriceForecast: priceForecastPoints,
 	}
 }
 

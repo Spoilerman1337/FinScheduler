@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -104,6 +105,7 @@ func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	assert.Equal(t, 12.5, actualResponse.Price)
 	assert.Equal(t, domains.ItemCategory("FoodDrinks"), actualResponse.Category)
 	require.Len(t, actualResponse.PriceHistory, 2)
+	require.Empty(t, actualResponse.PriceForecast)
 	assert.Equal(t, newerPriceHistoryDate, actualResponse.PriceHistory[0].Point.UTC().Format("2006-01-02"))
 	assert.True(t, newerPriceHistoryValue.Equal(actualResponse.PriceHistory[0].Value))
 	require.NotNil(t, actualResponse.PriceHistory[0].AbsoluteChange)
@@ -114,6 +116,52 @@ func Test_ItemsHandler_GetDetailedInfo_ShouldReturnItem(t *testing.T) {
 	assert.True(t, olderPriceHistoryValue.Equal(actualResponse.PriceHistory[1].Value))
 	assert.Nil(t, actualResponse.PriceHistory[1].AbsoluteChange)
 	assert.Nil(t, actualResponse.PriceHistory[1].PercentChange)
+}
+
+func Test_ItemsHandler_GetDetailedInfo_ShouldReturnPriceForecastWhenAvailable(t *testing.T) {
+	// Arrange
+	t.Cleanup(func() {
+		testsupport.Truncate(t, testDB)
+	})
+
+	app := newTestApplication()
+	ctx := testContext
+	todayUTC := time.Date(time.Now().UTC().Year(), time.Now().UTC().Month(), time.Now().UTC().Day(), 0, 0, 0, 0, time.UTC)
+	olderDate := todayUTC.AddDate(0, -2, 0)
+	insertHistoryQuery := `INSERT INTO price_history (id, item_id, recorded_at, value) VALUES ($1, $2, $3, $4)`
+	create := &domains.ItemCreate{
+		Name:     "Forecast item",
+		Price:    decimal.RequireFromString("10.00"),
+		Category: "FoodDrinks",
+	}
+	update := &domains.ItemUpdate{
+		Name:     "Forecast item",
+		Price:    decimal.RequireFromString("12.50"),
+		Category: "FoodDrinks",
+	}
+
+	itemID, createErr := app.itemsService.Create(ctx, create)
+	_, insertHistoryErr := testDB.Exec(insertHistoryQuery, uuid.New(), itemID, olderDate.Format("2006-01-02"), decimal.RequireFromString("10.00"))
+	_, updateErr := app.itemsService.Update(ctx, itemID, update)
+	request := newJSONRequest(http.MethodGet, "/api/items/"+itemID.String(), "")
+
+	// Act
+	recorder := httptest.NewRecorder()
+	app.router.ServeHTTP(recorder, request)
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	var actualResponse domains.ItemDetailedDto
+	decodeErr := json.NewDecoder(response.Body).Decode(&actualResponse)
+
+	// Assert
+	require.NoError(t, createErr)
+	require.NoError(t, insertHistoryErr)
+	require.NoError(t, updateErr)
+	require.NoError(t, decodeErr)
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	require.Len(t, actualResponse.PriceForecast, 12)
+	assert.Equal(t, todayUTC.AddDate(0, 1, 0), actualResponse.PriceForecast[0].Point)
 }
 
 func Test_ItemsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {

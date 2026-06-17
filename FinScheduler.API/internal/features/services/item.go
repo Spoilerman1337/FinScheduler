@@ -12,6 +12,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"go.opentelemetry.io/otel"
 )
 
@@ -21,6 +22,9 @@ type ItemsService struct {
 }
 
 const itemsServiceName = "items"
+const priceForecastMonthsAhead = 12
+
+var averageDaysInMonth = decimal.RequireFromString("30.4375")
 
 func NewItemsService(uow *persistence.UnitOfWork, logger *slog.Logger) *ItemsService {
 	return &ItemsService{
@@ -110,6 +114,19 @@ func (service *ItemsService) GetDetailedInfo(ctx context.Context, itemID uuid.UU
 			return err
 		}
 
+		priceForecastPoints := make([]domains.PriceForecastPointDto, 0)
+		rawPriceForecast, err := repositories.PriceForecasts.GetLatestByItemID(ctx, itemID)
+		if err != nil {
+			if err != sql.ErrNoRows {
+				service.logger.ErrorContext(ctx, "Get price forecast by item id failed", "itemID", itemID, "error", err)
+				traces.EnrichFailedServiceSpan(span, err)
+				metrics.RecordServiceFailure(ctx, itemsServiceName, "GetDetailedInfo", err)
+				return err
+			}
+		} else if rawPriceForecast != nil {
+			priceForecastPoints = domains.BuildPriceForecastPoints(*rawPriceForecast, priceForecastMonthsAhead)
+		}
+
 		rawTagToItems, err := repositories.TagToItems.GetByItemIds(ctx, []uuid.UUID{itemID})
 		if err != nil {
 			service.logger.ErrorContext(ctx, "Get tag to items failed", "itemID", itemID, "error", err)
@@ -131,7 +148,7 @@ func (service *ItemsService) GetDetailedInfo(ctx context.Context, itemID uuid.UU
 			return err
 		}
 
-		item = domains.NewItemDetailedDto(*rawItem, rawTags, rawPriceHistories)
+		item = domains.NewItemDetailedDto(*rawItem, rawTags, rawPriceHistories, priceForecastPoints)
 		return nil
 	})
 	if err != nil {
@@ -264,6 +281,19 @@ func (service *ItemsService) Update(ctx context.Context, itemID uuid.UUID, updat
 			_, err = repositories.PriceHistories.UpsertToday(ctx, itemID, &domains.PriceHistoryUpsert{Value: update.Price})
 			if err != nil {
 				return err
+			}
+
+			priceHistories, err := repositories.PriceHistories.GetByItemID(ctx, itemID)
+			if err != nil {
+				return err
+			}
+
+			priceForecastUpsert := buildPriceForecastUpsert(priceHistories)
+			if priceForecastUpsert != nil {
+				_, err = repositories.PriceForecasts.UpsertByItemID(ctx, itemID, priceForecastUpsert)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -454,4 +484,53 @@ func parseUUIDs(ids []string) []uuid.UUID {
 	}
 
 	return result
+}
+
+func buildPriceForecastUpsert(priceHistories []domains.PriceHistory) *domains.PriceForecastUpsert {
+	if len(priceHistories) < 2 {
+		return nil
+	}
+
+	latestPriceHistory := priceHistories[0]
+	totalMonthlyDrift := decimal.Zero
+	validSegmentsCount := int64(0)
+
+	for index := 0; index < len(priceHistories)-1; index++ {
+		newerPriceHistory := priceHistories[index]
+		olderPriceHistory := priceHistories[index+1]
+		daysBetween := newerPriceHistory.RecordedAt.Sub(olderPriceHistory.RecordedAt).Hours() / 24
+		if daysBetween <= 0 {
+			continue
+		}
+
+		monthsBetween := decimal.NewFromFloat(daysBetween).Div(averageDaysInMonth)
+		if monthsBetween.IsZero() {
+			continue
+		}
+
+		if olderPriceHistory.Value.IsZero() {
+			if newerPriceHistory.Value.IsZero() {
+				validSegmentsCount++
+			}
+			continue
+		}
+
+		monthlyDrift := newerPriceHistory.Value.
+			Sub(olderPriceHistory.Value).
+			Div(olderPriceHistory.Value).
+			Mul(decimal.NewFromInt(100)).
+			Div(monthsBetween)
+		totalMonthlyDrift = totalMonthlyDrift.Add(monthlyDrift)
+		validSegmentsCount++
+	}
+	if validSegmentsCount == 0 {
+		return nil
+	}
+
+	averageMonthlyDrift := totalMonthlyDrift.Div(decimal.NewFromInt(validSegmentsCount)).Round(2)
+
+	return &domains.PriceForecastUpsert{
+		LastKnownPrice:      latestPriceHistory.Value,
+		AverageMonthlyDrift: averageMonthlyDrift,
+	}
 }

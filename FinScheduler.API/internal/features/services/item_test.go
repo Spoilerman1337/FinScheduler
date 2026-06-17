@@ -6,8 +6,10 @@ import (
 	"finscheduler/internal/persistence"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -170,4 +172,62 @@ func TestItemsServiceUpdateCashbackByIds_ShouldReturnErrorOnInvalidInput(t *test
 	require.EqualError(t, errOnInvalidUpdate, "itemId is invalid: bad-uuid")
 	assert.Zero(t, affectedOnNilUpdate)
 	assert.Zero(t, affectedOnInvalidUpdate)
+}
+
+func TestBuildPriceForecastUpsert_ShouldReturnNilWhenThereAreLessThanTwoPoints(t *testing.T) {
+	// Arrange
+	priceHistories := []domains.PriceHistory{
+		{
+			RecordedAt: time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC),
+			Value:      decimal.RequireFromString("100.00"),
+		},
+	}
+
+	// Act
+	upsert := buildPriceForecastUpsert(priceHistories)
+
+	// Assert
+	assert.Nil(t, upsert)
+}
+
+func TestBuildPriceForecastUpsert_ShouldAverageMonthlyDriftsBetweenNeighborPoints(t *testing.T) {
+	// Arrange
+	latestDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	middleDate := latestDate.AddDate(0, 0, -15)
+	oldestDate := latestDate.AddDate(0, -3, 0)
+	priceHistories := []domains.PriceHistory{
+		{
+			RecordedAt: latestDate,
+			Value:      decimal.RequireFromString("112.00"),
+		},
+		{
+			RecordedAt: middleDate,
+			Value:      decimal.RequireFromString("111.00"),
+		},
+		{
+			RecordedAt: oldestDate,
+			Value:      decimal.RequireFromString("100.00"),
+		},
+	}
+	firstSegmentMonthsBetween := decimal.NewFromFloat(latestDate.Sub(middleDate).Hours() / 24).Div(averageDaysInMonth)
+	secondSegmentMonthsBetween := decimal.NewFromFloat(middleDate.Sub(oldestDate).Hours() / 24).Div(averageDaysInMonth)
+	firstSegmentDrift := decimal.RequireFromString("112.00").
+		Sub(decimal.RequireFromString("111.00")).
+		Div(decimal.RequireFromString("111.00")).
+		Mul(decimal.NewFromInt(100)).
+		Div(firstSegmentMonthsBetween)
+	secondSegmentDrift := decimal.RequireFromString("111.00").
+		Sub(decimal.RequireFromString("100.00")).
+		Div(decimal.RequireFromString("100.00")).
+		Mul(decimal.NewFromInt(100)).
+		Div(secondSegmentMonthsBetween)
+	expectedDrift := firstSegmentDrift.Add(secondSegmentDrift).Div(decimal.NewFromInt(2)).Round(2)
+
+	// Act
+	upsert := buildPriceForecastUpsert(priceHistories)
+
+	// Assert
+	require.NotNil(t, upsert)
+	assert.True(t, decimal.RequireFromString("112.00").Equal(upsert.LastKnownPrice))
+	assert.True(t, expectedDrift.Equal(upsert.AverageMonthlyDrift))
 }

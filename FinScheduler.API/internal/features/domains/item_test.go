@@ -174,6 +174,12 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	olderPriceHistoryValue := decimal.RequireFromString("80.00")
 	expectedAbsoluteChange := decimal.RequireFromString("9.50")
 	expectedPercentChange := decimal.RequireFromString("11.875")
+	priceForecastPoints := []PriceForecastPointDto{
+		{
+			Point: time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC),
+			Value: decimal.RequireFromString("95.00"),
+		},
+	}
 	item := Item{
 		Id:          uuid.New(),
 		Name:        "Subscription",
@@ -203,12 +209,13 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	}
 
 	// Act
-	dto := NewItemDetailedDto(item, tags, priceHistories)
+	dto := NewItemDetailedDto(item, tags, priceHistories, priceForecastPoints)
 
 	// Assert
 	require.NotNil(t, dto)
 	require.Len(t, dto.Tags, 1)
 	require.Len(t, dto.PriceHistory, 2)
+	require.Len(t, dto.PriceForecast, 1)
 	assert.Equal(t, "Subscription", dto.Name)
 	assert.Equal(t, 99.95, dto.Price)
 	assert.Equal(t, "Monthly", dto.Description)
@@ -227,6 +234,8 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	assert.True(t, olderPriceHistoryValue.Equal(dto.PriceHistory[1].Value))
 	assert.Nil(t, dto.PriceHistory[1].AbsoluteChange)
 	assert.Nil(t, dto.PriceHistory[1].PercentChange)
+	assert.Equal(t, priceForecastPoints[0].Point, dto.PriceForecast[0].Point)
+	assert.True(t, priceForecastPoints[0].Value.Equal(dto.PriceForecast[0].Value))
 }
 
 func TestNewItemDetailedDto_ShouldUseEmptyTagsAndPriceHistorySlicesWhenNoDataProvided(t *testing.T) {
@@ -243,14 +252,16 @@ func TestNewItemDetailedDto_ShouldUseEmptyTagsAndPriceHistorySlicesWhenNoDataPro
 	}
 
 	// Act
-	dto := NewItemDetailedDto(item, nil, nil)
+	dto := NewItemDetailedDto(item, nil, nil, nil)
 
 	// Assert
 	require.NotNil(t, dto)
 	require.NotNil(t, dto.Tags)
 	require.NotNil(t, dto.PriceHistory)
+	require.NotNil(t, dto.PriceForecast)
 	assert.Empty(t, dto.Tags)
 	assert.Empty(t, dto.PriceHistory)
+	assert.Empty(t, dto.PriceForecast)
 }
 
 func TestItemCreateValidate(t *testing.T) {
