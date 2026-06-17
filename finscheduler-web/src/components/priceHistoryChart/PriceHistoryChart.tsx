@@ -204,7 +204,7 @@ function buildTooltipEntries(values: TooltipValue[]): PriceHistoryTooltipEntry[]
     }));
 }
 
-export function buildTooltipPosition(coordinate: {
+function buildTooltipPosition(coordinate: {
     x: number;
     y: number;
 }): PriceHistoryTooltipPosition {

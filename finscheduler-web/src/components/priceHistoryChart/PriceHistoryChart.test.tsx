@@ -2,7 +2,7 @@ import {fireEvent, screen, waitFor} from '@testing-library/react';
 import {cloneElement, isValidElement, type ReactElement} from 'react';
 import {describe, expect, it, vi} from 'vitest';
 import {renderWithProviders} from '../../test/render.tsx';
-import PriceHistoryChart, {buildTooltipPosition} from './PriceHistoryChart.tsx';
+import PriceHistoryChart from './PriceHistoryChart.tsx';
 
 interface ResponsiveContainerChildProps {
     width?: number;
@@ -86,16 +86,32 @@ describe('PriceHistoryChart', () => {
         ).toBeInTheDocument();
     });
 
-    it('clamps the tooltip horizontally near the chart edge', () => {
+    it('hides the tooltip after the pointer leaves the chart point', async () => {
         // Arrange
-        const coordinate = {x: 352, y: 96};
+        const {container} = renderChart();
+        const dots = container.querySelectorAll('.recharts-line-dots circle');
+        const hoveredDot = dots[dots.length - 1];
+        const coordinateX = Number(hoveredDot?.getAttribute('cx') ?? 0);
+        const coordinateY = Number(hoveredDot?.getAttribute('cy') ?? 0);
+
+        expect(hoveredDot).toBeTruthy();
 
         // Act
-        const position = buildTooltipPosition(coordinate);
+        fireEvent.mouseEnter(hoveredDot);
+        fireEvent.mouseMove(hoveredDot, {
+            clientX: coordinateX,
+            clientY: coordinateY,
+        });
 
         // Assert
-        expect(position.left).toBe('clamp(8px, calc(352px - 92px), calc(100% - 184px - 8px))');
-        expect(position.top).toBe('96px');
-        expect(position.transform).toBe('translateY(calc(-100% - 14px))');
+        await waitFor(() => {
+            expect(screen.getByTestId('price-history-tooltip')).toBeInTheDocument();
+        });
+        fireEvent.mouseLeave(hoveredDot);
+
+        // Assert
+        await waitFor(() => {
+            expect(screen.queryByTestId('price-history-tooltip')).not.toBeInTheDocument();
+        });
     });
 });
