@@ -2,7 +2,6 @@ package domains
 
 import (
 	"testing"
-	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
@@ -17,23 +16,13 @@ func TestPriceForecastUpsertValidate(t *testing.T) {
 		{
 			name: "valid upsert",
 			upsert: PriceForecastUpsert{
-				CalculatedAt:        time.Date(2026, 6, 17, 10, 30, 0, 0, time.UTC),
 				LastKnownPrice:      decimal.RequireFromString("123.45"),
 				AverageMonthlyDrift: decimal.RequireFromString("-4.25"),
 			},
-		},
-		{
-			name: "missing calculatedAt",
-			upsert: PriceForecastUpsert{
-				LastKnownPrice:      decimal.RequireFromString("123.45"),
-				AverageMonthlyDrift: decimal.RequireFromString("-4.25"),
-			},
-			expectedErr: "calculatedAt is required",
 		},
 		{
 			name: "negative lastKnownPrice",
 			upsert: PriceForecastUpsert{
-				CalculatedAt:        time.Date(2026, 6, 17, 10, 30, 0, 0, time.UTC),
 				LastKnownPrice:      decimal.RequireFromString("-1.00"),
 				AverageMonthlyDrift: decimal.RequireFromString("-4.25"),
 			},

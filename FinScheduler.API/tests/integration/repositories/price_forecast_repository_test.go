@@ -107,9 +107,8 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldInsertNewRecordWhenForecas
 	ctx := testContext
 	repo := repositories.NewPriceForecastsRepository(testDB, testLogger)
 	itemID := uuid.New()
-	calculatedAt := time.Date(2026, 6, 17, 10, 30, 0, 0, time.UTC)
+	todayUTC := time.Now().UTC().Format("2006-01-02")
 	upsert := &domains.PriceForecastUpsert{
-		CalculatedAt:        calculatedAt,
 		LastKnownPrice:      decimal.RequireFromString("120.00"),
 		AverageMonthlyDrift: decimal.RequireFromString("3.75"),
 	}
@@ -129,7 +128,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldInsertNewRecordWhenForecas
 	require.NotNil(t, loadedPriceForecast)
 	assert.NotEqual(t, uuid.Nil, priceForecast.Id)
 	assert.Equal(t, itemID, priceForecast.ItemId)
-	assert.Equal(t, "2026-06-17", priceForecast.CalculatedAt.UTC().Format("2006-01-02"))
+	assert.Equal(t, todayUTC, priceForecast.CalculatedAt.UTC().Format("2006-01-02"))
 	assert.True(t, upsert.LastKnownPrice.Equal(priceForecast.LastKnownPrice))
 	assert.True(t, upsert.AverageMonthlyDrift.Equal(priceForecast.AverageMonthlyDrift))
 	assert.Equal(t, priceForecast.Id, loadedPriceForecast.Id)
@@ -145,10 +144,9 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldInsertNewRecordWhenItemHas
 	repo := repositories.NewPriceForecastsRepository(testDB, testLogger)
 	itemID := uuid.New()
 	existingForecastID := uuid.New()
-	initialCalculatedAt := "2026-06-17"
-	newCalculatedAt := time.Date(2026, 6, 18, 11, 45, 0, 0, time.UTC)
+	todayUTC := time.Now().UTC().Format("2006-01-02")
+	initialCalculatedAt := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
 	upsert := &domains.PriceForecastUpsert{
-		CalculatedAt:        newCalculatedAt,
 		LastKnownPrice:      decimal.RequireFromString("150.00"),
 		AverageMonthlyDrift: decimal.RequireFromString("-1.50"),
 	}
@@ -180,7 +178,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldInsertNewRecordWhenItemHas
 	assert.Equal(t, 2, actualCount)
 	assert.NotEqual(t, existingForecastID, priceForecast.Id)
 	assert.Equal(t, itemID, priceForecast.ItemId)
-	assert.Equal(t, "2026-06-18", priceForecast.CalculatedAt.UTC().Format("2006-01-02"))
+	assert.Equal(t, todayUTC, priceForecast.CalculatedAt.UTC().Format("2006-01-02"))
 	assert.True(t, upsert.LastKnownPrice.Equal(priceForecast.LastKnownPrice))
 	assert.True(t, upsert.AverageMonthlyDrift.Equal(priceForecast.AverageMonthlyDrift))
 }
@@ -195,9 +193,8 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldUpdateExistingRecordForSam
 	repo := repositories.NewPriceForecastsRepository(testDB, testLogger)
 	itemID := uuid.New()
 	existingForecastID := uuid.New()
-	calculatedAt := time.Date(2026, 6, 17, 18, 45, 0, 0, time.UTC)
+	todayUTC := time.Now().UTC().Format("2006-01-02")
 	upsert := &domains.PriceForecastUpsert{
-		CalculatedAt:        time.Date(2026, 6, 17, 7, 15, 0, 0, time.UTC),
 		LastKnownPrice:      decimal.RequireFromString("150.00"),
 		AverageMonthlyDrift: decimal.RequireFromString("-1.50"),
 	}
@@ -210,7 +207,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldUpdateExistingRecordForSam
 		forecastInsertQuery,
 		existingForecastID,
 		itemID,
-		calculatedAt.Format("2006-01-02"),
+		todayUTC,
 		decimal.RequireFromString("100.00"),
 		decimal.RequireFromString("2.00"),
 	)
@@ -229,7 +226,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldUpdateExistingRecordForSam
 	assert.Equal(t, 1, actualCount)
 	assert.Equal(t, existingForecastID, priceForecast.Id)
 	assert.Equal(t, itemID, priceForecast.ItemId)
-	assert.Equal(t, "2026-06-17", priceForecast.CalculatedAt.UTC().Format("2006-01-02"))
+	assert.Equal(t, todayUTC, priceForecast.CalculatedAt.UTC().Format("2006-01-02"))
 	assert.True(t, upsert.LastKnownPrice.Equal(priceForecast.LastKnownPrice))
 	assert.True(t, upsert.AverageMonthlyDrift.Equal(priceForecast.AverageMonthlyDrift))
 }
@@ -239,7 +236,6 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldReturnErrorOnInvalidInput(
 	ctx := testContext
 	repo := repositories.NewPriceForecastsRepository(testDB, testLogger)
 	upsert := &domains.PriceForecastUpsert{
-		CalculatedAt:        time.Date(2026, 6, 17, 10, 30, 0, 0, time.UTC),
 		LastKnownPrice:      decimal.RequireFromString("10.00"),
 		AverageMonthlyDrift: decimal.RequireFromString("1.00"),
 	}
@@ -261,7 +257,6 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldReturnErrorWhenDatabaseIsC
 	closedDB := newClosedDB(t)
 	repo := repositories.NewPriceForecastsRepository(closedDB, testLogger)
 	upsert := &domains.PriceForecastUpsert{
-		CalculatedAt:        time.Date(2026, 6, 17, 10, 30, 0, 0, time.UTC),
 		LastKnownPrice:      decimal.RequireFromString("10.00"),
 		AverageMonthlyDrift: decimal.RequireFromString("1.00"),
 	}

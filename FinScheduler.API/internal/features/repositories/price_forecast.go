@@ -94,7 +94,7 @@ func (repository *PriceForecastsRepository) UpsertByItemID(ctx context.Context, 
 		return nil, err
 	}
 
-	calculatedAt := newUTCDate(upsert.CalculatedAt.UTC())
+	calculatedAt := newUTCDate(time.Now().UTC())
 
 	query := `INSERT INTO public.price_forecast (id, item_id, calculated_at, last_known_price, average_monthly_drift)
 			  VALUES (?, ?, ?, ?, ?)

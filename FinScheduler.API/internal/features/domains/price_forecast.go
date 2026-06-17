@@ -17,15 +17,11 @@ type PriceForecast struct {
 }
 
 type PriceForecastUpsert struct {
-	CalculatedAt        time.Time       `json:"calculatedAt"`
 	LastKnownPrice      decimal.Decimal `json:"lastKnownPrice"`
 	AverageMonthlyDrift decimal.Decimal `json:"averageMonthlyDrift"`
 }
 
 func (priceForecast *PriceForecastUpsert) Validate() error {
-	if priceForecast.CalculatedAt.IsZero() {
-		return fmt.Errorf("calculatedAt is required")
-	}
 	if priceForecast.LastKnownPrice.IsNegative() {
 		return fmt.Errorf("lastKnownPrice must be zero or greater")
 	}
