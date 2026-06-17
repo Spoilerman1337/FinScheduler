@@ -173,6 +173,9 @@ func setupSchema(db *sqlx.DB) error {
 	if err := setupItemsSchema(db); err != nil {
 		return err
 	}
+	if err := setupPriceHistorySchema(db); err != nil {
+		return err
+	}
 	if err := setupTagsSchema(db); err != nil {
 		return err
 	}
@@ -196,6 +199,22 @@ func setupItemsSchema(db *sqlx.DB) error {
 			cashback INTEGER NOT NULL DEFAULT 0,
 			category TEXT NOT NULL DEFAULT 'None'
 		);
+	`)
+}
+
+func setupPriceHistorySchema(db *sqlx.DB) error {
+	return setupTable(db, "price_history", `
+		CREATE TABLE price_history (
+			id UUID PRIMARY KEY,
+			item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+			recorded_at DATE NOT NULL,
+			value NUMERIC(16, 2) NOT NULL CHECK (value >= 0),
+			CONSTRAINT uq_price_history_item_id_recorded_at
+				UNIQUE (item_id, recorded_at)
+		);
+
+		CREATE INDEX idx_price_history_item_id
+			ON price_history (item_id);
 	`)
 }
 

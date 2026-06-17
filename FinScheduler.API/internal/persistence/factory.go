@@ -18,6 +18,10 @@ func (factory *RepositoryFactory) Items() *repositories.ItemsRepository {
 	return repositories.NewItemsRepository(factory.db, factory.logger)
 }
 
+func (factory *RepositoryFactory) PriceHistories() *repositories.PriceHistoriesRepository {
+	return repositories.NewPriceHistoriesRepository(factory.db, factory.logger)
+}
+
 func (factory *RepositoryFactory) Tags() *repositories.TagsRepository {
 	return repositories.NewTagsRepository(factory.db, factory.logger)
 }

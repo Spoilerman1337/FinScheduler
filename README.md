@@ -9,155 +9,128 @@ The project is split into two applications:
 
 The goal is to collect financial data, keep it structured, analyze it, build reports, and eventually automate reminders and planning around personal finances.
 
-## Current Scope
+## Current Capabilities
 
-Implemented or partially implemented:
+Implemented today:
 
-- Expense item management.
-- Tag management.
+- expense item management
+- tag management
+- item price history persistence
 
-Planned ideas:
-
-- Price history.
-- Grocery planning.
-- Reports and charts.
-- Notifications.
+Planned next steps still include broader analytics, reports, reminders, and other finance automation flows.
 
 ## Tech Stack
 
 Backend:
 
-- Go 1.25.
+- Go 1.25
 - PostgreSQL via pgx/sqlx
-- OpenTelemetry.
-- testcontainers-go for integration tests.
+- OpenTelemetry
+- testcontainers-go for integration tests
 
 Frontend:
 
-- React 19.
-- TypeScript.
-- Vite / rolldown-vite.
-- Chakra UI.
-- React Router.
-- lucide-react and react-icons.
-- pnpm.
+- React 19
+- TypeScript
+- Vite via `rolldown-vite`
+- Chakra UI
+- React Router
+- Recharts
+- pnpm
 
 ## Repository Structure
 
 ```text
 .
-+-- FinScheduler.API/       # Go API
-|   +-- cmd/finscheduler/   # API entry point
-|   +-- configs/            # Local JSON config
-|   +-- database/postgres/  # SQL migrations
-|   +-- internal/           # App features and infrastructure
-|   +-- tests/              # Integration tests
-+-- finscheduler-web/       # React frontend
-    +-- src/
++-- FinScheduler.API/   # Go API, migrations, tests
++-- finscheduler-web/   # React app
++-- k8s/                # Kubernetes manifests for the local test contour
++-- scripts/            # Helper scripts for build/deploy/destroy flows
 ```
 
-## Backend Setup
+## Quick Start
 
-Run the backend:
+Backend:
 
 ```bash
 cd FinScheduler.API
 go run ./cmd/finscheduler
 ```
 
-Build the backend:
+Frontend:
+
+```bash
+cd finscheduler-web
+pnpm install
+pnpm dev
+```
+
+By default the frontend expects the backend on `http://localhost:8081` unless `VITE_API_BASE_URL` is overridden.
+
+## Useful Commands
+
+Backend:
 
 ```bash
 cd FinScheduler.API
 go build ./cmd/finscheduler
-```
-
-Run backend tests:
-
-```bash
-cd FinScheduler.API
 go test ./...
+go test -tags=integration ./tests/integration/...
 ```
 
-See [`FinScheduler.API/README.md`](./FinScheduler.API/README.md) for config, routes, migrations, and test details.
-
-## Observability
-
-A local Grafana-based logging stack is available for the Go backend.
-
-The repository now includes Kubernetes manifests for the current local contour. Apply everything from the repository root:
+Frontend:
 
 ```bash
-kubectl apply -k k8s/base
+cd finscheduler-web
+pnpm build
+pnpm test
+pnpm lint
 ```
 
-That base now includes:
+## API Overview
 
-- `FinScheduler.API`
-- MinIO for shared object storage
-- Prometheus for metrics scraping
-- Mimir for long-term metrics storage
-- Tempo for traces
-- Pyroscope for continuous profiling
-- Loki for logs
-- Grafana Alloy for Kubernetes log collection
-- Grafana with provisioned datasources
+Health:
 
-See [`k8s/base/storage`](./k8s/base/storage/README.md) and [`k8s/base/observability`](./k8s/base/observability/README.md) for the manifests that make up the contour.
+- `GET /livez`
+- `GET /readyz`
+- `GET /metrics` when metrics are enabled
 
-For local test contour deployment, helper scripts live in [`scripts`](./scripts). The layers can be rolled out independently:
+Resources:
+
+- `/api/items` - item CRUD and item details, including price history
+- `/api/tags` - tag CRUD
+- `/api/tags/lookup` - lightweight tag lookup for selectors
+
+## Local Kubernetes Test Contour
+
+The repository contains a local Kubernetes contour under [`k8s/base`](./k8s/base/) with separate layers for:
+
+- storage
+- observability
+- application workloads
+- ingress
+
+Helper scripts for `k3d`-based local deployment live in [`scripts`](./scripts/README.md).
+
+Typical flow:
 
 ```bash
+./scripts/create-test-cluster.sh
 ./scripts/deploy-storage.sh
 ./scripts/deploy-observability.sh
 ./scripts/deploy-app.sh
 ```
 
-Or as one combined flow:
+Or in one step:
 
 ```bash
 ./scripts/deploy-test-contour.sh
 ```
 
-## Frontend Setup
+## Documentation
 
-Install dependencies:
+Use the app-specific READMEs for detailed setup and operational notes:
 
-```bash
-cd finscheduler-web
-pnpm install
-```
-
-Run the frontend:
-
-```bash
-cd finscheduler-web
-pnpm dev
-```
-
-Build the frontend:
-
-```bash
-cd finscheduler-web
-pnpm build
-```
-
-Lint the frontend:
-
-```bash
-cd finscheduler-web
-pnpm lint
-```
-
-See [`finscheduler-web/README.md`](./finscheduler-web/README.md) for scripts, environment variables, and app routes.
-
-## Useful API Endpoints
-
-- `GET /livez` - liveness check.
-- `GET /readyz` - readiness check with database ping.
-- `/api/items` - expense item operations.
-- `/api/tags` - tag operations.
-
-## Notes
-
-- Migrations run automatically when the backend starts.
+- [`FinScheduler.API/README.md`](./FinScheduler.API/README.md)
+- [`finscheduler-web/README.md`](./finscheduler-web/README.md)
+- [`scripts/README.md`](./scripts/README.md)

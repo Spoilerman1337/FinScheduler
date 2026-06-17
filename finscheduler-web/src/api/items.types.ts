@@ -15,6 +15,13 @@ export interface ItemListingDto {
     cashback: number;
 }
 
+export interface ItemPriceHistoryPointDto {
+    point: string;
+    value: number;
+    absoluteChange?: number | null;
+    percentChange?: number | null;
+}
+
 export interface ItemDetailedDto {
     name: string;
     price: number;
@@ -23,6 +30,7 @@ export interface ItemDetailedDto {
     cashback: number;
     category: string;
     tags: Lookup[] | null;
+    priceHistory: ItemPriceHistoryPointDto[] | null;
 }
 
 export interface ItemFilter {

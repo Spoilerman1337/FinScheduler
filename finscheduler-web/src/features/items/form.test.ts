@@ -42,6 +42,7 @@ describe('items form', () => {
             isActive: false,
             category: 'FoodDrinks',
             tags: [{value: 'tag-1', label: 'Food'}, {value: 'tag-2'}, {value: ''}],
+            priceHistory: [],
         };
 
         // Act
