@@ -204,10 +204,7 @@ function buildTooltipEntries(values: TooltipValue[]): PriceHistoryTooltipEntry[]
     }));
 }
 
-function buildTooltipPosition(coordinate: {
-    x: number;
-    y: number;
-}): PriceHistoryTooltipPosition {
+function buildTooltipPosition(coordinate: {x: number; y: number}): PriceHistoryTooltipPosition {
     const halfTooltipWidth = PRICE_HISTORY_TOOLTIP_WIDTH_PX / 2;
 
     return {
