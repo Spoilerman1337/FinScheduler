@@ -25,6 +25,7 @@ function buildItem(overrides: Partial<ItemTestData> = {}): ItemTestData {
         cashback: 5,
         category: 'FoodDrinks',
         tags: [],
+        priceHistory: [],
         ...overrides,
     };
 }

@@ -86,6 +86,7 @@ describe('ItemDetailsPage integration', () => {
                     isActive: true,
                     category: 'FoodDrinks',
                     tags: [],
+                    priceHistory: [],
                 });
             }),
         );
@@ -133,6 +134,7 @@ describe('ItemDetailsPage integration', () => {
                     isActive: true,
                     category: 'FoodDrinks',
                     tags: [],
+                    priceHistory: [],
                 });
             }),
             http.put(`${API_BASE_URL}/items/item-1`, async ({request}) => {
@@ -167,6 +169,40 @@ describe('ItemDetailsPage integration', () => {
             });
         });
         expect(await screen.findByText('Items Listing Page')).toBeInTheDocument();
+    });
+
+    it('renders the price history chart and summary for an existing item', async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/items/item-1`, () => {
+                return HttpResponse.json({
+                    id: 'item-1',
+                    name: 'History Item',
+                    description: 'Tracked over time',
+                    price: 160,
+                    cashback: 3,
+                    isActive: true,
+                    category: 'FoodDrinks',
+                    tags: [],
+                    priceHistory: [
+                        {point: '2026-01-12T00:00:00Z', value: 139.9},
+                        {point: '2026-02-18T00:00:00Z', value: 149.5},
+                        {point: '2026-03-20T00:00:00Z', value: 160},
+                    ],
+                });
+            }),
+        );
+
+        // Act
+        renderItemDetailsRoutes([buildEditItemPath('item-1')]);
+
+        // Assert
+        expect(await screen.findByText('История цены')).toBeInTheDocument();
+        expect(screen.getByLabelText('Минимум: 139,90 ₽')).toBeInTheDocument();
+        expect(screen.getByLabelText('Текущая: 160,00 ₽')).toBeInTheDocument();
+        expect(screen.getByLabelText('Максимум: 160,00 ₽')).toBeInTheDocument();
+        expect(screen.queryByText('Точек')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('График истории цены')).toBeInTheDocument();
     });
 
     it('shows a warning on cancel when the form has unsaved changes', async () => {

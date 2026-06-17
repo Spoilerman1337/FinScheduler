@@ -1,9 +1,10 @@
-import {Card, Flex, SimpleGrid, Spinner} from '@chakra-ui/react';
+import {Box, Card, Flex, SimpleGrid, Spinner, Stack} from '@chakra-ui/react';
 import {useEffect, useMemo, useState} from 'react';
 import {Controller, useForm, useWatch} from 'react-hook-form';
 import {useNavigate, useParams} from 'react-router-dom';
 import AsyncSelectField from '../../components/formFields/AsyncSelectField.tsx';
 import NumberField from '../../components/formFields/NumberField.tsx';
+import PriceHistoryChart from '../../components/priceHistoryChart/PriceHistoryChart.tsx';
 import SelectField from '../../components/formFields/SelectField.tsx';
 import SwitchField from '../../components/formFields/SwitchField.tsx';
 import TextAreaField from '../../components/formFields/TextAreaField.tsx';
@@ -195,147 +196,163 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
             onSaveAndClose={() => handleSave(true)}
             onBack={() => navigate(itemsListPath)}
         >
-            <SimpleGrid columns={{base: 1, xl: 2}} gap={6}>
-                <Card.Root>
-                    <Card.Header>
-                        <Card.Title>1. Основная информация</Card.Title>
-                        <Card.Description>Базовые данные предмета для каталога.</Card.Description>
-                    </Card.Header>
-                    <Card.Body gap={4}>
-                        <Controller
-                            name="name"
-                            control={control}
-                            rules={{validate: itemFormValidators.name}}
-                            render={({field, fieldState}) => (
-                                <TextField
-                                    label="Название"
-                                    value={field.value}
-                                    placeholder="Введите название"
-                                    required
-                                    invalid={fieldState.invalid}
-                                    errorText={fieldState.error?.message}
-                                    onChange={field.onChange}
+            <Flex direction={{base: 'column', xl: 'row'}} align="flex-start" gap={6} width="100%">
+                <Stack flex="1" minW={0} gap={6} width="100%">
+                    <SimpleGrid columns={{base: 1, lg: 2}} gap={6}>
+                        <Card.Root>
+                            <Card.Header>
+                                <Card.Title>1. Основная информация</Card.Title>
+                                <Card.Description>
+                                    Базовые данные предмета для каталога.
+                                </Card.Description>
+                            </Card.Header>
+                            <Card.Body gap={4}>
+                                <Controller
+                                    name="name"
+                                    control={control}
+                                    rules={{validate: itemFormValidators.name}}
+                                    render={({field, fieldState}) => (
+                                        <TextField
+                                            label="Название"
+                                            value={field.value}
+                                            placeholder="Введите название"
+                                            required
+                                            invalid={fieldState.invalid}
+                                            errorText={fieldState.error?.message}
+                                            onChange={field.onChange}
+                                        />
+                                    )}
                                 />
-                            )}
-                        />
-                        <Controller
-                            name="description"
-                            control={control}
-                            render={({field}) => (
-                                <TextAreaField
-                                    label="Описание"
-                                    value={field.value}
-                                    placeholder="Введите описание"
-                                    rows={6}
-                                    onChange={field.onChange}
+                                <Controller
+                                    name="description"
+                                    control={control}
+                                    render={({field}) => (
+                                        <TextAreaField
+                                            label="Описание"
+                                            value={field.value}
+                                            placeholder="Введите описание"
+                                            rows={6}
+                                            onChange={field.onChange}
+                                        />
+                                    )}
                                 />
-                            )}
-                        />
-                    </Card.Body>
-                </Card.Root>
+                            </Card.Body>
+                        </Card.Root>
 
-                <Card.Root>
-                    <Card.Header>
-                        <Card.Title>2. Классификация</Card.Title>
-                        <Card.Description>Категория, теги и актуальный статус.</Card.Description>
-                    </Card.Header>
-                    <Card.Body gap={4}>
-                        <Controller
-                            name="category"
-                            control={control}
-                            rules={{validate: itemFormValidators.category}}
-                            render={({field, fieldState}) => (
-                                <SelectField
-                                    label="Категория"
-                                    value={field.value}
-                                    options={categoryOptions}
-                                    placeholder="Выберите категорию"
-                                    required
-                                    invalid={fieldState.invalid}
-                                    errorText={fieldState.error?.message}
-                                    onChange={field.onChange}
+                        <Card.Root>
+                            <Card.Header>
+                                <Card.Title>2. Классификация</Card.Title>
+                                <Card.Description>
+                                    Категория, теги и актуальный статус.
+                                </Card.Description>
+                            </Card.Header>
+                            <Card.Body gap={4}>
+                                <Controller
+                                    name="category"
+                                    control={control}
+                                    rules={{validate: itemFormValidators.category}}
+                                    render={({field, fieldState}) => (
+                                        <SelectField
+                                            label="Категория"
+                                            value={field.value}
+                                            options={categoryOptions}
+                                            placeholder="Выберите категорию"
+                                            required
+                                            invalid={fieldState.invalid}
+                                            errorText={fieldState.error?.message}
+                                            onChange={field.onChange}
+                                        />
+                                    )}
                                 />
-                            )}
-                        />
-                        <Controller
-                            name="tagIds"
-                            control={control}
-                            render={({field}) => (
-                                <AsyncSelectField
-                                    multiple
-                                    label="Теги"
-                                    value={field.value}
-                                    initialOptions={initialTagOptions}
-                                    placeholder="Выберите теги"
-                                    emptyText="Теги не найдены"
-                                    collapseThreshold={4}
-                                    loadOptions={loadTagOptions}
-                                    onChange={field.onChange}
+                                <Controller
+                                    name="tagIds"
+                                    control={control}
+                                    render={({field}) => (
+                                        <AsyncSelectField
+                                            multiple
+                                            label="Теги"
+                                            value={field.value}
+                                            initialOptions={initialTagOptions}
+                                            placeholder="Выберите теги"
+                                            emptyText="Теги не найдены"
+                                            collapseThreshold={4}
+                                            loadOptions={loadTagOptions}
+                                            onChange={field.onChange}
+                                        />
+                                    )}
                                 />
-                            )}
-                        />
-                        <Controller
-                            name="isActive"
-                            control={control}
-                            render={({field}) => (
-                                <SwitchField
-                                    label="Активен"
-                                    checked={field.value}
-                                    onChange={field.onChange}
+                                <Controller
+                                    name="isActive"
+                                    control={control}
+                                    render={({field}) => (
+                                        <SwitchField
+                                            label="Активен"
+                                            checked={field.value}
+                                            onChange={field.onChange}
+                                        />
+                                    )}
                                 />
-                            )}
-                        />
-                    </Card.Body>
-                </Card.Root>
+                            </Card.Body>
+                        </Card.Root>
+                    </SimpleGrid>
 
-                <Card.Root gridColumn={{xl: '1 / -1'}}>
-                    <Card.Header>
-                        <Card.Title>3. Цена и бонусы</Card.Title>
-                        <Card.Description>
-                            Финансовые поля предмета из текущей модели.
-                        </Card.Description>
-                    </Card.Header>
-                    <Card.Body>
-                        <SimpleGrid columns={{base: 1, md: 2}} gap={4}>
-                            <Controller
-                                name="price"
-                                control={control}
-                                rules={{validate: itemFormValidators.price}}
-                                render={({field, fieldState}) => (
-                                    <NumberField
-                                        label="Цена (₽)"
-                                        value={field.value}
-                                        defaultValue="0.00"
-                                        step={0.01}
-                                        min={0}
-                                        invalid={fieldState.invalid}
-                                        errorText={fieldState.error?.message}
-                                        onChange={field.onChange}
-                                    />
-                                )}
-                            />
-                            <Controller
-                                name="cashback"
-                                control={control}
-                                rules={{validate: itemFormValidators.cashback}}
-                                render={({field, fieldState}) => (
-                                    <NumberField
-                                        label="Кешбек (%)"
-                                        value={field.value}
-                                        defaultValue="0"
-                                        step={1}
-                                        min={0}
-                                        max={100}
-                                        invalid={fieldState.invalid}
-                                        errorText={fieldState.error?.message}
-                                        onChange={field.onChange}
-                                    />
-                                )}
-                            />
-                        </SimpleGrid>
-                    </Card.Body>
-                </Card.Root>
-            </SimpleGrid>
+                    <Card.Root width="100%">
+                        <Card.Header>
+                            <Card.Title>3. Цена и бонусы</Card.Title>
+                            <Card.Description>
+                                Финансовые поля предмета из текущей модели.
+                            </Card.Description>
+                        </Card.Header>
+                        <Card.Body>
+                            <SimpleGrid columns={{base: 1, md: 2}} gap={4}>
+                                <Controller
+                                    name="price"
+                                    control={control}
+                                    rules={{validate: itemFormValidators.price}}
+                                    render={({field, fieldState}) => (
+                                        <NumberField
+                                            label="Цена (₽)"
+                                            value={field.value}
+                                            defaultValue="0.00"
+                                            step={0.01}
+                                            min={0}
+                                            invalid={fieldState.invalid}
+                                            errorText={fieldState.error?.message}
+                                            onChange={field.onChange}
+                                        />
+                                    )}
+                                />
+                                <Controller
+                                    name="cashback"
+                                    control={control}
+                                    rules={{validate: itemFormValidators.cashback}}
+                                    render={({field, fieldState}) => (
+                                        <NumberField
+                                            label="Кешбек (%)"
+                                            value={field.value}
+                                            defaultValue="0"
+                                            step={1}
+                                            min={0}
+                                            max={100}
+                                            invalid={fieldState.invalid}
+                                            errorText={fieldState.error?.message}
+                                            onChange={field.onChange}
+                                        />
+                                    )}
+                                />
+                            </SimpleGrid>
+                        </Card.Body>
+                    </Card.Root>
+                </Stack>
+                <Box
+                    width="100%"
+                    maxW={{xl: '420px'}}
+                    flex={{xl: '0 0 420px'}}
+                    alignSelf={{xl: 'flex-start'}}
+                >
+                    <PriceHistoryChart points={item?.priceHistory} />
+                </Box>
+            </Flex>
 
             <UnsavedChangesDialog open={isDialogOpen} onStay={stayOnPage} onLeave={leavePage} />
         </DetailsPageLayout>
