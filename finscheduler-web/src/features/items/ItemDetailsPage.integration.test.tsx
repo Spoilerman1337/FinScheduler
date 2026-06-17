@@ -1,14 +1,42 @@
 import {screen, waitFor} from '@testing-library/react';
+import {cloneElement, isValidElement, type ReactElement} from 'react';
 import userEvent from '@testing-library/user-event';
 import {http, HttpResponse} from 'msw';
 import type {RouteObject} from 'react-router-dom';
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import type {ItemModification} from '../../api/items.types.ts';
 import {API_BASE_URL} from '../../config/api.ts';
 import {renderWithDataRouter} from '../../test/renderDataRouter.tsx';
 import {server} from '../../test/msw/server.ts';
 import {buildEditItemPath, itemEditRoutePath, itemsListPath, newItemPath} from '../routes.ts';
 import ItemDetailsPage from './ItemDetailsPage.tsx';
+
+interface ResponsiveContainerChildProps {
+    width?: number;
+    height?: number;
+}
+
+vi.mock('recharts', async () => {
+    const actual = await vi.importActual<typeof import('recharts')>('recharts');
+
+    return {
+        ...actual,
+        ResponsiveContainer: ({
+            children,
+        }: {
+            children: ReactElement<ResponsiveContainerChildProps>;
+        }) => {
+            if (!isValidElement<ResponsiveContainerChildProps>(children)) {
+                return null;
+            }
+
+            return cloneElement(children, {
+                width: 360,
+                height: 220,
+            });
+        },
+    };
+});
 
 function renderItemDetailsRoutes(initialEntries: string[]) {
     const routes: RouteObject[] = [
@@ -87,6 +115,7 @@ describe('ItemDetailsPage integration', () => {
                     category: 'FoodDrinks',
                     tags: [],
                     priceHistory: [],
+                    priceForecast: [],
                 });
             }),
         );
@@ -135,6 +164,7 @@ describe('ItemDetailsPage integration', () => {
                     category: 'FoodDrinks',
                     tags: [],
                     priceHistory: [],
+                    priceForecast: [],
                 });
             }),
             http.put(`${API_BASE_URL}/items/item-1`, async ({request}) => {
@@ -189,6 +219,7 @@ describe('ItemDetailsPage integration', () => {
                         {point: '2026-02-18T00:00:00Z', value: 149.5},
                         {point: '2026-03-20T00:00:00Z', value: 160},
                     ],
+                    priceForecast: [],
                 });
             }),
         );
@@ -203,6 +234,42 @@ describe('ItemDetailsPage integration', () => {
         expect(screen.getByLabelText('Максимум: 160,00 ₽')).toBeInTheDocument();
         expect(screen.queryByText('Точек')).not.toBeInTheDocument();
         expect(screen.getByLabelText('График истории цены')).toBeInTheDocument();
+    });
+
+    it('renders the forecast series for an existing item when forecast data is available', async () => {
+        // Arrange
+        server.use(
+            http.get(`${API_BASE_URL}/items/item-1`, () => {
+                return HttpResponse.json({
+                    id: 'item-1',
+                    name: 'Forecast Item',
+                    description: 'Tracked over time',
+                    price: 160,
+                    cashback: 3,
+                    isActive: true,
+                    category: 'FoodDrinks',
+                    tags: [],
+                    priceHistory: [
+                        {point: '2026-01-12T00:00:00Z', value: 139.9},
+                        {point: '2026-02-18T00:00:00Z', value: 149.5},
+                        {point: '2026-03-20T00:00:00Z', value: 160},
+                    ],
+                    priceForecast: [
+                        {point: '2026-04-20T00:00:00Z', value: 165.75},
+                        {point: '2026-05-20T00:00:00Z', value: 171.5},
+                    ],
+                });
+            }),
+        );
+
+        // Act
+        const {container} = renderItemDetailsRoutes([buildEditItemPath('item-1')]);
+
+        // Assert
+        expect(await screen.findByText('Forecast Item')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(container.querySelectorAll('.recharts-line-dots circle').length).toBe(6);
+        });
     });
 
     it('shows a warning on cancel when the form has unsaved changes', async () => {

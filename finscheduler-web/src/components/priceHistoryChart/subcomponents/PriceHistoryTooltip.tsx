@@ -29,6 +29,23 @@ export default function PriceHistoryTooltip({label, entries}: PriceHistoryToolti
 
                     return (
                         <Stack key={entry.key} gap={0.5}>
+                            <Flex align="center" gap={2}>
+                                <Box
+                                    width="5"
+                                    height="0"
+                                    borderTopWidth="2px"
+                                    borderTopColor={
+                                        entry.swatchColor ?? entry.valueColor ?? 'currentColor'
+                                    }
+                                    borderTopStyle={
+                                        entry.lineStyle === 'dashed' ? 'dashed' : 'solid'
+                                    }
+                                    flexShrink={0}
+                                />
+                                <Text color="fg.subtle" fontWeight="600" textStyle="xs">
+                                    {entry.label}
+                                </Text>
+                            </Flex>
                             <Text color={entry.valueColor ?? 'fg'} fontWeight="700" textStyle="sm">
                                 {entry.value}
                             </Text>

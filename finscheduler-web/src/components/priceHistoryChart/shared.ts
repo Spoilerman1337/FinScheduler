@@ -5,6 +5,8 @@ export const PRICE_HISTORY_ACTUAL_STROKE = 'var(--chakra-colors-neon-purple)';
 export const PRICE_HISTORY_ACTUAL_FILL = 'var(--chakra-colors-neon-pink)';
 export const PRICE_HISTORY_FORECAST_STROKE = 'var(--chakra-colors-neon-blue)';
 export const PRICE_HISTORY_FORECAST_FILL = 'var(--chakra-colors-neon-cyan)';
+export const PRICE_HISTORY_BRUSH_STROKE = 'rgba(68, 211, 255, 0.9)';
+export const PRICE_HISTORY_BRUSH_FILL = 'rgba(7, 16, 32, 0.88)';
 
 export const PRICE_HISTORY_PRICE_INCREASE_COLOR = 'var(--chakra-colors-red-400)';
 export const PRICE_HISTORY_PRICE_UNCHANGED_COLOR = 'var(--chakra-colors-neon-yellow)';
@@ -15,6 +17,7 @@ export interface PriceHistoryPoint {
     value: number;
     absoluteChange?: number | null;
     percentChange?: number | null;
+    isSynthetic?: boolean;
 }
 
 export interface PriceHistoryChartPoint {
@@ -25,6 +28,7 @@ export interface PriceHistoryChartPoint {
     forecastValue: number | null;
     forecastAbsoluteChange: number | null;
     forecastPercentChange: number | null;
+    forecastIsSynthetic: boolean;
 }
 
 export interface PriceHistoryChartMouseState {
@@ -40,6 +44,7 @@ export interface PriceHistoryChartMouseState {
 export interface PriceHistoryLegendItem {
     label: string;
     color: string;
+    lineStyle: 'solid' | 'dashed';
 }
 
 export interface PriceHistoryMetricItem {
@@ -50,8 +55,11 @@ export interface PriceHistoryMetricItem {
 
 export interface PriceHistoryTooltipEntry {
     key: string;
+    label: string;
     value: string;
     valueColor?: string;
+    swatchColor?: string;
+    lineStyle: 'solid' | 'dashed';
     changeSummary?: string;
     changeColor?: string;
     changeIcon?: LucideIcon;

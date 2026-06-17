@@ -27,6 +27,7 @@ export default function PriceHistoryHeader({title, description, legends}: PriceH
                             key={legend.label}
                             label={legend.label}
                             color={legend.color}
+                            lineStyle={legend.lineStyle}
                         />
                     ))}
                 </Flex>

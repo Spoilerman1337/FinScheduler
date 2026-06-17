@@ -36,7 +36,9 @@ interface ChartSummary {
 }
 
 interface TooltipValue {
+    label: string;
     color?: string;
+    lineStyle: 'solid' | 'dashed';
     value: number;
     absoluteChange: number | null;
     percentChange: number | null;
@@ -93,7 +95,7 @@ function buildForecastSeries(
         return forecastPoints;
     }
 
-    return [lastActualPoint, ...forecastPoints];
+    return [{...lastActualPoint, isSynthetic: true}, ...forecastPoints];
 }
 
 function buildChartData(
@@ -120,6 +122,7 @@ function buildChartData(
             forecastValue: forecastPoint?.value ?? null,
             forecastAbsoluteChange: forecastPoint?.absoluteChange ?? null,
             forecastPercentChange: forecastPoint?.percentChange ?? null,
+            forecastIsSynthetic: forecastPoint?.isSynthetic ?? false,
         };
     });
 }
@@ -161,7 +164,9 @@ function buildTooltipValues(point: PriceHistoryChartPoint): TooltipValue[] {
 
     if (point.actualValue !== null) {
         values.push({
+            label: 'Факт',
             color: PRICE_HISTORY_ACTUAL_STROKE,
+            lineStyle: 'solid',
             value: point.actualValue,
             absoluteChange: point.actualAbsoluteChange,
             percentChange: point.actualPercentChange,
@@ -169,21 +174,18 @@ function buildTooltipValues(point: PriceHistoryChartPoint): TooltipValue[] {
         });
     }
 
-    if (point.forecastValue !== null) {
+    if (point.forecastValue !== null && !point.forecastIsSynthetic) {
         const forecastValue = {
+            label: 'Прогноз',
             color: PRICE_HISTORY_FORECAST_STROKE,
+            lineStyle: 'dashed' as const,
             value: point.forecastValue,
             absoluteChange: point.forecastAbsoluteChange,
             percentChange: point.forecastPercentChange,
             changeColor: getPriceChangeColor(point.forecastAbsoluteChange),
         };
-        const alreadyIncluded = values.some((entry) => {
-            return entry.color === forecastValue.color && entry.value === forecastValue.value;
-        });
 
-        if (!alreadyIncluded) {
-            values.push(forecastValue);
-        }
+        values.push(forecastValue);
     }
 
     return values;
@@ -191,9 +193,12 @@ function buildTooltipValues(point: PriceHistoryChartPoint): TooltipValue[] {
 
 function buildTooltipEntries(values: TooltipValue[]): PriceHistoryTooltipEntry[] {
     return values.map((entry) => ({
-        key: `${entry.color}-${entry.value}`,
+        key: `${entry.label}-${entry.color}-${entry.value}`,
+        label: entry.label,
         value: formatMoney(entry.value),
         valueColor: entry.color ?? 'fg',
+        swatchColor: entry.color,
+        lineStyle: entry.lineStyle,
         changeSummary:
             entry.absoluteChange !== null
                 ? formatPriceChangeSummary(entry.absoluteChange, entry.percentChange)
@@ -262,6 +267,30 @@ function formatPriceChangeSummary(absoluteChange: number, percentChange: number 
     return `${formatSignedPercent(percentChange)} ${absoluteMoneyPart}`;
 }
 
+export function resolveActiveTooltipIndex(
+    activeTooltipIndex: PriceHistoryChartMouseState['activeTooltipIndex'],
+    pointsCount: number,
+) {
+    if (
+        activeTooltipIndex === null ||
+        activeTooltipIndex === undefined ||
+        activeTooltipIndex === ''
+    ) {
+        return null;
+    }
+
+    const index =
+        typeof activeTooltipIndex === 'number'
+            ? activeTooltipIndex
+            : Number.parseInt(activeTooltipIndex, 10);
+
+    if (!Number.isInteger(index) || index < 0 || index >= pointsCount) {
+        return null;
+    }
+
+    return index;
+}
+
 export default function PriceHistoryChart({points, forecastPoints}: PriceHistoryChartProps) {
     const [activeTooltip, setActiveTooltip] = useState<ActiveTooltipState | null>(null);
     const actualPoints = useMemo(() => toSortedSeries(points), [points]);
@@ -274,8 +303,16 @@ export default function PriceHistoryChart({points, forecastPoints}: PriceHistory
     const summary = useMemo(() => buildSummary(actualPoints), [actualPoints]);
     const hasForecast = preparedForecastPoints.length > 0;
     const legends: PriceHistoryLegendItem[] = [
-        {label: 'Факт', color: PRICE_HISTORY_ACTUAL_STROKE},
-        ...(hasForecast ? [{label: 'Прогноз', color: PRICE_HISTORY_FORECAST_STROKE}] : []),
+        {label: 'Факт', color: PRICE_HISTORY_ACTUAL_STROKE, lineStyle: 'solid'},
+        ...(hasForecast
+            ? [
+                  {
+                      label: 'Прогноз',
+                      color: PRICE_HISTORY_FORECAST_STROKE,
+                      lineStyle: 'dashed' as const,
+                  },
+              ]
+            : []),
     ];
     const metricItems: PriceHistoryMetricItem[] = summary
         ? [
@@ -321,17 +358,13 @@ export default function PriceHistoryChart({points, forecastPoints}: PriceHistory
     }, [activeTooltipPoint, activeTooltipPosition, activeTooltipValues]);
 
     const handleChartMouseMove = (state: PriceHistoryChartMouseState) => {
-        const index = Number(state.activeTooltipIndex);
+        const index = resolveActiveTooltipIndex(state.activeTooltipIndex, chartData.length);
         const coordinateX =
             typeof state.activeCoordinate?.x === 'number' ? state.activeCoordinate.x : state.chartX;
         const coordinateY =
             typeof state.activeCoordinate?.y === 'number' ? state.activeCoordinate.y : state.chartY;
 
-        if (
-            !Number.isFinite(index) ||
-            typeof coordinateX !== 'number' ||
-            typeof coordinateY !== 'number'
-        ) {
+        if (index === null || typeof coordinateX !== 'number' || typeof coordinateY !== 'number') {
             setActiveTooltip(null);
             return;
         }

@@ -31,6 +31,7 @@ export interface ItemDetailedDto {
     category: string;
     tags: Lookup[] | null;
     priceHistory: ItemPriceHistoryPointDto[] | null;
+    priceForecast: ItemPriceHistoryPointDto[] | null;
 }
 
 export interface ItemFilter {

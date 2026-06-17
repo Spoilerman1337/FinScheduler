@@ -2,6 +2,7 @@ import {Box} from '@chakra-ui/react';
 import {
     Area,
     AreaChart,
+    Brush,
     CartesianGrid,
     Line,
     ResponsiveContainer,
@@ -12,6 +13,8 @@ import {
 import {
     PRICE_HISTORY_ACTUAL_FILL,
     PRICE_HISTORY_ACTUAL_STROKE,
+    PRICE_HISTORY_BRUSH_FILL,
+    PRICE_HISTORY_BRUSH_STROKE,
     PRICE_HISTORY_FORECAST_FILL,
     PRICE_HISTORY_FORECAST_STROKE,
 } from '../shared.ts';
@@ -47,11 +50,13 @@ export default function PriceHistoryChartCanvas({
     formatAxisDate,
     formatAxisMoney,
 }: PriceHistoryChartCanvasProps) {
+    const hasBrush = data.length > 2;
+
     return (
         <Box
             aria-label={chartLabel}
             position="relative"
-            height="240px"
+            height={hasBrush ? '280px' : '240px'}
             borderRadius="xl"
             border="1px solid"
             borderColor="app.cardBorder"
@@ -198,6 +203,17 @@ export default function PriceHistoryChartCanvas({
                                 connectNulls
                             />
                         </>
+                    ) : null}
+                    {hasBrush ? (
+                        <Brush
+                            ariaLabel="Диапазон графика"
+                            dataKey="point"
+                            height={28}
+                            travellerWidth={10}
+                            stroke={PRICE_HISTORY_BRUSH_STROKE}
+                            fill={PRICE_HISTORY_BRUSH_FILL}
+                            tickFormatter={formatAxisDate}
+                        />
                     ) : null}
                 </AreaChart>
             </ResponsiveContainer>

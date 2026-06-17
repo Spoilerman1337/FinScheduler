@@ -350,7 +350,10 @@ export default function ItemDetailsPage({mode}: ItemDetailsPageProps) {
                     flex={{xl: '0 0 420px'}}
                     alignSelf={{xl: 'flex-start'}}
                 >
-                    <PriceHistoryChart points={item?.priceHistory} />
+                    <PriceHistoryChart
+                        points={item?.priceHistory}
+                        forecastPoints={item?.priceForecast}
+                    />
                 </Box>
             </Flex>
 
