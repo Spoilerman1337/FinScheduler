@@ -176,6 +176,9 @@ func setupSchema(db *sqlx.DB) error {
 	if err := setupPriceHistorySchema(db); err != nil {
 		return err
 	}
+	if err := setupPriceForecastSchema(db); err != nil {
+		return err
+	}
 	if err := setupTagsSchema(db); err != nil {
 		return err
 	}
@@ -215,6 +218,20 @@ func setupPriceHistorySchema(db *sqlx.DB) error {
 
 		CREATE INDEX idx_price_history_item_id
 			ON price_history (item_id);
+	`)
+}
+
+func setupPriceForecastSchema(db *sqlx.DB) error {
+	return setupTable(db, "price_forecast", `
+		CREATE TABLE price_forecast (
+			id UUID PRIMARY KEY,
+			item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+			calculated_at DATE NOT NULL,
+			last_known_price NUMERIC(16, 2) NOT NULL CHECK (last_known_price >= 0),
+			average_monthly_drift NUMERIC(16, 2) NOT NULL,
+			CONSTRAINT uq_price_forecast_item_id_calculated_at
+				UNIQUE (item_id, calculated_at)
+		);
 	`)
 }
 
