@@ -8,11 +8,7 @@ interface PriceHistoryHeaderProps {
     legends: PriceHistoryLegendItem[];
 }
 
-export default function PriceHistoryHeader({
-    title,
-    description,
-    legends,
-}: PriceHistoryHeaderProps) {
+export default function PriceHistoryHeader({title, description, legends}: PriceHistoryHeaderProps) {
     return (
         <Card.Header position="relative">
             <Flex

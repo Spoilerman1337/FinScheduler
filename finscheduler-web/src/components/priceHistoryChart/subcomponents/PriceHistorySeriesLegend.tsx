@@ -5,10 +5,7 @@ interface PriceHistorySeriesLegendProps {
     color: string;
 }
 
-export default function PriceHistorySeriesLegend({
-    label,
-    color,
-}: PriceHistorySeriesLegendProps) {
+export default function PriceHistorySeriesLegend({label, color}: PriceHistorySeriesLegendProps) {
     return (
         <Flex align="center" gap={2}>
             <Box

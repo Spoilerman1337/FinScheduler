@@ -6,10 +6,7 @@ interface PriceHistoryEmptyStateProps {
     description: string;
 }
 
-export default function PriceHistoryEmptyState({
-    title,
-    description,
-}: PriceHistoryEmptyStateProps) {
+export default function PriceHistoryEmptyState({title, description}: PriceHistoryEmptyStateProps) {
     return (
         <Flex
             minH="240px"

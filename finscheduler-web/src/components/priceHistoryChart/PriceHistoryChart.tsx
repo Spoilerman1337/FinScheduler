@@ -78,7 +78,10 @@ function toSortedSeries(points?: PriceHistoryPoint[] | null): PriceHistoryPoint[
     });
 }
 
-function buildForecastSeries(actualPoints: PriceHistoryPoint[], forecastPoints: PriceHistoryPoint[]) {
+function buildForecastSeries(
+    actualPoints: PriceHistoryPoint[],
+    forecastPoints: PriceHistoryPoint[],
+) {
     if (actualPoints.length === 0 || forecastPoints.length === 0) {
         return forecastPoints;
     }
@@ -262,10 +265,7 @@ function formatPriceChangeSummary(absoluteChange: number, percentChange: number 
     return `${formatSignedPercent(percentChange)} ${absoluteMoneyPart}`;
 }
 
-export default function PriceHistoryChart({
-    points,
-    forecastPoints,
-}: PriceHistoryChartProps) {
+export default function PriceHistoryChart({points, forecastPoints}: PriceHistoryChartProps) {
     const [activeTooltip, setActiveTooltip] = useState<ActiveTooltipState | null>(null);
     const actualPoints = useMemo(() => toSortedSeries(points), [points]);
     const preparedForecastPoints = useMemo(() => {

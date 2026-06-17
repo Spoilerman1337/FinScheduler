@@ -7,10 +7,7 @@ interface PriceHistoryTooltipProps {
     entries: PriceHistoryTooltipEntry[];
 }
 
-export default function PriceHistoryTooltip({
-    label,
-    entries,
-}: PriceHistoryTooltipProps) {
+export default function PriceHistoryTooltip({label, entries}: PriceHistoryTooltipProps) {
     return (
         <Box
             width={`${PRICE_HISTORY_TOOLTIP_WIDTH_PX}px`}
