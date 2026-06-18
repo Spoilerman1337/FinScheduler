@@ -162,6 +162,8 @@ func Test_ItemsHandler_GetDetailedInfo_ShouldReturnPriceForecastWhenAvailable(t 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	require.Len(t, actualResponse.PriceForecast, 12)
 	assert.Equal(t, todayUTC.AddDate(0, 1, 0), actualResponse.PriceForecast[0].Point)
+	require.NotNil(t, actualResponse.PriceForecast[0].AbsoluteChange)
+	require.NotNil(t, actualResponse.PriceForecast[0].PercentChange)
 }
 
 func Test_ItemsHandler_GetDetailedInfo_ShouldReturnBadRequestOnInvalidID(t *testing.T) {

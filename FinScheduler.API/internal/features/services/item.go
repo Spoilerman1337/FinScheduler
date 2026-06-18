@@ -10,6 +10,7 @@ import (
 	"finscheduler/pkg/dh"
 	"fmt"
 	"log/slog"
+	"math"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -492,42 +493,27 @@ func buildPriceForecastUpsert(priceHistories []domains.PriceHistory) *domains.Pr
 	}
 
 	latestPriceHistory := priceHistories[0]
-	totalMonthlyDrift := decimal.Zero
-	validSegmentsCount := int64(0)
-
-	for index := 0; index < len(priceHistories)-1; index++ {
-		newerPriceHistory := priceHistories[index]
-		olderPriceHistory := priceHistories[index+1]
-		daysBetween := newerPriceHistory.RecordedAt.Sub(olderPriceHistory.RecordedAt).Hours() / 24
-		if daysBetween <= 0 {
-			continue
-		}
-
-		monthsBetween := decimal.NewFromFloat(daysBetween).Div(averageDaysInMonth)
-		if monthsBetween.IsZero() {
-			continue
-		}
-
-		if olderPriceHistory.Value.IsZero() {
-			if newerPriceHistory.Value.IsZero() {
-				validSegmentsCount++
-			}
-			continue
-		}
-
-		monthlyDrift := newerPriceHistory.Value.
-			Sub(olderPriceHistory.Value).
-			Div(olderPriceHistory.Value).
-			Mul(decimal.NewFromInt(100)).
-			Div(monthsBetween)
-		totalMonthlyDrift = totalMonthlyDrift.Add(monthlyDrift)
-		validSegmentsCount++
-	}
-	if validSegmentsCount == 0 {
+	oldestPriceHistory := priceHistories[len(priceHistories)-1]
+	daysBetween := latestPriceHistory.RecordedAt.Sub(oldestPriceHistory.RecordedAt).Hours() / 24
+	if daysBetween <= 0 {
 		return nil
 	}
 
-	averageMonthlyDrift := totalMonthlyDrift.Div(decimal.NewFromInt(validSegmentsCount)).Round(2)
+	monthsBetween := decimal.NewFromFloat(daysBetween).Div(averageDaysInMonth)
+	if monthsBetween.IsZero() {
+		return nil
+	}
+
+	averageMonthlyDrift := decimal.Zero
+	if !oldestPriceHistory.Value.IsZero() {
+		latestValue, _ := latestPriceHistory.Value.Float64()
+		oldestValue, _ := oldestPriceHistory.Value.Float64()
+		monthsBetweenFloat, _ := monthsBetween.Float64()
+		monthlyGrowthFactor := math.Pow(latestValue/oldestValue, 1/monthsBetweenFloat)
+		averageMonthlyDrift = decimal.NewFromFloat((monthlyGrowthFactor - 1) * 100).Round(6)
+	} else if !latestPriceHistory.Value.IsZero() {
+		return nil
+	}
 
 	return &domains.PriceForecastUpsert{
 		LastKnownPrice:      latestPriceHistory.Value,

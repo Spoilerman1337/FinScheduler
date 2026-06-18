@@ -53,12 +53,12 @@ func TestPriceForecastsRepositoryGetLatestByItemID_ShouldReturnStoredForecast(t 
 		itemID,
 		olderCalculatedAt,
 		decimal.RequireFromString("100.50"),
-		decimal.RequireFromString("-2.25"),
+		decimal.RequireFromString("-2.250123"),
 		newerForecastID,
 		itemID,
 		newerCalculatedAt,
 		decimal.RequireFromString("101.75"),
-		decimal.RequireFromString("1.50"),
+		decimal.RequireFromString("1.500456"),
 	)
 
 	// Act
@@ -73,7 +73,7 @@ func TestPriceForecastsRepositoryGetLatestByItemID_ShouldReturnStoredForecast(t 
 	assert.Equal(t, itemID, priceForecast.ItemId)
 	assert.Equal(t, newerCalculatedAt, priceForecast.CalculatedAt.UTC().Format("2006-01-02"))
 	assert.True(t, decimal.RequireFromString("101.75").Equal(priceForecast.LastKnownPrice))
-	assert.True(t, decimal.RequireFromString("1.50").Equal(priceForecast.AverageMonthlyDrift))
+	assert.True(t, decimal.RequireFromString("1.500456").Equal(priceForecast.AverageMonthlyDrift))
 }
 
 func TestPriceForecastsRepositoryGetLatestByItemID_ShouldReturnNoRowsWhenForecastMissing(t *testing.T) {
@@ -110,7 +110,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldInsertNewRecordWhenForecas
 	todayUTC := time.Now().UTC().Format("2006-01-02")
 	upsert := &domains.PriceForecastUpsert{
 		LastKnownPrice:      decimal.RequireFromString("120.00"),
-		AverageMonthlyDrift: decimal.RequireFromString("3.75"),
+		AverageMonthlyDrift: decimal.RequireFromString("3.750123"),
 	}
 	itemInsertQuery := `INSERT INTO items (id, name, category) VALUES ($1, $2, $3)`
 
@@ -148,7 +148,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldInsertNewRecordWhenItemHas
 	initialCalculatedAt := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
 	upsert := &domains.PriceForecastUpsert{
 		LastKnownPrice:      decimal.RequireFromString("150.00"),
-		AverageMonthlyDrift: decimal.RequireFromString("-1.50"),
+		AverageMonthlyDrift: decimal.RequireFromString("-1.500321"),
 	}
 	itemInsertQuery := `INSERT INTO items (id, name, category) VALUES ($1, $2, $3)`
 	forecastInsertQuery := `INSERT INTO price_forecast (id, item_id, calculated_at, last_known_price, average_monthly_drift) VALUES ($1, $2, $3, $4, $5)`
@@ -161,7 +161,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldInsertNewRecordWhenItemHas
 		itemID,
 		initialCalculatedAt,
 		decimal.RequireFromString("100.00"),
-		decimal.RequireFromString("2.00"),
+		decimal.RequireFromString("2.000111"),
 	)
 
 	// Act
@@ -196,7 +196,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldUpdateExistingRecordForSam
 	todayUTC := time.Now().UTC().Format("2006-01-02")
 	upsert := &domains.PriceForecastUpsert{
 		LastKnownPrice:      decimal.RequireFromString("150.00"),
-		AverageMonthlyDrift: decimal.RequireFromString("-1.50"),
+		AverageMonthlyDrift: decimal.RequireFromString("-1.500321"),
 	}
 	itemInsertQuery := `INSERT INTO items (id, name, category) VALUES ($1, $2, $3)`
 	forecastInsertQuery := `INSERT INTO price_forecast (id, item_id, calculated_at, last_known_price, average_monthly_drift) VALUES ($1, $2, $3, $4, $5)`
@@ -209,7 +209,7 @@ func TestPriceForecastsRepositoryUpsertByItemID_ShouldUpdateExistingRecordForSam
 		itemID,
 		todayUTC,
 		decimal.RequireFromString("100.00"),
-		decimal.RequireFromString("2.00"),
+		decimal.RequireFromString("2.000111"),
 	)
 
 	// Act

@@ -8,6 +8,7 @@ import (
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/persistence"
 	"finscheduler/tests/internal/testsupport"
+	"math"
 	"testing"
 	"time"
 
@@ -373,13 +374,16 @@ func Test_ItemsService_Update_ShouldBuildPriceForecastWhenHistoryHasAtLeastTwoPo
 		uuid.New(), itemID, oldestDate.Format("2006-01-02"), oldestValue,
 		uuid.New(), itemID, middleDate.Format("2006-01-02"), middleValue,
 	)
-	firstSegmentMonthsBetween := decimal.NewFromFloat(todayUTC.Sub(middleDate).Hours() / 24).Div(decimal.RequireFromString("30.4375"))
-	secondSegmentMonthsBetween := decimal.NewFromFloat(middleDate.Sub(oldestDate).Hours() / 24).Div(decimal.RequireFromString("30.4375"))
-	firstSegmentDrift := newValue.Sub(middleValue).Div(middleValue).Mul(decimal.NewFromInt(100)).Div(firstSegmentMonthsBetween)
-	secondSegmentDrift := middleValue.Sub(oldestValue).Div(oldestValue).Mul(decimal.NewFromInt(100)).Div(secondSegmentMonthsBetween)
-	expectedDrift := firstSegmentDrift.Add(secondSegmentDrift).Div(decimal.NewFromInt(2)).Round(2)
-	expectedFirstForecastValue := newValue.Mul(decimal.NewFromInt(1).Add(expectedDrift.Div(decimal.NewFromInt(100)))).Round(2)
-	expectedLastForecastValue := newValue.Mul(decimal.NewFromInt(1).Add(expectedDrift.Div(decimal.NewFromInt(100)).Mul(decimal.NewFromInt(12)))).Round(2)
+	monthsBetween := decimal.NewFromFloat(todayUTC.Sub(oldestDate).Hours() / 24).Div(decimal.RequireFromString("30.4375"))
+	monthsBetweenFloat, _ := monthsBetween.Float64()
+	expectedDrift := decimal.NewFromFloat((math.Pow(12.5/10.0, 1/monthsBetweenFloat) - 1) * 100).Round(6)
+	monthlyGrowthFactor := decimal.NewFromInt(1).Add(expectedDrift.Div(decimal.NewFromInt(100)))
+	expectedFirstForecastValue := newValue.Mul(monthlyGrowthFactor).Round(2)
+	expectedLastForecastValue := newValue
+	for monthOffset := 0; monthOffset < 12; monthOffset++ {
+		expectedLastForecastValue = expectedLastForecastValue.Mul(monthlyGrowthFactor)
+	}
+	expectedLastForecastValue = expectedLastForecastValue.Round(2)
 
 	// Act
 	ok, updateErr := itemsService.Update(ctx, itemID, update)
