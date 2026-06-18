@@ -25,10 +25,8 @@ type ItemsService struct {
 
 const itemsServiceName = "items"
 const priceForecastMonthsAhead = 12
-const priceForecastProjectedValueWindowPercent = 25
 
 var averageDaysInMonth = decimal.RequireFromString("30.4375")
-var priceForecastProjectedValueWindow = decimal.NewFromInt(priceForecastProjectedValueWindowPercent)
 
 func NewItemsService(uow *persistence.UnitOfWork, logger *slog.Logger) *ItemsService {
 	return &ItemsService{
@@ -531,57 +529,15 @@ func winsorizePriceHistoriesForForecast(priceHistories []domains.PriceHistory) [
 	result := make([]domains.PriceHistory, len(priceHistories))
 	copy(result, priceHistories)
 
-	for index := len(result) - 1; index >= 0; index-- {
-		if len(result[index:]) < 3 {
-			continue
-		}
+	values := make([]decimal.Decimal, len(result))
+	for index, priceHistory := range result {
+		values[index] = priceHistory.Value
+	}
 
-		projectedPriceValue := buildProjectedPriceValue(result[index:])
-		if projectedPriceValue == nil {
-			continue
-		}
-
-		result[index].Value = sh.WinsorizeValue(
-			result[index].Value,
-			*projectedPriceValue,
-			priceForecastProjectedValueWindow,
-		)
+	winsorizedValues := sh.Winsorize(values)
+	for index := range result {
+		result[index].Value = winsorizedValues[index]
 	}
 
 	return result
-}
-
-func buildProjectedPriceValue(priceHistories []domains.PriceHistory) *decimal.Decimal {
-	if len(priceHistories) < 3 {
-		return nil
-	}
-
-	latestPriceHistory := priceHistories[0]
-	previousLatestPriceHistory := priceHistories[1]
-	oldestPriceHistory := priceHistories[len(priceHistories)-1]
-	previousDaysBetween := previousLatestPriceHistory.RecordedAt.Sub(oldestPriceHistory.RecordedAt).Hours() / 24
-	if previousDaysBetween <= 0 {
-		return nil
-	}
-
-	previousMonthsBetween := decimal.NewFromFloat(previousDaysBetween).Div(averageDaysInMonth)
-	if previousMonthsBetween.IsZero() || previousLatestPriceHistory.Value.IsZero() || oldestPriceHistory.Value.IsZero() {
-		return nil
-	}
-
-	previousLatestValue, _ := previousLatestPriceHistory.Value.Float64()
-	oldestValue, _ := oldestPriceHistory.Value.Float64()
-	previousMonthsBetweenFloat, _ := previousMonthsBetween.Float64()
-	previousMonthlyGrowthFactor := math.Pow(previousLatestValue/oldestValue, 1/previousMonthsBetweenFloat)
-
-	latestIntervalDays := latestPriceHistory.RecordedAt.Sub(previousLatestPriceHistory.RecordedAt).Hours() / 24
-	if latestIntervalDays <= 0 {
-		return nil
-	}
-
-	latestIntervalMonths := decimal.NewFromFloat(latestIntervalDays).Div(averageDaysInMonth)
-	latestIntervalMonthsFloat, _ := latestIntervalMonths.Float64()
-	projectedLatestValue := previousLatestValue * math.Pow(previousMonthlyGrowthFactor, latestIntervalMonthsFloat)
-	projectedPriceValue := decimal.NewFromFloat(projectedLatestValue)
-	return &projectedPriceValue
 }

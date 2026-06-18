@@ -5,43 +5,69 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestWinsorizeValue_ShouldClampToUpperBound(t *testing.T) {
+func TestWinsorize_ShouldClampUpperOutlierByIQR(t *testing.T) {
 	// Arrange
-	value := decimal.RequireFromString("160.00")
-	projectedValue := decimal.RequireFromString("100.00")
-	windowPercent := decimal.RequireFromString("25.00")
+	values := []decimal.Decimal{
+		decimal.RequireFromString("200"),
+		decimal.RequireFromString("500"),
+		decimal.RequireFromString("500"),
+		decimal.RequireFromString("600"),
+		decimal.RequireFromString("700"),
+		decimal.RequireFromString("700"),
+		decimal.RequireFromString("800"),
+		decimal.RequireFromString("900"),
+		decimal.RequireFromString("1000"),
+		decimal.RequireFromString("50000"),
+	}
 
 	// Act
-	winsorizedValue := WinsorizeValue(value, projectedValue, windowPercent)
+	winsorizedValues := Winsorize(values)
 
 	// Assert
-	assert.True(t, decimal.RequireFromString("125.00").Equal(winsorizedValue))
+	require.Len(t, winsorizedValues, len(values))
+	assert.True(t, decimal.RequireFromString("1500").Equal(winsorizedValues[9]))
+	assert.True(t, decimal.RequireFromString("200").Equal(winsorizedValues[0]))
 }
 
-func TestWinsorizeValue_ShouldClampToLowerBound(t *testing.T) {
+func TestWinsorize_ShouldClampLowerOutlierToZeroBound(t *testing.T) {
 	// Arrange
-	value := decimal.RequireFromString("70.00")
-	projectedValue := decimal.RequireFromString("100.00")
-	windowPercent := decimal.RequireFromString("25.00")
+	values := []decimal.Decimal{
+		decimal.RequireFromString("-50"),
+		decimal.RequireFromString("500"),
+		decimal.RequireFromString("500"),
+		decimal.RequireFromString("600"),
+		decimal.RequireFromString("700"),
+		decimal.RequireFromString("700"),
+		decimal.RequireFromString("800"),
+		decimal.RequireFromString("900"),
+		decimal.RequireFromString("1000"),
+		decimal.RequireFromString("1200"),
+	}
 
 	// Act
-	winsorizedValue := WinsorizeValue(value, projectedValue, windowPercent)
+	winsorizedValues := Winsorize(values)
 
 	// Assert
-	assert.True(t, decimal.RequireFromString("75.00").Equal(winsorizedValue))
+	require.Len(t, winsorizedValues, len(values))
+	assert.True(t, decimal.Zero.Equal(winsorizedValues[0]))
 }
 
-func TestWinsorizeValue_ShouldReturnValueWithinCorridor(t *testing.T) {
+func TestWinsorize_ShouldReturnCopyWithoutMutatingInput(t *testing.T) {
 	// Arrange
-	value := decimal.RequireFromString("118.00")
-	projectedValue := decimal.RequireFromString("100.00")
-	windowPercent := decimal.RequireFromString("25.00")
+	values := []decimal.Decimal{
+		decimal.RequireFromString("200"),
+		decimal.RequireFromString("500"),
+		decimal.RequireFromString("50000"),
+	}
+	originalValues := append([]decimal.Decimal(nil), values...)
 
 	// Act
-	winsorizedValue := WinsorizeValue(value, projectedValue, windowPercent)
+	winsorizedValues := Winsorize(values)
 
 	// Assert
-	assert.True(t, decimal.RequireFromString("118.00").Equal(winsorizedValue))
+	assert.Equal(t, originalValues, values)
+	assert.NotSame(t, &values[0], &winsorizedValues[0])
 }
