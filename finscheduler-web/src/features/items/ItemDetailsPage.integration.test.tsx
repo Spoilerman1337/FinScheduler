@@ -255,8 +255,18 @@ describe('ItemDetailsPage integration', () => {
                         {point: '2026-03-20T00:00:00Z', value: 160},
                     ],
                     priceForecast: [
-                        {point: '2026-04-20T00:00:00Z', value: 165.75},
-                        {point: '2026-05-20T00:00:00Z', value: 171.5},
+                        {
+                            point: '2026-04-20T00:00:00Z',
+                            value: 165.75,
+                            absoluteChange: 5.75,
+                            percentChange: 3.594,
+                        },
+                        {
+                            point: '2026-05-20T00:00:00Z',
+                            value: 171.5,
+                            absoluteChange: 5.75,
+                            percentChange: 3.469,
+                        },
                     ],
                 });
             }),

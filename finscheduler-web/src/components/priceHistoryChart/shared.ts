@@ -17,7 +17,6 @@ export interface PriceHistoryPoint {
     value: number;
     absoluteChange?: number | null;
     percentChange?: number | null;
-    isSynthetic?: boolean;
 }
 
 export interface PriceHistoryChartPoint {
@@ -28,7 +27,7 @@ export interface PriceHistoryChartPoint {
     forecastValue: number | null;
     forecastAbsoluteChange: number | null;
     forecastPercentChange: number | null;
-    forecastIsSynthetic: boolean;
+    forecastIsBridgePoint: boolean;
 }
 
 export interface PriceHistoryChartMouseState {
