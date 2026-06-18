@@ -5,6 +5,7 @@ import (
 	"finscheduler/internal/features/domains"
 	"finscheduler/internal/persistence"
 	"log/slog"
+	"math"
 	"testing"
 	"time"
 
@@ -190,7 +191,7 @@ func TestBuildPriceForecastUpsert_ShouldReturnNilWhenThereAreLessThanTwoPoints(t
 	assert.Nil(t, upsert)
 }
 
-func TestBuildPriceForecastUpsert_ShouldAverageMonthlyDriftsBetweenNeighborPoints(t *testing.T) {
+func TestBuildPriceForecastUpsert_ShouldBuildMonthlyDriftFromTheWholeHistoryWindow(t *testing.T) {
 	// Arrange
 	latestDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
 	middleDate := latestDate.AddDate(0, 0, -15)
@@ -209,19 +210,9 @@ func TestBuildPriceForecastUpsert_ShouldAverageMonthlyDriftsBetweenNeighborPoint
 			Value:      decimal.RequireFromString("100.00"),
 		},
 	}
-	firstSegmentMonthsBetween := decimal.NewFromFloat(latestDate.Sub(middleDate).Hours() / 24).Div(averageDaysInMonth)
-	secondSegmentMonthsBetween := decimal.NewFromFloat(middleDate.Sub(oldestDate).Hours() / 24).Div(averageDaysInMonth)
-	firstSegmentDrift := decimal.RequireFromString("112.00").
-		Sub(decimal.RequireFromString("111.00")).
-		Div(decimal.RequireFromString("111.00")).
-		Mul(decimal.NewFromInt(100)).
-		Div(firstSegmentMonthsBetween)
-	secondSegmentDrift := decimal.RequireFromString("111.00").
-		Sub(decimal.RequireFromString("100.00")).
-		Div(decimal.RequireFromString("100.00")).
-		Mul(decimal.NewFromInt(100)).
-		Div(secondSegmentMonthsBetween)
-	expectedDrift := firstSegmentDrift.Add(secondSegmentDrift).Div(decimal.NewFromInt(2)).Round(2)
+	monthsBetween := decimal.NewFromFloat(latestDate.Sub(oldestDate).Hours() / 24).Div(averageDaysInMonth)
+	monthsBetweenFloat, _ := monthsBetween.Float64()
+	expectedDrift := decimal.NewFromFloat((math.Pow(112.0/100.0, 1/monthsBetweenFloat) - 1) * 100).Round(6)
 
 	// Act
 	upsert := buildPriceForecastUpsert(priceHistories)
@@ -230,4 +221,36 @@ func TestBuildPriceForecastUpsert_ShouldAverageMonthlyDriftsBetweenNeighborPoint
 	require.NotNil(t, upsert)
 	assert.True(t, decimal.RequireFromString("112.00").Equal(upsert.LastKnownPrice))
 	assert.True(t, expectedDrift.Equal(upsert.AverageMonthlyDrift))
+}
+
+func TestBuildPriceForecastUpsert_ShouldNotOverweightShortRecentSegments(t *testing.T) {
+	// Arrange
+	latestDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	recentDate := latestDate.AddDate(0, 0, -1)
+	oldestDate := latestDate.AddDate(0, -1, 0)
+	priceHistories := []domains.PriceHistory{
+		{
+			RecordedAt: latestDate,
+			Value:      decimal.RequireFromString("115.00"),
+		},
+		{
+			RecordedAt: recentDate,
+			Value:      decimal.RequireFromString("110.00"),
+		},
+		{
+			RecordedAt: oldestDate,
+			Value:      decimal.RequireFromString("100.00"),
+		},
+	}
+	monthsBetween := decimal.NewFromFloat(latestDate.Sub(oldestDate).Hours() / 24).Div(averageDaysInMonth)
+	monthsBetweenFloat, _ := monthsBetween.Float64()
+	expectedDrift := decimal.NewFromFloat((math.Pow(115.0/100.0, 1/monthsBetweenFloat) - 1) * 100).Round(6)
+
+	// Act
+	upsert := buildPriceForecastUpsert(priceHistories)
+
+	// Assert
+	require.NotNil(t, upsert)
+	assert.True(t, expectedDrift.Equal(upsert.AverageMonthlyDrift))
+	assert.True(t, upsert.AverageMonthlyDrift.LessThan(decimal.RequireFromString("20.00")))
 }

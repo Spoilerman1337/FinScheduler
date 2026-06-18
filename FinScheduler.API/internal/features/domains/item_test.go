@@ -174,10 +174,14 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	olderPriceHistoryValue := decimal.RequireFromString("80.00")
 	expectedAbsoluteChange := decimal.RequireFromString("9.50")
 	expectedPercentChange := decimal.RequireFromString("11.875")
+	forecastAbsoluteChange := decimal.RequireFromString("5.00")
+	forecastPercentChange := decimal.RequireFromString("5.555")
 	priceForecastPoints := []PriceForecastPointDto{
 		{
-			Point: time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC),
-			Value: decimal.RequireFromString("95.00"),
+			Point:          time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC),
+			Value:          decimal.RequireFromString("95.00"),
+			AbsoluteChange: &forecastAbsoluteChange,
+			PercentChange:  &forecastPercentChange,
 		},
 	}
 	item := Item{
@@ -236,6 +240,10 @@ func TestNewItemDetailedDto_ShouldMapOnlyDetailedFields(t *testing.T) {
 	assert.Nil(t, dto.PriceHistory[1].PercentChange)
 	assert.Equal(t, priceForecastPoints[0].Point, dto.PriceForecast[0].Point)
 	assert.True(t, priceForecastPoints[0].Value.Equal(dto.PriceForecast[0].Value))
+	require.NotNil(t, dto.PriceForecast[0].AbsoluteChange)
+	require.NotNil(t, dto.PriceForecast[0].PercentChange)
+	assert.True(t, forecastAbsoluteChange.Equal(*dto.PriceForecast[0].AbsoluteChange))
+	assert.True(t, forecastPercentChange.Equal(*dto.PriceForecast[0].PercentChange))
 }
 
 func TestNewItemDetailedDto_ShouldUseEmptyTagsAndPriceHistorySlicesWhenNoDataProvided(t *testing.T) {

@@ -28,10 +28,57 @@ func TestBuildPriceForecastPoints(t *testing.T) {
 	require.Len(t, points, 3)
 	assert.Equal(t, mustDate(t, "2026-07-17"), points[0].Point)
 	assert.True(t, decimal.RequireFromString("205.00").Equal(points[0].Value))
+	require.NotNil(t, points[0].AbsoluteChange)
+	require.NotNil(t, points[0].PercentChange)
+	assert.True(t, decimal.RequireFromString("5.00").Equal(*points[0].AbsoluteChange))
+	assert.True(t, decimal.RequireFromString("2.50").Equal(*points[0].PercentChange))
 	assert.Equal(t, mustDate(t, "2026-08-17"), points[1].Point)
-	assert.True(t, decimal.RequireFromString("210.00").Equal(points[1].Value))
+	assert.True(t, decimal.RequireFromString("210.13").Equal(points[1].Value))
 	assert.Equal(t, mustDate(t, "2026-09-17"), points[2].Point)
-	assert.True(t, decimal.RequireFromString("215.00").Equal(points[2].Value))
+	assert.True(t, decimal.RequireFromString("215.38").Equal(points[2].Value))
+}
+
+func TestBuildPriceForecastPoints_ShouldBuildEachChangeFromThePreviousForecastPoint(t *testing.T) {
+	// Arrange
+	priceForecast := PriceForecast{
+		Id:                  uuid.New(),
+		ItemId:              uuid.New(),
+		CalculatedAt:        mustDate(t, "2026-06-17"),
+		LastKnownPrice:      decimal.RequireFromString("100.00"),
+		AverageMonthlyDrift: decimal.RequireFromString("100.00"),
+	}
+
+	// Act
+	points := BuildPriceForecastPoints(priceForecast, 2)
+
+	// Assert
+	require.Len(t, points, 2)
+	require.NotNil(t, points[0].AbsoluteChange)
+	require.NotNil(t, points[0].PercentChange)
+	require.NotNil(t, points[1].AbsoluteChange)
+	require.NotNil(t, points[1].PercentChange)
+	assert.True(t, decimal.RequireFromString("100.00").Equal(*points[0].AbsoluteChange))
+	assert.True(t, decimal.RequireFromString("100.00").Equal(*points[0].PercentChange))
+	assert.True(t, decimal.RequireFromString("200.00").Equal(*points[1].AbsoluteChange))
+	assert.True(t, decimal.RequireFromString("100.00").Equal(*points[1].PercentChange))
+}
+
+func TestBuildPriceForecastPoints_ShouldNotRoundIntermediateForecastValues(t *testing.T) {
+	// Arrange
+	priceForecast := PriceForecast{
+		Id:                  uuid.New(),
+		ItemId:              uuid.New(),
+		CalculatedAt:        mustDate(t, "2026-06-17"),
+		LastKnownPrice:      decimal.RequireFromString("100.00"),
+		AverageMonthlyDrift: decimal.RequireFromString("1.23"),
+	}
+
+	// Act
+	points := BuildPriceForecastPoints(priceForecast, 12)
+
+	// Assert
+	require.Len(t, points, 12)
+	assert.True(t, decimal.RequireFromString("115.80").Equal(points[11].Value))
 }
 
 func TestBuildPriceForecastPoints_ShouldClampToLastDayOfTargetMonth(t *testing.T) {

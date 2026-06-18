@@ -17,8 +17,10 @@ type PriceForecast struct {
 }
 
 type PriceForecastPointDto struct {
-	Point time.Time       `json:"point"`
-	Value decimal.Decimal `json:"value"`
+	Point          time.Time        `json:"point"`
+	Value          decimal.Decimal  `json:"value"`
+	AbsoluteChange *decimal.Decimal `json:"absoluteChange"`
+	PercentChange  *decimal.Decimal `json:"percentChange"`
 }
 
 type PriceForecastUpsert struct {
@@ -33,12 +35,20 @@ func BuildPriceForecastPoints(priceForecast PriceForecast, monthsAhead int) []Pr
 
 	points := make([]PriceForecastPointDto, 0, monthsAhead)
 	monthlyDriftFactor := priceForecast.AverageMonthlyDrift.Div(decimal.NewFromInt(100))
+	monthlyGrowthFactor := decimal.NewFromInt(1).Add(monthlyDriftFactor)
+	currentValue := priceForecast.LastKnownPrice
+	previousValue := priceForecast.LastKnownPrice
 	for monthOffset := 1; monthOffset <= monthsAhead; monthOffset++ {
-		offset := decimal.NewFromInt(int64(monthOffset))
+		currentValue = currentValue.Mul(monthlyGrowthFactor)
+		value := currentValue.Round(2)
+		absoluteChange, percentChange := buildPriceChange(value, &previousValue)
 		points = append(points, PriceForecastPointDto{
-			Point: normalizeDate(priceForecast.CalculatedAt, monthOffset),
-			Value: priceForecast.LastKnownPrice.Mul(decimal.NewFromInt(1).Add(monthlyDriftFactor.Mul(offset))).Round(2),
+			Point:          normalizeDate(priceForecast.CalculatedAt, monthOffset),
+			Value:          value,
+			AbsoluteChange: absoluteChange,
+			PercentChange:  percentChange,
 		})
+		previousValue = value
 	}
 
 	return points

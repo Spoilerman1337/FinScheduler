@@ -36,15 +36,10 @@ func NewPriceHistoryPointDto(priceHistory PriceHistory, previousPriceHistory *Pr
 		return dto
 	}
 
-	absoluteChange := priceHistory.Value.Sub(previousPriceHistory.Value)
-	dto.AbsoluteChange = &absoluteChange
-
-	if previousPriceHistory.Value.IsZero() {
-		return dto
-	}
-
-	percentChange := absoluteChange.Div(previousPriceHistory.Value).Mul(decimal.NewFromInt(100))
-	dto.PercentChange = &percentChange
+	dto.AbsoluteChange, dto.PercentChange = buildPriceChange(
+		priceHistory.Value,
+		&previousPriceHistory.Value,
+	)
 
 	return dto
 }
