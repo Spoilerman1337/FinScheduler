@@ -1,6 +1,7 @@
 package domains
 
 import (
+	"finscheduler/pkg/ph"
 	"fmt"
 	"time"
 
@@ -41,7 +42,7 @@ func BuildPriceForecastPoints(priceForecast PriceForecast, monthsAhead int) []Pr
 	for monthOffset := 1; monthOffset <= monthsAhead; monthOffset++ {
 		currentValue = currentValue.Mul(monthlyGrowthFactor)
 		value := currentValue.Round(2)
-		absoluteChange, percentChange := buildPriceChange(value, &previousValue)
+		absoluteChange, percentChange := ph.BuildPriceChange(value, &previousValue)
 		points = append(points, PriceForecastPointDto{
 			Point:          normalizeDate(priceForecast.CalculatedAt, monthOffset),
 			Value:          value,

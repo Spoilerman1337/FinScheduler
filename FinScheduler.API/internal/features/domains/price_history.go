@@ -1,6 +1,7 @@
 package domains
 
 import (
+	"finscheduler/pkg/ph"
 	"fmt"
 	"time"
 
@@ -36,7 +37,7 @@ func NewPriceHistoryPointDto(priceHistory PriceHistory, previousPriceHistory *Pr
 		return dto
 	}
 
-	dto.AbsoluteChange, dto.PercentChange = buildPriceChange(
+	dto.AbsoluteChange, dto.PercentChange = ph.BuildPriceChange(
 		priceHistory.Value,
 		&previousPriceHistory.Value,
 	)

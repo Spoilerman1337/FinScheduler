@@ -1,8 +1,8 @@
-package domains
+package ph
 
 import "github.com/shopspring/decimal"
 
-func buildPriceChange(
+func BuildPriceChange(
 	currentValue decimal.Decimal,
 	previousValue *decimal.Decimal,
 ) (*decimal.Decimal, *decimal.Decimal) {
