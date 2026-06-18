@@ -29,6 +29,10 @@ interface PriceHistoryChartProps {
     forecastPoints?: PriceHistoryPoint[] | null;
 }
 
+interface PriceForecastSeriesPoint extends PriceHistoryPoint {
+    isBridgePoint?: boolean;
+}
+
 interface ChartSummary {
     current: number;
     min: number;
@@ -83,24 +87,29 @@ function toSortedSeries(points?: PriceHistoryPoint[] | null): PriceHistoryPoint[
 function buildForecastSeries(
     actualPoints: PriceHistoryPoint[],
     forecastPoints: PriceHistoryPoint[],
-) {
-    if (actualPoints.length === 0 || forecastPoints.length === 0) {
+): PriceForecastSeriesPoint[] {
+    if (forecastPoints.length === 0) {
         return forecastPoints;
     }
 
-    const lastActualPoint = actualPoints.at(-1)!;
+    const lastActualPoint = actualPoints.at(-1) ?? null;
+
+    if (lastActualPoint === null) {
+        return forecastPoints;
+    }
+
     const firstForecastPoint = forecastPoints[0];
 
     if (lastActualPoint.point === firstForecastPoint.point) {
         return forecastPoints;
     }
 
-    return [{...lastActualPoint, isSynthetic: true}, ...forecastPoints];
+    return [{...lastActualPoint, isBridgePoint: true}, ...forecastPoints];
 }
 
 function buildChartData(
     actualPoints: PriceHistoryPoint[],
-    forecastPoints: PriceHistoryPoint[],
+    forecastPoints: PriceForecastSeriesPoint[],
 ): PriceHistoryChartPoint[] {
     const actualMap = new Map(actualPoints.map((point) => [point.point, point]));
     const forecastMap = new Map(forecastPoints.map((point) => [point.point, point]));
@@ -122,7 +131,7 @@ function buildChartData(
             forecastValue: forecastPoint?.value ?? null,
             forecastAbsoluteChange: forecastPoint?.absoluteChange ?? null,
             forecastPercentChange: forecastPoint?.percentChange ?? null,
-            forecastIsSynthetic: forecastPoint?.isSynthetic ?? false,
+            forecastIsBridgePoint: forecastPoint?.isBridgePoint ?? false,
         };
     });
 }
@@ -174,7 +183,7 @@ function buildTooltipValues(point: PriceHistoryChartPoint): TooltipValue[] {
         });
     }
 
-    if (point.forecastValue !== null && !point.forecastIsSynthetic) {
+    if (point.forecastValue !== null && !point.forecastIsBridgePoint) {
         const forecastValue = {
             label: 'Прогноз',
             color: PRICE_HISTORY_FORECAST_STROKE,

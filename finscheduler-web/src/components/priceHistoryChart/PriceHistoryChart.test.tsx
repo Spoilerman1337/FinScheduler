@@ -85,10 +85,14 @@ function renderChartWithForecast() {
                 {
                     point: '2026-04-20T00:00:00Z',
                     value: 165.75,
+                    absoluteChange: 5.75,
+                    percentChange: 3.594,
                 },
                 {
                     point: '2026-05-20T00:00:00Z',
                     value: 171.5,
+                    absoluteChange: 5.75,
+                    percentChange: 3.469,
                 },
             ]}
         />,
@@ -200,6 +204,33 @@ describe('PriceHistoryChart', () => {
         });
         expect(
             within(screen.getByTestId('price-history-tooltip')).getByText('Прогноз'),
+        ).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('price-history-tooltip')).getByText(/\+3,47% \(5,75/),
+        ).toBeInTheDocument();
+    });
+
+    it('renders the first forecast change provided by the API', async () => {
+        // Arrange
+        const {container} = renderChartWithForecast();
+        const dots = container.querySelectorAll('.recharts-line-dots circle');
+        const hoveredDot = dots[dots.length - 2];
+
+        expect(hoveredDot).toBeTruthy();
+
+        // Act
+        fireEvent.mouseEnter(hoveredDot);
+        fireEvent.mouseMove(hoveredDot, {
+            clientX: Number(hoveredDot?.getAttribute('cx') ?? 0),
+            clientY: Number(hoveredDot?.getAttribute('cy') ?? 0),
+        });
+
+        // Assert
+        await waitFor(() => {
+            expect(screen.getByTestId('price-history-tooltip')).toBeInTheDocument();
+        });
+        expect(
+            within(screen.getByTestId('price-history-tooltip')).getByText(/\+3,59% \(5,75/),
         ).toBeInTheDocument();
     });
 
