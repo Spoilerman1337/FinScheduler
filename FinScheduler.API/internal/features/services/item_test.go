@@ -254,3 +254,127 @@ func TestBuildPriceForecastUpsert_ShouldNotOverweightShortRecentSegments(t *test
 	assert.True(t, expectedDrift.Equal(upsert.AverageMonthlyDrift))
 	assert.True(t, upsert.AverageMonthlyDrift.LessThan(decimal.RequireFromString("20.00")))
 }
+
+func TestBuildPriceForecastUpsert_ShouldClampLatestPriceByProjectedCorridorWhenCalculatingDrift(t *testing.T) {
+	// Arrange
+	latestDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	priceHistories := []domains.PriceHistory{
+		{
+			RecordedAt: latestDate,
+			Value:      decimal.RequireFromString("1000.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -1, 0),
+			Value:      decimal.RequireFromString("110.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -2, 0),
+			Value:      decimal.RequireFromString("105.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -3, 0),
+			Value:      decimal.RequireFromString("102.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -4, 0),
+			Value:      decimal.RequireFromString("100.00"),
+		},
+	}
+	previousMonthsBetween := decimal.NewFromFloat(
+		latestDate.AddDate(0, -1, 0).Sub(latestDate.AddDate(0, -4, 0)).Hours() / 24,
+	).Div(averageDaysInMonth)
+	previousMonthsBetweenFloat, _ := previousMonthsBetween.Float64()
+	previousMonthlyGrowthFactor := math.Pow(110.0/100.0, 1/previousMonthsBetweenFloat)
+	latestIntervalMonths := decimal.NewFromFloat(
+		latestDate.Sub(latestDate.AddDate(0, -1, 0)).Hours() / 24,
+	).Div(averageDaysInMonth)
+	latestIntervalMonthsFloat, _ := latestIntervalMonths.Float64()
+	expectedLatestPriceValue := 110.0 * math.Pow(previousMonthlyGrowthFactor, latestIntervalMonthsFloat)
+	expectedClampedLatestValue := expectedLatestPriceValue * 1.25
+	fullMonthsBetween := decimal.NewFromFloat(latestDate.Sub(latestDate.AddDate(0, -4, 0)).Hours() / 24).Div(averageDaysInMonth)
+	fullMonthsBetweenFloat, _ := fullMonthsBetween.Float64()
+	expectedDrift := decimal.NewFromFloat(
+		(math.Pow(expectedClampedLatestValue/100.0, 1/fullMonthsBetweenFloat) - 1) * 100,
+	).Round(6)
+
+	// Act
+	upsert := buildPriceForecastUpsert(priceHistories)
+
+	// Assert
+	require.NotNil(t, upsert)
+	assert.True(t, decimal.RequireFromString("1000.00").Equal(upsert.LastKnownPrice))
+	assert.True(t, expectedDrift.Equal(upsert.AverageMonthlyDrift))
+}
+
+func TestBuildPriceForecastUpsert_ShouldClampInternalPeaksBeforeCalculatingLatestExpectation(t *testing.T) {
+	// Arrange
+	latestDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	priceHistories := []domains.PriceHistory{
+		{
+			RecordedAt: latestDate,
+			Value:      decimal.RequireFromString("140.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -1, 0),
+			Value:      decimal.RequireFromString("1000.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -2, 0),
+			Value:      decimal.RequireFromString("105.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -3, 0),
+			Value:      decimal.RequireFromString("102.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -4, 0),
+			Value:      decimal.RequireFromString("100.00"),
+		},
+	}
+	monthsBetween := decimal.NewFromFloat(latestDate.Sub(latestDate.AddDate(0, -4, 0)).Hours() / 24).Div(averageDaysInMonth)
+	monthsBetweenFloat, _ := monthsBetween.Float64()
+	expectedDrift := decimal.NewFromFloat((math.Pow(140.0/100.0, 1/monthsBetweenFloat) - 1) * 100).Round(6)
+
+	// Act
+	upsert := buildPriceForecastUpsert(priceHistories)
+
+	// Assert
+	require.NotNil(t, upsert)
+	assert.True(t, decimal.RequireFromString("140.00").Equal(upsert.LastKnownPrice))
+	assert.True(t, expectedDrift.Equal(upsert.AverageMonthlyDrift))
+}
+
+func TestBuildPriceForecastUpsert_ShouldNotMutateOriginalPriceHistories(t *testing.T) {
+	// Arrange
+	latestDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	priceHistories := []domains.PriceHistory{
+		{
+			RecordedAt: latestDate,
+			Value:      decimal.RequireFromString("140.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -1, 0),
+			Value:      decimal.RequireFromString("1000.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -2, 0),
+			Value:      decimal.RequireFromString("105.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -3, 0),
+			Value:      decimal.RequireFromString("102.00"),
+		},
+		{
+			RecordedAt: latestDate.AddDate(0, -4, 0),
+			Value:      decimal.RequireFromString("100.00"),
+		},
+	}
+	originalPriceHistories := append([]domains.PriceHistory(nil), priceHistories...)
+
+	// Act
+	upsert := buildPriceForecastUpsert(priceHistories)
+
+	// Assert
+	require.NotNil(t, upsert)
+	assert.Equal(t, originalPriceHistories, priceHistories)
+}
