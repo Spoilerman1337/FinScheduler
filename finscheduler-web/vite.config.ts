@@ -19,14 +19,14 @@ export default defineConfig({
                         {
                             name: 'chakra-components-vendor',
                             test: new RegExp(
-                                `${nodeModulesSegment}@chakra-ui[\\\\/]react[\\\\/]dist[\\\\/]esm[\\\\/]components[\\\\/]`
+                                `${nodeModulesSegment}@chakra-ui[\\\\/]react[\\\\/]dist[\\\\/]esm[\\\\/]components[\\\\/]`,
                             ),
                             priority: 100,
                         },
                         {
                             name: 'chakra-core-vendor',
                             test: new RegExp(
-                                `${nodeModulesSegment}@chakra-ui[\\\\/]react[\\\\/]dist[\\\\/]esm[\\\\/](hooks|styled-system|theme|utils)[\\\\/]`
+                                `${nodeModulesSegment}@chakra-ui[\\\\/]react[\\\\/]dist[\\\\/]esm[\\\\/](hooks|styled-system|theme|utils)[\\\\/]`,
                             ),
                             priority: 90,
                         },
@@ -57,7 +57,9 @@ export default defineConfig({
                         },
                         {
                             name: 'icon-vendor',
-                            test: new RegExp(`${nodeModulesSegment}(react-icons|lucide-react)[\\\\/]`),
+                            test: new RegExp(
+                                `${nodeModulesSegment}(react-icons|lucide-react)[\\\\/]`,
+                            ),
                             priority: 30,
                         },
                         {
