@@ -1,4 +1,5 @@
 export const dashboardPath = '/';
+export const calendarPath = '/calendar';
 
 export const itemsListPath = '/items';
 export const newItemPath = '/items/new';

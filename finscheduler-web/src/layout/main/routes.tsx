@@ -1,6 +1,8 @@
 import type {RouteObject} from 'react-router-dom';
+import Calendar from '../../features/calendar/Calendar.tsx';
 import Dashboard from '../../features/dashboard/Dashboard.tsx';
 import {
+    calendarPath,
     dashboardPath,
     itemEditRoutePath,
     itemsListPath,
@@ -14,6 +16,7 @@ import Items from '../../features/items/Items.tsx';
 import TagDetailsPage from '../../features/tags/TagDetailsPage.tsx';
 import Tags from '../../features/tags/Tags.tsx';
 import {
+    calendarRouteTitle,
     catalogNavigationLabel,
     dashboardRouteTitle,
     tagsNavigationLabel,
@@ -26,6 +29,13 @@ export const mainRouteChildren: RouteObject[] = [
             title: dashboardRouteTitle,
         },
         element: <Dashboard />,
+    },
+    {
+        path: calendarPath,
+        handle: {
+            title: calendarRouteTitle,
+        },
+        element: <Calendar />,
     },
     {
         path: itemsListPath,

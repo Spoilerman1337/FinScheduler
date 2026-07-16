@@ -14,7 +14,9 @@ export default function Layout(props: LayoutProps) {
                     {props.headerName}
                 </Text>
             </Flex>
-            <Flex minHeight={0}>{props.children}</Flex>
+            <Flex minHeight={0} flex={1}>
+                {props.children}
+            </Flex>
         </>
     );
 }
