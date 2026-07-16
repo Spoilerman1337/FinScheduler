@@ -1,22 +1,57 @@
-import type {CalendarMarkerTone} from './shared.ts';
+import type {CalendarEventColorPreset} from './shared.ts';
 
-const markerToneStyles: Record<CalendarMarkerTone, {bg: string; text: string}> = {
-    accent: {
-        bg: 'app.accent',
-        text: 'app.accent',
+interface CalendarEventColorStyle {
+    bg: string;
+    glow: string;
+    text: string;
+}
+
+const calendarEventColorPresets = [
+    'red',
+    'blue',
+    'yellow',
+    'green',
+    'white',
+    'orange',
+    'violet',
+] as const satisfies readonly CalendarEventColorPreset[];
+
+const calendarEventColorStyles: Record<CalendarEventColorPreset, CalendarEventColorStyle> = {
+    red: {
+        bg: 'app.negative',
+        glow: 'none',
+        text: 'app.negative',
     },
-    positive: {
+    blue: {
+        bg: 'app.info',
+        glow: 'app.glowCyan',
+        text: 'app.info',
+    },
+    yellow: {
+        bg: 'amber.300',
+        glow: 'none',
+        text: 'amber.300',
+    },
+    green: {
         bg: 'app.positive',
+        glow: 'none',
         text: 'app.positive',
     },
-    warning: {
-        bg: 'app.warning',
-        text: 'app.warning',
+    white: {
+        bg: 'fg',
+        glow: 'none',
+        text: 'fg',
+    },
+    orange: {
+        bg: 'amber.500',
+        glow: 'none',
+        text: 'amber.500',
     },
     violet: {
         bg: 'app.accentViolet',
+        glow: 'app.glowViolet',
         text: 'app.accentViolet',
     },
 };
 
-export {markerToneStyles};
+export {calendarEventColorPresets, calendarEventColorStyles};

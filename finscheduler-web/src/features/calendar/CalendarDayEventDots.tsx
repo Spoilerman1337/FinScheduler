@@ -1,6 +1,6 @@
 import {Box, HStack} from '@chakra-ui/react';
 import type {CalendarMarkerPreview} from './shared.ts';
-import {markerToneStyles} from './calendarUi.ts';
+import {calendarEventColorStyles} from './calendarUi.ts';
 
 interface CalendarDayEventDotsProps {
     markers: CalendarMarkerPreview[];
@@ -20,8 +20,8 @@ export default function CalendarDayEventDots(props: CalendarDayEventDotsProps) {
                     key={marker.id}
                     boxSize="2"
                     borderRadius="full"
-                    bg={markerToneStyles[marker.tone].bg}
-                    boxShadow={marker.tone === 'accent' ? 'app.glowCyan' : 'none'}
+                    bg={calendarEventColorStyles[marker.color].bg}
+                    boxShadow={calendarEventColorStyles[marker.color].glow}
                 />
             ))}
         </HStack>

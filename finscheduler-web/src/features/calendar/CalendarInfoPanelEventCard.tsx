@@ -1,19 +1,22 @@
 import {Box, Flex, HStack, Text, VStack} from '@chakra-ui/react';
 import {Clock3} from 'lucide-react';
-import type {CalendarMarkerPreview} from './shared.ts';
-import {markerToneStyles} from './calendarUi.ts';
+import type {CalendarEventColorPreset} from './shared.ts';
+import {calendarEventColorStyles} from './calendarUi.ts';
 
 interface CalendarInfoPanelEventCardProps {
-    marker: CalendarMarkerPreview;
+    color: CalendarEventColorPreset;
+    description: string;
+    label: string;
+    timeHints: string[];
 }
 
 interface CalendarEventTimeListProps {
+    color: CalendarEventColorPreset;
     timeHints: string[];
-    tone: CalendarMarkerPreview['tone'];
 }
 
 function CalendarEventTimeList(props: CalendarEventTimeListProps) {
-    const {timeHints, tone} = props;
+    const {color, timeHints} = props;
 
     if (timeHints.length === 0) {
         return null;
@@ -31,7 +34,7 @@ function CalendarEventTimeList(props: CalendarEventTimeListProps) {
                     borderRadius="full"
                     bg="rgba(6, 16, 34, 0.2)"
                 >
-                    <HStack gap="1.5" color={markerToneStyles[tone].text}>
+                    <HStack gap="1.5" color={calendarEventColorStyles[color].text}>
                         <Clock3 size={12} />
                         <Text fontSize="xs" fontWeight="700">
                             {timeHint}
@@ -44,7 +47,7 @@ function CalendarEventTimeList(props: CalendarEventTimeListProps) {
 }
 
 export default function CalendarInfoPanelEventCard(props: CalendarInfoPanelEventCardProps) {
-    const {marker} = props;
+    const {color, description, label, timeHints} = props;
 
     return (
         <Box
@@ -61,20 +64,20 @@ export default function CalendarInfoPanelEventCard(props: CalendarInfoPanelEvent
                         mt="1"
                         boxSize="2.5"
                         borderRadius="full"
-                        bg={markerToneStyles[marker.tone].bg}
+                        bg={calendarEventColorStyles[color].bg}
                         flexShrink={0}
                     />
                     <VStack align="start" gap="1" flex="1">
-                        <Text fontWeight="700">{marker.label}</Text>
+                        <Text fontWeight="700">{label}</Text>
                         <Text color="fg.muted" fontSize="sm">
-                            {marker.description}
+                            {description}
                         </Text>
                     </VStack>
                 </HStack>
 
-                {marker.timeHints.length > 0 ? (
+                {timeHints.length > 0 ? (
                     <Box pl="5.5">
-                        <CalendarEventTimeList timeHints={marker.timeHints} tone={marker.tone} />
+                        <CalendarEventTimeList color={color} timeHints={timeHints} />
                     </Box>
                 ) : null}
             </VStack>

@@ -1,16 +1,16 @@
 import {HStack, Text} from '@chakra-ui/react';
 import {Timer} from 'lucide-react';
-import type {CalendarMarkerTone} from './shared.ts';
-import {markerToneStyles} from './calendarUi.ts';
+import type {CalendarEventColorPreset} from './shared.ts';
+import {calendarEventColorStyles} from './calendarUi.ts';
 
 interface CalendarDayTimeChipProps {
     ariaLabel: string;
     timeLabel: string;
-    tone: CalendarMarkerTone;
+    color: CalendarEventColorPreset;
 }
 
 export default function CalendarDayTimeChip(props: CalendarDayTimeChipProps) {
-    const {ariaLabel, timeLabel, tone} = props;
+    const {ariaLabel, timeLabel, color} = props;
 
     return (
         <HStack
@@ -21,9 +21,9 @@ export default function CalendarDayTimeChip(props: CalendarDayTimeChipProps) {
             px="1.5"
             borderWidth="1px"
             borderRadius="full"
-            borderColor={markerToneStyles[tone].text}
+            borderColor={calendarEventColorStyles[color].text}
             bg="rgba(6, 16, 34, 0.2)"
-            color={markerToneStyles[tone].text}
+            color={calendarEventColorStyles[color].text}
             flexShrink={0}
             whiteSpace="nowrap"
             style={{boxSizing: 'border-box'}}

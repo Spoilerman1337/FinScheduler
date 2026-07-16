@@ -201,7 +201,7 @@ export default function CalendarDayCell(props: CalendarDayCellProps) {
                                                 ? `${timeChipValue}+`
                                                 : timeChipValue
                                         }
-                                        tone={firstMarker.tone}
+                                        color={firstMarker.color}
                                     />
                                 ) : null}
                             </HStack>

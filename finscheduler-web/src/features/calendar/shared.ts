@@ -1,10 +1,11 @@
-export type CalendarMarkerTone = 'accent' | 'positive' | 'warning' | 'violet';
+export type CalendarEventColorPreset =
+    'red' | 'blue' | 'yellow' | 'green' | 'white' | 'orange' | 'violet';
 
 export interface CalendarMarkerPreview {
     id: string;
     label: string;
     timeHints: string[];
-    tone: CalendarMarkerTone;
+    color: CalendarEventColorPreset;
     description: string;
 }
 
@@ -51,7 +52,7 @@ function buildPreviewBlueprints() {
                     id: 'autopay-review',
                     label: 'Проверить автосписание',
                     timeHints: ['09:00'],
-                    tone: 'accent' as const,
+                    color: 'blue' as const,
                     description: 'Сверить дату списания и убедиться, что сумма не изменилась.',
                 },
             ],
@@ -64,7 +65,7 @@ function buildPreviewBlueprints() {
                     id: 'receipts-check',
                     label: 'Сверка чеков',
                     timeHints: ['11:30'],
-                    tone: 'warning' as const,
+                    color: 'yellow' as const,
                     description:
                         'Собрать чеки и отметить позиции, которые требуют дополнительной проверки.',
                 },
@@ -72,7 +73,7 @@ function buildPreviewBlueprints() {
                     id: 'cashback-check',
                     label: 'Кэшбэк',
                     timeHints: ['12:15'],
-                    tone: 'positive' as const,
+                    color: 'green' as const,
                     description: 'Проверить, что кэшбэк по выбранным операциям уже учтен.',
                 },
             ],
@@ -85,7 +86,7 @@ function buildPreviewBlueprints() {
                     id: 'tax-reminder',
                     label: 'Налоговый дедлайн',
                     timeHints: ['14:00'],
-                    tone: 'warning' as const,
+                    color: 'yellow' as const,
                     description:
                         'День заранее отмечен как чувствительный к срокам и подтверждениям.',
                 },
@@ -99,7 +100,7 @@ function buildPreviewBlueprints() {
                     id: 'budget-review',
                     label: 'Проверка категорий',
                     timeHints: ['10:00', '13:30', '18:00'],
-                    tone: 'accent' as const,
+                    color: 'blue' as const,
                     description:
                         'Посмотреть крупные категории, где траты заметно выбились из плана.',
                 },
@@ -107,7 +108,7 @@ function buildPreviewBlueprints() {
                     id: 'limits-review',
                     label: 'Лимиты на неделю',
                     timeHints: [],
-                    tone: 'violet' as const,
+                    color: 'violet' as const,
                     description:
                         'Подготовить лимиты на следующую неделю и зафиксировать, где нужен более жесткий контроль.',
                 },
@@ -121,14 +122,14 @@ function buildPreviewBlueprints() {
                     id: 'transfer-plan',
                     label: 'Запланировать перевод',
                     timeHints: ['13:00'],
-                    tone: 'positive' as const,
+                    color: 'green' as const,
                     description: 'Выделить сумму и заранее отметить, какой счет будет источником.',
                 },
                 {
                     id: 'transfer-confirmation',
                     label: 'Подтвердить зачисление',
                     timeHints: ['15:30'],
-                    tone: 'violet' as const,
+                    color: 'violet' as const,
                     description:
                         'Проверить, что деньги пришли на нужный счет, и отметить перевод как завершенный.',
                 },
@@ -142,7 +143,7 @@ function buildPreviewBlueprints() {
                     id: 'subscriptions',
                     label: 'Проверить подписки',
                     timeHints: ['18:00'],
-                    tone: 'accent' as const,
+                    color: 'blue' as const,
                     description:
                         'Открыть список сервисов и решить, какие из них пора отключить или перенести.',
                 },

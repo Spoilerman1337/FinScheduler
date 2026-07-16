@@ -42,7 +42,13 @@ function CalendarDetailsRail(props: CalendarInfoPanelProps) {
             {details ? (
                 <VStack align="stretch" gap="3">
                     {details.markers.map((marker) => (
-                        <CalendarInfoPanelEventCard key={marker.id} marker={marker} />
+                        <CalendarInfoPanelEventCard
+                            key={marker.id}
+                            color={marker.color}
+                            description={marker.description}
+                            label={marker.label}
+                            timeHints={marker.timeHints}
+                        />
                     ))}
                 </VStack>
             ) : (
