@@ -1,11 +1,67 @@
 package domains
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const calendarEventDateFormat = "2006-01-02"
+const calendarEventTimeFormat = "15:04:05"
+const calendarEventTimeFormatWithMicros = "15:04:05.999999"
+
+const microsecondsPerSecond = int64(time.Second / time.Microsecond)
+const microsecondsPerMinute = int64(time.Minute / time.Microsecond)
+const microsecondsPerHour = int64(time.Hour / time.Microsecond)
+
+type TimeOnly pgtype.Time
+
+func (timeOnly *TimeOnly) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		*timeOnly = TimeOnly{}
+		return nil
+	}
+
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+
+	parsedTime, err := parseCalendarEventTime(value, "time")
+	if err != nil {
+		return err
+	}
+
+	*timeOnly = parsedTime
+	return nil
+}
+
+func (timeOnly TimeOnly) MarshalJSON() ([]byte, error) {
+	if !timeOnly.Valid {
+		return []byte("null"), nil
+	}
+
+	return json.Marshal(formatCalendarEventTime(timeOnly))
+}
+
+func (timeOnly *TimeOnly) Scan(src any) error {
+	var parsedTime pgtype.Time
+	if err := parsedTime.Scan(src); err != nil {
+		return err
+	}
+
+	*timeOnly = TimeOnly(parsedTime)
+	return nil
+}
+
+func (timeOnly TimeOnly) Value() (driver.Value, error) {
+	return pgtype.Time(timeOnly).Value()
+}
 
 type CalendarEvent struct {
 	Id          uuid.UUID   `json:"id" db:"id"`
@@ -15,15 +71,20 @@ type CalendarEvent struct {
 	Date        pgtype.Date `json:"date" db:"date"`
 }
 
+type CalendarEventDateRangeFilter struct {
+	From pgtype.Date
+	To   pgtype.Date
+}
+
 type CalendarEventTriggerCreate struct {
-	Time       pgtype.Time `json:"time"`
-	Commentary string      `json:"commentary"`
+	Time       TimeOnly `json:"time"`
+	Commentary string   `json:"commentary"`
 }
 
 type CalendarEventTriggerUpdate struct {
-	Id         *uuid.UUID  `json:"id"`
-	Time       pgtype.Time `json:"time"`
-	Commentary string      `json:"commentary"`
+	Id         *uuid.UUID `json:"id"`
+	Time       TimeOnly   `json:"time"`
+	Commentary string     `json:"commentary"`
 }
 
 type CalendarEventCreate struct {
@@ -40,6 +101,37 @@ type CalendarEventUpdate struct {
 	Color       string                       `json:"color"`
 	Date        pgtype.Date                  `json:"date"`
 	Triggers    []CalendarEventTriggerUpdate `json:"triggers"`
+}
+
+func NewCalendarEventDateRangeFilter(r *http.Request) (CalendarEventDateRangeFilter, error) {
+	queryParams := r.URL.Query()
+
+	var from pgtype.Date
+	fromRaw := queryParams.Get("from")
+	if fromRaw != "" {
+		parsedFrom, err := parseCalendarEventDate(fromRaw, "from")
+		if err != nil {
+			return CalendarEventDateRangeFilter{}, err
+		}
+
+		from = parsedFrom
+	}
+
+	var to pgtype.Date
+	toRaw := queryParams.Get("to")
+	if toRaw != "" {
+		parsedTo, err := parseCalendarEventDate(toRaw, "to")
+		if err != nil {
+			return CalendarEventDateRangeFilter{}, err
+		}
+
+		to = parsedTo
+	}
+
+	return CalendarEventDateRangeFilter{
+		From: from,
+		To:   to,
+	}, nil
 }
 
 func (calendarEvent *CalendarEventCreate) Validate() error {
@@ -83,4 +175,72 @@ func (calendarEvent *CalendarEventUpdate) Validate() error {
 	}
 
 	return nil
+}
+
+func (filter *CalendarEventDateRangeFilter) Validate() error {
+	if !filter.From.Valid {
+		return fmt.Errorf("from should be valid")
+	}
+
+	if !filter.To.Valid {
+		return fmt.Errorf("to should be valid")
+	}
+
+	if filter.From.Time.After(filter.To.Time) {
+		return fmt.Errorf("from should not be later than to")
+	}
+
+	return nil
+}
+
+func parseCalendarEventDate(value string, fieldName string) (pgtype.Date, error) {
+	parsedDate, err := time.Parse(calendarEventDateFormat, value)
+	if err != nil {
+		return pgtype.Date{}, fmt.Errorf("invalid %s value %q: %w", fieldName, value, err)
+	}
+
+	return pgtype.Date{
+		Time:  parsedDate,
+		Valid: true,
+	}, nil
+}
+
+func parseCalendarEventTime(value string, fieldName string) (TimeOnly, error) {
+	layouts := []string{calendarEventTimeFormat, calendarEventTimeFormatWithMicros}
+
+	var lastErr error
+	for _, layout := range layouts {
+		parsedTime, err := time.Parse(layout, value)
+		if err == nil {
+			total := time.Duration(parsedTime.Hour())*time.Hour +
+				time.Duration(parsedTime.Minute())*time.Minute +
+				time.Duration(parsedTime.Second())*time.Second +
+				time.Duration(parsedTime.Nanosecond()/int(time.Microsecond))*time.Microsecond
+
+			return TimeOnly{
+				Microseconds: int64(total / time.Microsecond),
+				Valid:        true,
+			}, nil
+		}
+
+		lastErr = err
+	}
+
+	return TimeOnly{}, fmt.Errorf("invalid %s value %q: %w", fieldName, value, lastErr)
+}
+
+func formatCalendarEventTime(value TimeOnly) string {
+	remaining := value.Microseconds
+	hours := remaining / microsecondsPerHour
+	remaining = remaining % microsecondsPerHour
+	minutes := remaining / microsecondsPerMinute
+	remaining = remaining % microsecondsPerMinute
+	seconds := remaining / microsecondsPerSecond
+	microseconds := remaining % microsecondsPerSecond
+
+	if microseconds == 0 {
+		return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+	}
+
+	return fmt.Sprintf("%02d:%02d:%02d.%06d", hours, minutes, seconds, microseconds)
 }

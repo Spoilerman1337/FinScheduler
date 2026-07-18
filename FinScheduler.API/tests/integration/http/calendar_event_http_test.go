@@ -320,9 +320,9 @@ func newHTTPDateValue(year int, month time.Month, day int) pgtype.Date {
 	}
 }
 
-func newHTTPTimeValue(hours int, minutes int, seconds int) pgtype.Time {
+func newHTTPTimeValue(hours int, minutes int, seconds int) domains.TimeOnly {
 	total := time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second
-	return pgtype.Time{
+	return domains.TimeOnly{
 		Microseconds: int64(total / time.Microsecond),
 		Valid:        true,
 	}

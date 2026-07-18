@@ -13,48 +13,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"go.opentelemetry.io/otel"
 )
-
-const calendarEventDateFormat = "2006-01-02"
-const calendarEventTimeFormat = "15:04:05"
 
 type CalendarEventsHandler struct {
 	service *services.CalendarEventsService
 	logger  *slog.Logger
-}
-
-type calendarEventDateRangeFilter struct {
-	From pgtype.Date
-	To   pgtype.Date
-}
-
-type calendarEventCreateRequest struct {
-	Name        string                              `json:"name"`
-	Description string                              `json:"description"`
-	Color       string                              `json:"color"`
-	Date        string                              `json:"date"`
-	Triggers    []calendarEventTriggerCreateRequest `json:"triggers"`
-}
-
-type calendarEventTriggerCreateRequest struct {
-	Time       string `json:"time"`
-	Commentary string `json:"commentary"`
-}
-
-type calendarEventUpdateRequest struct {
-	Name        string                              `json:"name"`
-	Description string                              `json:"description"`
-	Color       string                              `json:"color"`
-	Date        string                              `json:"date"`
-	Triggers    []calendarEventTriggerUpdateRequest `json:"triggers"`
-}
-
-type calendarEventTriggerUpdateRequest struct {
-	Id         *string `json:"id"`
-	Time       string  `json:"time"`
-	Commentary string  `json:"commentary"`
 }
 
 func NewCalendarEventsHandler(service *services.CalendarEventsService, logger *slog.Logger) *CalendarEventsHandler {
@@ -89,7 +53,7 @@ func (handler *CalendarEventsHandler) GetByDateRange(w http.ResponseWriter, r *h
 
 	w.Header().Set("Content-Type", "application/json")
 
-	filter, err := newCalendarEventDateRangeFilter(r)
+	filter, err := domains.NewCalendarEventDateRangeFilter(r)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to parse query", "error", err)
 		statusCode = http.StatusBadRequest
@@ -144,18 +108,9 @@ func (handler *CalendarEventsHandler) Create(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var createRequest calendarEventCreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&createRequest); err != nil {
+	var create domains.CalendarEventCreate
+	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
-		statusCode = http.StatusBadRequest
-		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		http.Error(w, err.Error(), statusCode)
-		return
-	}
-
-	create, err := createRequest.ToDomain()
-	if err != nil {
-		handler.logger.ErrorContext(ctx, "Failed to map request to domain", "error", err)
 		statusCode = http.StatusBadRequest
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
 		http.Error(w, err.Error(), statusCode)
@@ -170,7 +125,7 @@ func (handler *CalendarEventsHandler) Create(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	calendarEventID, err := handler.service.Create(ctx, create)
+	calendarEventID, err := handler.service.Create(ctx, &create)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Calendar event creation ended in failure", "error", err)
 		statusCode = http.StatusInternalServerError
@@ -217,18 +172,9 @@ func (handler *CalendarEventsHandler) Update(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var updateRequest calendarEventUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&updateRequest); err != nil {
+	var update domains.CalendarEventUpdate
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		handler.logger.ErrorContext(ctx, "Failed to decode body", "error", err)
-		statusCode = http.StatusBadRequest
-		traces.EnrichFailedHttpSpan(span, err, statusCode)
-		http.Error(w, err.Error(), statusCode)
-		return
-	}
-
-	update, err := updateRequest.ToDomain()
-	if err != nil {
-		handler.logger.ErrorContext(ctx, "Failed to map request to domain", "error", err)
 		statusCode = http.StatusBadRequest
 		traces.EnrichFailedHttpSpan(span, err, statusCode)
 		http.Error(w, err.Error(), statusCode)
@@ -243,7 +189,7 @@ func (handler *CalendarEventsHandler) Update(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	success, err := handler.service.Update(ctx, idParam, update)
+	success, err := handler.service.Update(ctx, idParam, &update)
 	if err != nil {
 		handler.logger.ErrorContext(ctx, "Calendar event update ended in failure", "error", err)
 		statusCode = http.StatusInternalServerError
@@ -303,140 +249,4 @@ func (handler *CalendarEventsHandler) Delete(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.WriteHeader(statusCode)
-}
-
-func newCalendarEventDateRangeFilter(r *http.Request) (*calendarEventDateRangeFilter, error) {
-	queryParams := r.URL.Query()
-
-	fromRaw := queryParams.Get("from")
-	if fromRaw == "" {
-		return nil, fmt.Errorf("from is required")
-	}
-
-	toRaw := queryParams.Get("to")
-	if toRaw == "" {
-		return nil, fmt.Errorf("to is required")
-	}
-
-	from, err := parseCalendarEventDate(fromRaw, "from")
-	if err != nil {
-		return nil, err
-	}
-
-	to, err := parseCalendarEventDate(toRaw, "to")
-	if err != nil {
-		return nil, err
-	}
-
-	return &calendarEventDateRangeFilter{
-		From: from,
-		To:   to,
-	}, nil
-}
-
-func (filter *calendarEventDateRangeFilter) Validate() error {
-	if filter.From.Time.After(filter.To.Time) {
-		return fmt.Errorf("from should not be later than to")
-	}
-
-	return nil
-}
-
-func (request *calendarEventCreateRequest) ToDomain() (*domains.CalendarEventCreate, error) {
-	date, err := parseCalendarEventDate(request.Date, "date")
-	if err != nil {
-		return nil, err
-	}
-
-	triggers := make([]domains.CalendarEventTriggerCreate, 0, len(request.Triggers))
-	for _, triggerRequest := range request.Triggers {
-		triggerTime, parseErr := parseCalendarEventTime(triggerRequest.Time, "time")
-		if parseErr != nil {
-			return nil, parseErr
-		}
-
-		triggers = append(triggers, domains.CalendarEventTriggerCreate{
-			Time:       triggerTime,
-			Commentary: triggerRequest.Commentary,
-		})
-	}
-
-	return &domains.CalendarEventCreate{
-		Name:        request.Name,
-		Description: request.Description,
-		Color:       request.Color,
-		Date:        date,
-		Triggers:    triggers,
-	}, nil
-}
-
-func (request *calendarEventUpdateRequest) ToDomain() (*domains.CalendarEventUpdate, error) {
-	date, err := parseCalendarEventDate(request.Date, "date")
-	if err != nil {
-		return nil, err
-	}
-
-	triggers := make([]domains.CalendarEventTriggerUpdate, 0, len(request.Triggers))
-	for _, triggerRequest := range request.Triggers {
-		triggerTime, parseErr := parseCalendarEventTime(triggerRequest.Time, "time")
-		if parseErr != nil {
-			return nil, parseErr
-		}
-
-		var triggerID *uuid.UUID
-		if triggerRequest.Id != nil {
-			if *triggerRequest.Id == "" {
-				return nil, fmt.Errorf("trigger id is empty")
-			}
-
-			parsedTriggerID, parseUUIDErr := uuid.Parse(*triggerRequest.Id)
-			if parseUUIDErr != nil {
-				return nil, fmt.Errorf("trigger id is invalid: %w", parseUUIDErr)
-			}
-
-			triggerID = &parsedTriggerID
-		}
-
-		triggers = append(triggers, domains.CalendarEventTriggerUpdate{
-			Id:         triggerID,
-			Time:       triggerTime,
-			Commentary: triggerRequest.Commentary,
-		})
-	}
-
-	return &domains.CalendarEventUpdate{
-		Name:        request.Name,
-		Description: request.Description,
-		Color:       request.Color,
-		Date:        date,
-		Triggers:    triggers,
-	}, nil
-}
-
-func parseCalendarEventDate(value string, fieldName string) (pgtype.Date, error) {
-	parsedDate, err := time.Parse(calendarEventDateFormat, value)
-	if err != nil {
-		return pgtype.Date{}, fmt.Errorf("invalid %s value %q: %w", fieldName, value, err)
-	}
-
-	return pgtype.Date{
-		Time:  parsedDate,
-		Valid: true,
-	}, nil
-}
-
-func parseCalendarEventTime(value string, fieldName string) (pgtype.Time, error) {
-	parsedTime, err := time.Parse(calendarEventTimeFormat, value)
-	if err != nil {
-		return pgtype.Time{}, fmt.Errorf("invalid %s value %q: %w", fieldName, value, err)
-	}
-
-	total := time.Duration(parsedTime.Hour())*time.Hour +
-		time.Duration(parsedTime.Minute())*time.Minute +
-		time.Duration(parsedTime.Second())*time.Second
-
-	return pgtype.Time{
-		Microseconds: int64(total / time.Microsecond),
-		Valid:        true,
-	}, nil
 }

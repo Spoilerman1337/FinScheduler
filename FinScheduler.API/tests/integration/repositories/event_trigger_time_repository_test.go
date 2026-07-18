@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -169,7 +168,7 @@ func TestEventTriggerTimesRepositoryGetByCalendarEventID_ShouldReturnErrorWhenDa
 	assert.Nil(t, eventTriggerTimes)
 }
 
-func insertEventTriggerTime(t testing.TB, id uuid.UUID, triggerTime pgtype.Time, commentary string, calendarEventID uuid.UUID) {
+func insertEventTriggerTime(t testing.TB, id uuid.UUID, triggerTime domains.TimeOnly, commentary string, calendarEventID uuid.UUID) {
 	t.Helper()
 
 	query := `INSERT INTO event_trigger_time (id, "time", commentary, calendar_event_id)
@@ -178,9 +177,9 @@ func insertEventTriggerTime(t testing.TB, id uuid.UUID, triggerTime pgtype.Time,
 	require.NoError(t, err)
 }
 
-func newTimeValue(hours int, minutes int, seconds int) pgtype.Time {
+func newTimeValue(hours int, minutes int, seconds int) domains.TimeOnly {
 	total := time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second
-	return pgtype.Time{
+	return domains.TimeOnly{
 		Microseconds: int64(total / time.Microsecond),
 		Valid:        true,
 	}
