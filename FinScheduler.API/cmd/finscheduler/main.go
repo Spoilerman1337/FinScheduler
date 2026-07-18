@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"finscheduler/database"
 	featurehttp "finscheduler/internal/features/http"
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/health"
@@ -97,9 +96,11 @@ func main() {
 
 	itemsService := services.NewItemsService(uow, logger)
 	tagsService := services.NewTagsService(uow, logger)
+	calendarEventsService := services.NewCalendarEventsService(uow, logger)
 
 	tagsHandler := featurehttp.NewTagsHandler(tagsService, logger)
 	itemsHandler := featurehttp.NewItemsHandler(itemsService, logger)
+	calendarEventsHandler := featurehttp.NewCalendarEventsHandler(calendarEventsService, logger)
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
@@ -118,6 +119,9 @@ func main() {
 	})
 	r.Route("/api/tags", func(r chi.Router) {
 		tagsHandler.RegisterEndpoints(r)
+	})
+	r.Route("/api/calendar-events", func(r chi.Router) {
+		calendarEventsHandler.RegisterEndpoints(r)
 	})
 
 	logger.Info("starting http server",

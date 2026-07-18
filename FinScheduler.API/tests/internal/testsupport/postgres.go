@@ -92,7 +92,7 @@ func Truncate(t testing.TB, db *sqlx.DB, tables ...string) {
 	t.Helper()
 
 	if len(tables) == 0 {
-		tables = []string{"items", "tags", "tag_to_item"}
+		tables = []string{"items", "tags", "calendar_event"}
 	}
 
 	query := fmt.Sprintf("TRUNCATE %s CASCADE", strings.Join(tables, ", "))
@@ -182,6 +182,12 @@ func setupSchema(db *sqlx.DB) error {
 	if err := setupTagToItemSchema(db); err != nil {
 		return err
 	}
+	if err := setupCalendarEventSchema(db); err != nil {
+		return err
+	}
+	if err := setupEventTriggerTimeSchema(db); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -236,6 +242,37 @@ func setupTagToItemSchema(db *sqlx.DB) error {
 
 			PRIMARY KEY (item_id, tag_id)
 		);
+	`)
+}
+
+func setupCalendarEventSchema(db *sqlx.DB) error {
+	return setupTable(db, "calendar_event", `
+		CREATE TABLE calendar_event (
+			id UUID PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT NULL,
+			color TEXT NOT NULL,
+			date DATE NOT NULL
+		);
+
+		CREATE INDEX idx_calendar_event_date
+			ON calendar_event (date);
+	`)
+}
+
+func setupEventTriggerTimeSchema(db *sqlx.DB) error {
+	return setupTable(db, "event_trigger_time", `
+		CREATE TABLE event_trigger_time (
+			id UUID PRIMARY KEY,
+			time TIME NOT NULL,
+			commentary TEXT NULL,
+			calendar_event_id UUID NOT NULL REFERENCES calendar_event(id) ON DELETE CASCADE,
+			CONSTRAINT uq_event_trigger_time_calendar_event_id_time
+				UNIQUE (calendar_event_id, time)
+		);
+
+		CREATE INDEX idx_event_trigger_time_calendar_event_id
+			ON event_trigger_time (calendar_event_id);
 	`)
 }
 

@@ -29,3 +29,11 @@ func (factory *RepositoryFactory) Tags() *repositories.TagsRepository {
 func (factory *RepositoryFactory) TagToItems() *repositories.TagToItemsRepository {
 	return repositories.NewTagToItemsRepository(factory.db, factory.logger)
 }
+
+func (factory *RepositoryFactory) CalendarEvents() *repositories.CalendarEventsRepository {
+	return repositories.NewCalendarEventsRepository(factory.db, factory.logger)
+}
+
+func (factory *RepositoryFactory) EventTriggerTimes() *repositories.EventTriggerTimesRepository {
+	return repositories.NewEventTriggerTimesRepository(factory.db, factory.logger)
+}

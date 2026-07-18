@@ -62,8 +62,10 @@ func newTestApplicationWithDB(db *sqlx.DB) *testApplication {
 	uow := persistence.NewUnitOfWork(db, testLogger)
 	itemsService := services.NewItemsService(uow, testLogger)
 	tagsService := services.NewTagsService(uow, testLogger)
+	calendarEventsService := services.NewCalendarEventsService(uow, testLogger)
 	itemsHandler := featurehttp.NewItemsHandler(itemsService, testLogger)
 	tagsHandler := featurehttp.NewTagsHandler(tagsService, testLogger)
+	calendarEventsHandler := featurehttp.NewCalendarEventsHandler(calendarEventsService, testLogger)
 	router := chi.NewRouter()
 
 	router.Route("/api/items", func(route chi.Router) {
@@ -71,6 +73,9 @@ func newTestApplicationWithDB(db *sqlx.DB) *testApplication {
 	})
 	router.Route("/api/tags", func(route chi.Router) {
 		tagsHandler.RegisterEndpoints(route)
+	})
+	router.Route("/api/calendar-events", func(route chi.Router) {
+		calendarEventsHandler.RegisterEndpoints(route)
 	})
 
 	return &testApplication{
