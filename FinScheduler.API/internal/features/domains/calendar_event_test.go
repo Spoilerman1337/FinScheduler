@@ -55,6 +55,74 @@ func TestNewCalendarEventDateRangeFilter_ShouldReturnErrorOnInvalidQueryParam(t 
 	assert.Contains(t, err.Error(), `invalid from value "bad-date"`)
 }
 
+func TestCalendarEventColorIsValid(t *testing.T) {
+	tests := []struct {
+		name  string
+		color CalendarEventColor
+		valid bool
+	}{
+		{name: "red", color: Red, valid: true},
+		{name: "blue", color: Blue, valid: true},
+		{name: "yellow", color: Yellow, valid: true},
+		{name: "green", color: Green, valid: true},
+		{name: "white", color: White, valid: true},
+		{name: "orange", color: Orange, valid: true},
+		{name: "violet", color: Violet, valid: true},
+		{name: "invalid", color: CalendarEventColor("black"), valid: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			color := tt.color
+
+			// Act
+			actual := color.IsValid()
+
+			// Assert
+			assert.Equal(t, tt.valid, actual)
+		})
+	}
+}
+
+func TestCalendarEventCreateValidate_ShouldReturnErrorOnInvalidColor(t *testing.T) {
+	// Arrange
+	create := CalendarEventCreate{
+		Name:        "Bills",
+		Description: "Rent",
+		Color:       CalendarEventColor("black"),
+		Date:        newCalendarEventFilterDateValue(2026, time.July, 17),
+		Triggers: []CalendarEventTriggerCreate{
+			{Time: newCalendarEventTimeValue(8, 30, 0), Commentary: "Morning reminder"},
+		},
+	}
+
+	// Act
+	err := create.Validate()
+
+	// Assert
+	require.EqualError(t, err, "color is invalid")
+}
+
+func TestCalendarEventUpdateValidate_ShouldReturnErrorOnInvalidColor(t *testing.T) {
+	// Arrange
+	update := CalendarEventUpdate{
+		Name:        "Bills updated",
+		Description: "Rent updated",
+		Color:       CalendarEventColor("black"),
+		Date:        newCalendarEventFilterDateValue(2026, time.July, 18),
+		Triggers: []CalendarEventTriggerUpdate{
+			{Time: newCalendarEventTimeValue(8, 45, 0), Commentary: "Morning reminder"},
+		},
+	}
+
+	// Act
+	err := update.Validate()
+
+	// Assert
+	require.EqualError(t, err, "color is invalid")
+}
+
 func TestCalendarEventCreateUnmarshalJSON_ShouldParseSupportedFields(t *testing.T) {
 	// Arrange
 	payload := []byte(`{"name":"Bills","description":"Rent","color":"red","date":"2026-07-17","triggers":[{"time":"08:30:00","commentary":"Morning reminder"},{"time":"20:00:00","commentary":"Evening reminder"}]}`)
@@ -67,7 +135,7 @@ func TestCalendarEventCreateUnmarshalJSON_ShouldParseSupportedFields(t *testing.
 	require.NoError(t, err)
 	assert.Equal(t, "Bills", create.Name)
 	assert.Equal(t, "Rent", create.Description)
-	assert.Equal(t, "red", create.Color)
+	assert.Equal(t, Red, create.Color)
 	assert.True(t, create.Date.Valid)
 	assert.Equal(t, "2026-07-17", create.Date.Time.Format("2006-01-02"))
 	require.Len(t, create.Triggers, 2)
@@ -103,7 +171,7 @@ func TestCalendarEventUpdateUnmarshalJSON_ShouldParseSupportedFields(t *testing.
 	require.NoError(t, err)
 	assert.Equal(t, "Bills updated", update.Name)
 	assert.Equal(t, "Rent updated", update.Description)
-	assert.Equal(t, "orange", update.Color)
+	assert.Equal(t, Orange, update.Color)
 	assert.True(t, update.Date.Valid)
 	assert.Equal(t, "2026-07-18", update.Date.Time.Format("2006-01-02"))
 	require.Len(t, update.Triggers, 2)
@@ -193,5 +261,13 @@ func newCalendarEventFilterDateValue(year int, month time.Month, day int) pgtype
 	return pgtype.Date{
 		Time:  time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
 		Valid: true,
+	}
+}
+
+func newCalendarEventTimeValue(hours int, minutes int, seconds int) TimeOnly {
+	total := time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second
+	return TimeOnly{
+		Microseconds: int64(total / time.Microsecond),
+		Valid:        true,
 	}
 }

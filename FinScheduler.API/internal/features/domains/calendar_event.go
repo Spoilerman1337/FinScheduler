@@ -21,6 +21,18 @@ const microsecondsPerHour = int64(time.Hour / time.Microsecond)
 
 type TimeOnly pgtype.Time
 
+type CalendarEventColor string
+
+const (
+	Red    CalendarEventColor = "red"
+	Blue   CalendarEventColor = "blue"
+	Yellow CalendarEventColor = "yellow"
+	Green  CalendarEventColor = "green"
+	White  CalendarEventColor = "white"
+	Orange CalendarEventColor = "orange"
+	Violet CalendarEventColor = "violet"
+)
+
 func (timeOnly *TimeOnly) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		*timeOnly = TimeOnly{}
@@ -63,12 +75,27 @@ func (timeOnly TimeOnly) Value() (driver.Value, error) {
 	return pgtype.Time(timeOnly).Value()
 }
 
+func (calendarEventColor CalendarEventColor) IsValid() bool {
+	switch calendarEventColor {
+	case Red,
+		Blue,
+		Yellow,
+		Green,
+		White,
+		Orange,
+		Violet:
+		return true
+	default:
+		return false
+	}
+}
+
 type CalendarEvent struct {
-	Id          uuid.UUID   `json:"id" db:"id"`
-	Name        string      `json:"name" db:"name"`
-	Description string      `json:"description" db:"description"`
-	Color       string      `json:"color" db:"color"`
-	Date        pgtype.Date `json:"date" db:"date"`
+	Id          uuid.UUID          `json:"id" db:"id"`
+	Name        string             `json:"name" db:"name"`
+	Description string             `json:"description" db:"description"`
+	Color       CalendarEventColor `json:"color" db:"color"`
+	Date        pgtype.Date        `json:"date" db:"date"`
 }
 
 type CalendarEventDateRangeFilter struct {
@@ -90,7 +117,7 @@ type CalendarEventTriggerUpdate struct {
 type CalendarEventCreate struct {
 	Name        string                       `json:"name"`
 	Description string                       `json:"description"`
-	Color       string                       `json:"color"`
+	Color       CalendarEventColor           `json:"color"`
 	Date        pgtype.Date                  `json:"date"`
 	Triggers    []CalendarEventTriggerCreate `json:"triggers"`
 }
@@ -98,7 +125,7 @@ type CalendarEventCreate struct {
 type CalendarEventUpdate struct {
 	Name        string                       `json:"name"`
 	Description string                       `json:"description"`
-	Color       string                       `json:"color"`
+	Color       CalendarEventColor           `json:"color"`
 	Date        pgtype.Date                  `json:"date"`
 	Triggers    []CalendarEventTriggerUpdate `json:"triggers"`
 }
@@ -135,6 +162,10 @@ func NewCalendarEventDateRangeFilter(r *http.Request) (CalendarEventDateRangeFil
 }
 
 func (calendarEvent *CalendarEventCreate) Validate() error {
+	if !calendarEvent.Color.IsValid() {
+		return fmt.Errorf("color is invalid")
+	}
+
 	if !calendarEvent.Date.Valid {
 		return fmt.Errorf("date should be valid")
 	}
@@ -149,6 +180,10 @@ func (calendarEvent *CalendarEventCreate) Validate() error {
 }
 
 func (calendarEvent *CalendarEventUpdate) Validate() error {
+	if !calendarEvent.Color.IsValid() {
+		return fmt.Errorf("color is invalid")
+	}
+
 	if !calendarEvent.Date.Valid {
 		return fmt.Errorf("date should be valid")
 	}
