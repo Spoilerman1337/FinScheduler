@@ -1,4 +1,4 @@
-import {Box, DatePicker, Text, useDatePickerContext} from '@chakra-ui/react';
+﻿import {Box, DatePicker, Text, useDatePickerContext} from '@chakra-ui/react';
 import type {CalendarDayDetails} from './shared.ts';
 import CalendarDayCell from './CalendarDayCell.tsx';
 
@@ -21,7 +21,7 @@ function CalendarDayGrid(props: CalendarDayGridProps) {
             w="full"
             tableLayout="fixed"
             borderCollapse="separate"
-            sx={{borderSpacing: '0.5rem'}}
+            style={{borderSpacing: '0.5rem'}}
         >
             <DatePicker.TableHead unstyled>
                 <DatePicker.TableRow unstyled>

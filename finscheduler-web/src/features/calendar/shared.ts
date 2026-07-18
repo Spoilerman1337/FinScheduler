@@ -1,4 +1,4 @@
-export type CalendarEventColorPreset =
+﻿export type CalendarEventColorPreset =
     'red' | 'blue' | 'yellow' | 'green' | 'white' | 'orange' | 'violet';
 
 export interface CalendarMarkerPreview {
@@ -7,6 +7,7 @@ export interface CalendarMarkerPreview {
     timeHints: string[];
     color: CalendarEventColorPreset;
     description: string;
+    triggerTags: string[];
 }
 
 export interface CalendarDayDetails {
@@ -14,6 +15,31 @@ export interface CalendarDayDetails {
     summary: string;
     note: string;
     markers: CalendarMarkerPreview[];
+}
+
+export interface EventCatalogEntry {
+    id: string;
+    dayKey: string;
+    date: Date;
+    dateLabel: string;
+    fullDateLabel: string;
+    summary: string;
+    note: string;
+    label: string;
+    description: string;
+    timeHints: string[];
+    color: CalendarEventColorPreset;
+    triggerTags: string[];
+}
+
+interface CalendarMarkerBlueprint extends Omit<CalendarMarkerPreview, 'id'> {
+    id: string;
+}
+
+interface CalendarDayBlueprint {
+    summary: string;
+    note: string;
+    markers: CalendarMarkerBlueprint[];
 }
 
 const monthFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -42,7 +68,7 @@ function capitalizeLabel(value: string) {
     return value[0].toUpperCase() + value.slice(1);
 }
 
-function buildPreviewBlueprints() {
+function buildPreviewBlueprints(): CalendarDayBlueprint[] {
     return [
         {
             summary: 'Пакет автоплатежей',
@@ -52,8 +78,9 @@ function buildPreviewBlueprints() {
                     id: 'autopay-review',
                     label: 'Проверить автосписание',
                     timeHints: ['09:00'],
-                    color: 'blue' as const,
+                    color: 'blue',
                     description: 'Сверить дату списания и убедиться, что сумма не изменилась.',
+                    triggerTags: ['Автоплатеж', 'Контроль', 'Утро'],
                 },
             ],
         },
@@ -65,16 +92,18 @@ function buildPreviewBlueprints() {
                     id: 'receipts-check',
                     label: 'Сверка чеков',
                     timeHints: ['11:30'],
-                    color: 'yellow' as const,
+                    color: 'yellow',
                     description:
                         'Собрать чеки и отметить позиции, которые требуют дополнительной проверки.',
+                    triggerTags: ['Чеки', 'Контроль', 'День'],
                 },
                 {
                     id: 'cashback-check',
-                    label: 'Кэшбэк',
+                    label: 'Кешбэк',
                     timeHints: ['12:15'],
-                    color: 'green' as const,
-                    description: 'Проверить, что кэшбэк по выбранным операциям уже учтен.',
+                    color: 'green',
+                    description: 'Проверить, что кешбэк по выбранным операциям уже учтен.',
+                    triggerTags: ['Кешбэк', 'Проверка', 'День'],
                 },
             ],
         },
@@ -86,9 +115,10 @@ function buildPreviewBlueprints() {
                     id: 'tax-reminder',
                     label: 'Налоговый дедлайн',
                     timeHints: ['14:00'],
-                    color: 'yellow' as const,
+                    color: 'yellow',
                     description:
                         'День заранее отмечен как чувствительный к срокам и подтверждениям.',
+                    triggerTags: ['Налоги', 'Дедлайн', 'День'],
                 },
             ],
         },
@@ -100,17 +130,19 @@ function buildPreviewBlueprints() {
                     id: 'budget-review',
                     label: 'Проверка категорий',
                     timeHints: ['10:00', '13:30', '18:00'],
-                    color: 'blue' as const,
+                    color: 'blue',
                     description:
                         'Посмотреть крупные категории, где траты заметно выбились из плана.',
+                    triggerTags: ['Бюджет', 'Контроль', 'Несколько слотов'],
                 },
                 {
                     id: 'limits-review',
                     label: 'Лимиты на неделю',
                     timeHints: [],
-                    color: 'violet' as const,
+                    color: 'violet',
                     description:
                         'Подготовить лимиты на следующую неделю и зафиксировать, где нужен более жесткий контроль.',
+                    triggerTags: ['Лимиты', 'План', 'Без времени'],
                 },
             ],
         },
@@ -122,16 +154,19 @@ function buildPreviewBlueprints() {
                     id: 'transfer-plan',
                     label: 'Запланировать перевод',
                     timeHints: ['13:00'],
-                    color: 'green' as const,
-                    description: 'Выделить сумму и заранее отметить, какой счет будет источником.',
+                    color: 'green',
+                    description:
+                        'Выделить сумму и заранее отметить, какой счет будет источником.',
+                    triggerTags: ['Перевод', 'План', 'День'],
                 },
                 {
                     id: 'transfer-confirmation',
                     label: 'Подтвердить зачисление',
                     timeHints: ['15:30'],
-                    color: 'violet' as const,
+                    color: 'violet',
                     description:
                         'Проверить, что деньги пришли на нужный счет, и отметить перевод как завершенный.',
+                    triggerTags: ['Перевод', 'Подтверждение', 'День'],
                 },
             ],
         },
@@ -143,9 +178,10 @@ function buildPreviewBlueprints() {
                     id: 'subscriptions',
                     label: 'Проверить подписки',
                     timeHints: ['18:00'],
-                    color: 'blue' as const,
+                    color: 'blue',
                     description:
                         'Открыть список сервисов и решить, какие из них пора отключить или перенести.',
+                    triggerTags: ['Подписки', 'Контроль', 'Вечер'],
                 },
             ],
         },
@@ -174,6 +210,12 @@ export function buildDayKey(date: Date) {
     const day = String(date.getDate()).padStart(2, '0');
 
     return `${year}-${month}-${day}`;
+}
+
+export function dayKeyToDate(dayKey: string) {
+    const [year, month, day] = dayKey.split('-').map(Number);
+
+    return new Date(year, month - 1, day);
 }
 
 export function formatMonthLabel(date: Date) {
@@ -226,6 +268,31 @@ export function buildMonthPreviewDetails(displayedMonth: Date, referenceDate: Da
     });
 
     return detailsByDay;
+}
+
+export function buildEventCatalogEntries(displayedMonth: Date, referenceDate: Date = new Date()) {
+    const detailsByDay = buildMonthPreviewDetails(displayedMonth, referenceDate);
+
+    return Object.values(detailsByDay)
+        .sort((left, right) => left.dayKey.localeCompare(right.dayKey))
+        .flatMap((details) => {
+            const date = dayKeyToDate(details.dayKey);
+
+            return details.markers.map<EventCatalogEntry>((marker) => ({
+                id: marker.id,
+                dayKey: details.dayKey,
+                date,
+                dateLabel: dayMonthFormatter.format(date),
+                fullDateLabel: formatSelectedDayLabel(date),
+                summary: details.summary,
+                note: details.note,
+                label: marker.label,
+                description: marker.description,
+                timeHints: marker.timeHints,
+                color: marker.color,
+                triggerTags: marker.triggerTags,
+            }));
+        });
 }
 
 export function getInitialSelectedDayKey(

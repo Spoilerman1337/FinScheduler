@@ -15,6 +15,16 @@ interface ListingActionButtonsProps {
 export default function ListingActionButtons(props: ListingActionButtonsProps) {
     const {selectedCount, onAdd, onEditSelected, onDeleteSelected, additionalActions} = props;
     const hasSelection = selectedCount > 0;
+    const hasVisibleActions = Boolean(
+        additionalActions ||
+            (onAdd && !hasSelection) ||
+            (onEditSelected && selectedCount === 1) ||
+            (onDeleteSelected && selectedCount > 0),
+    );
+
+    if (!hasVisibleActions) {
+        return null;
+    }
 
     return (
         <Flex

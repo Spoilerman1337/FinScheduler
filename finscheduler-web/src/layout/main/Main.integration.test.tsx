@@ -1,4 +1,4 @@
-import {screen} from '@testing-library/react';
+﻿import {screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {describe, expect, it, vi} from 'vitest';
 import {
@@ -6,6 +6,7 @@ import {
     buildEditItemPath,
     buildEditTagPath,
     dashboardPath,
+    eventsPath,
     itemsListPath,
     tagsListPath,
 } from '../../features/routes.ts';
@@ -14,6 +15,7 @@ import {
     catalogNavigationLabel,
     dashboardNavigationLabel,
     dashboardRouteTitle,
+    eventsNavigationLabel,
     tagsNavigationLabel,
 } from '../navigationLabels.ts';
 import {appRoutes} from '../../router.tsx';
@@ -67,6 +69,12 @@ vi.mock('../../features/dashboard/Dashboard.tsx', () => ({
 vi.mock('../../features/calendar/Calendar.tsx', () => ({
     default: function CalendarPageMock() {
         return <div>Calendar Page</div>;
+    },
+}));
+
+vi.mock('../../features/events/Events.tsx', () => ({
+    default: function EventsPageMock() {
+        return <div>Events Page</div>;
     },
 }));
 
@@ -148,6 +156,28 @@ describe('Main and Sidebar integration', () => {
         expect(
             screen.getByRole('link', {name: calendarNavigationLabel, hidden: true}),
         ).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('navigates to the events route and updates the header and active link', async () => {
+        // Arrange
+        const user = userEvent.setup();
+        renderWithDataRouter(appRoutes, {initialEntries: [calendarPath]});
+
+        // Act
+        await user.click(screen.getByRole('link', {name: eventsNavigationLabel, hidden: true}));
+
+        // Assert
+        expect(await screen.findByText('Events Page')).toBeInTheDocument();
+        expect(await screen.findAllByText(eventsNavigationLabel)).toHaveLength(2);
+        expect(screen.queryByText('Calendar Page')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', {name: eventsNavigationLabel, hidden: true})).toHaveAttribute(
+            'href',
+            eventsPath,
+        );
+        expect(screen.getByRole('link', {name: eventsNavigationLabel, hidden: true})).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
     });
 
     it('navigates from calendar to tags and updates the header and active link', async () => {

@@ -1,10 +1,17 @@
-import type {LucideIcon} from 'lucide-react';
-import {CalendarDays, LayoutDashboard, ShoppingBag, Tag} from 'lucide-react';
-import {calendarPath, dashboardPath, itemsListPath, tagsListPath} from '../../features/routes.ts';
+﻿import type {LucideIcon} from 'lucide-react';
+import {Bell, CalendarDays, LayoutDashboard, ShoppingBag, Tag} from 'lucide-react';
+import {
+    calendarPath,
+    dashboardPath,
+    eventsPath,
+    itemsListPath,
+    tagsListPath,
+} from '../../features/routes.ts';
 import {
     calendarNavigationLabel,
     catalogNavigationLabel,
     dashboardNavigationLabel,
+    eventsNavigationLabel,
     tagsNavigationLabel,
 } from '../navigationLabels.ts';
 
@@ -28,6 +35,12 @@ export const routedNavigationItems: NavigationItem[] = [
         label: calendarNavigationLabel,
         path: calendarPath,
         icon: CalendarDays,
+    },
+    {
+        id: 'events',
+        label: eventsNavigationLabel,
+        path: eventsPath,
+        icon: Bell,
     },
     {
         id: 'catalog',

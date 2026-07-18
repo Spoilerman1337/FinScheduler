@@ -1,4 +1,4 @@
-import {Box, Flex, HStack, Text, VStack} from '@chakra-ui/react';
+﻿import {Badge, Box, Flex, HStack, Text, VStack} from '@chakra-ui/react';
 import {Clock3} from 'lucide-react';
 import type {CalendarEventColorPreset} from './shared.ts';
 import {calendarEventColorStyles} from './calendarUi.ts';
@@ -8,6 +8,7 @@ interface CalendarInfoPanelEventCardProps {
     description: string;
     label: string;
     timeHints: string[];
+    triggerTags: string[];
 }
 
 interface CalendarEventTimeListProps {
@@ -46,8 +47,38 @@ function CalendarEventTimeList(props: CalendarEventTimeListProps) {
     );
 }
 
+function CalendarEventTriggerTags(props: {
+    color: CalendarEventColorPreset;
+    triggerTags: string[];
+}) {
+    const {color, triggerTags} = props;
+
+    if (triggerTags.length === 0) {
+        return null;
+    }
+
+    return (
+        <Flex wrap="wrap" gap="2">
+            {triggerTags.map((triggerTag) => (
+                <Badge
+                    key={triggerTag}
+                    px="2.5"
+                    py="1"
+                    borderRadius="full"
+                    borderWidth="1px"
+                    borderColor="app.cardBorder"
+                    bg="rgba(6, 16, 34, 0.2)"
+                    color={calendarEventColorStyles[color].text}
+                >
+                    {triggerTag}
+                </Badge>
+            ))}
+        </Flex>
+    );
+}
+
 export default function CalendarInfoPanelEventCard(props: CalendarInfoPanelEventCardProps) {
-    const {color, description, label, timeHints} = props;
+    const {color, description, label, timeHints, triggerTags} = props;
 
     return (
         <Box
@@ -75,11 +106,12 @@ export default function CalendarInfoPanelEventCard(props: CalendarInfoPanelEvent
                     </VStack>
                 </HStack>
 
-                {timeHints.length > 0 ? (
-                    <Box pl="5.5">
+                <Box pl="5.5">
+                    <VStack align="stretch" gap="3">
+                        <CalendarEventTriggerTags color={color} triggerTags={triggerTags} />
                         <CalendarEventTimeList color={color} timeHints={timeHints} />
-                    </Box>
-                ) : null}
+                    </VStack>
+                </Box>
             </VStack>
         </Box>
     );

@@ -1,4 +1,4 @@
-import {Box, Flex, Text, VStack} from '@chakra-ui/react';
+﻿import {Box, Flex, Text, VStack} from '@chakra-ui/react';
 import type {CalendarDayDetails} from './shared.ts';
 import {formatSelectedDayLabel} from './shared.ts';
 import CalendarInfoPanelEventCard from './CalendarInfoPanelEventCard.tsx';
@@ -48,6 +48,7 @@ function CalendarDetailsRail(props: CalendarInfoPanelProps) {
                             description={marker.description}
                             label={marker.label}
                             timeHints={marker.timeHints}
+                            triggerTags={marker.triggerTags}
                         />
                     ))}
                 </VStack>
