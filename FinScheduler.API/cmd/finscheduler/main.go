@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"finscheduler/database"
 	featurehttp "finscheduler/internal/features/http"
 	"finscheduler/internal/features/services"
 	"finscheduler/internal/health"
